@@ -1,7 +1,7 @@
 "use client";
 import { useState } from 'react';
 import { Calendar as CalendarIcon, Clock, MapPin, AlignLeft } from 'lucide-react';
-import { FieldRow, InputBase, TextareaBase, toDateInputVal, toTimeInputVal } from './FormHelpers';
+import { FieldRow, InputBase, TextareaBase, toDateInputVal, toTimeInputVal, DateTimeSelector } from './FormHelpers';
 
 export default function AppointmentForm({ now, onSave }) {
     const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
@@ -31,14 +31,16 @@ export default function AppointmentForm({ now, onSave }) {
             </FieldRow>
 
             <FieldRow icon={Clock}>
-                <div className="flex flex-col gap-2">
-                    <InputBase type="date" value={form.date} onChange={set('date')} style={{ width: 'auto' }} />
-                    <div className="flex items-center gap-2">
-                        <InputBase type="time" value={form.timeStart} onChange={set('timeStart')} style={{ width: '120px' }} />
-                        <span className="text-slate-400 text-sm flex-shrink-0">đến</span>
-                        <InputBase type="time" value={form.timeEnd}   onChange={set('timeEnd')}   style={{ width: '120px' }} />
+                <DateTimeSelector date={form.date} timeStart={form.timeStart} timeEnd={form.timeEnd}>
+                    <div className="flex flex-col gap-3">
+                        <InputBase type="date" value={form.date} onChange={set('date')} />
+                        <div className="flex items-center gap-2">
+                            <InputBase type="time" value={form.timeStart} onChange={set('timeStart')} className="flex-1" />
+                            <span className="text-slate-400 text-sm flex-shrink-0">đến</span>
+                            <InputBase type="time" value={form.timeEnd}   onChange={set('timeEnd')}   className="flex-1" />
+                        </div>
                     </div>
-                </div>
+                </DateTimeSelector>
             </FieldRow>
 
             <FieldRow icon={MapPin}>

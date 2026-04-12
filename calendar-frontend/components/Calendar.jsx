@@ -35,7 +35,8 @@ export default function Calendar({
   setSelectedDate,
   onGridClick,
   previewEvent,
-  onOpenCreate, // từ page.js — mở CreateModal với tab cụ thể
+  onOpenCreate,
+  onYearDayClick, // Thêm prop này
 }) {
   const now = getVNTime();
 
@@ -264,7 +265,7 @@ export default function Calendar({
                   key={m}
                   year={viewDate.getFullYear()}
                   month={m}
-                  onDayClick={handleDayClick}
+                  onDayClick={onYearDayClick}
                 />
               ))}
             </div>
@@ -276,7 +277,7 @@ export default function Calendar({
           <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-slate-200">
             <div className="flex shadow-sm flex-shrink-0 sticky top-0 z-20 bg-slate-200">
               <div className="flex-1 grid grid-cols-7 gap-px">
-                {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
+                {["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"].map((d) => (
                   <div
                     key={d}
                     className="bg-white text-center py-3 text-sm font-semibold text-slate-500"
@@ -290,18 +291,16 @@ export default function Calendar({
               {monthCells.map((cell, idx) => (
                 <div key={idx} className="bg-white p-2 min-h-[120px]">
                   <div
-                    onClick={() =>
-                      cell.isCurrentMonth && handleDayClick(cell.fullDate)
-                    }
-                    className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-all
-                                            ${!cell.isCurrentMonth ? "text-slate-400 pointer-events-none" : "cursor-pointer"}
-                                            ${
-                                              cell.isToday
-                                                ? "bg-blue-600 text-white shadow-md font-bold"
-                                                : cell.isCurrentMonth
-                                                  ? "text-slate-700 hover:bg-slate-100"
-                                                  : ""
-                                            }`}
+                    onClick={(e) => handleDayClick(cell.fullDate)}
+                    id={cell.isToday ? "today-cell" : `cell-${cell.num}`}
+                    className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-all cursor-pointer
+                                            ${!cell.isCurrentMonth ? "text-slate-400 opacity-60" : ""}
+                                            ${cell.isToday
+                        ? "bg-blue-600 text-white shadow-md font-bold"
+                        : cell.isCurrentMonth
+                          ? "text-slate-700 hover:bg-slate-100"
+                          : ""
+                      }`}
                   >
                     {cell.num}
                   </div>

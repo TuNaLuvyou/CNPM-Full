@@ -8,13 +8,13 @@ export default function MonthCard({ year, month, onDayClick }) {
                 {VI_MONTH_NAMES[month]} {year}
             </h3>
             <div className="grid grid-cols-7 gap-0.5 text-center text-[11px] font-medium text-slate-400 mb-1">
-                {['T2','T3','T4','T5','T6','T7','CN'].map(d => <div key={d}>{d}</div>)}
+                {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'].map(d => <div key={d}>{d}</div>)}
             </div>
             <div className="grid grid-cols-7 gap-0.5 text-center text-[11px]">
                 {cells.map((cell, idx) => (
                     <div
                         key={idx}
-                        onClick={() => cell.isCurrentMonth && onDayClick(cell.fullDate)}
+                        onClick={(e) => cell.isCurrentMonth && onDayClick(cell.fullDate, e)}
                         className={`w-7 h-7 mx-auto flex items-center justify-center rounded-full
                             ${!cell.isCurrentMonth
                                 ? 'text-slate-300 cursor-default'

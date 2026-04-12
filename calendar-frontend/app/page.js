@@ -4,7 +4,8 @@ import { Plus, Calendar as CalendarIcon, CheckSquare, Clock, Lightbulb, MapPin, 
 import MiniCalendar  from '../components/MiniCalendar';
 import Calendar      from '../components/Calendar';
 import CreateModal   from '../components/create/CreateModal';
-import { getVNTime } from '../lib/CalendarHelper'; // Thêm import hàm lấy giờ VN
+import YearDayPopup from '../components/YearDayPopup'; // Thêm import này
+import { getVNTime } from '../lib/CalendarHelper'; 
 
 export default function CalendarApp() {
     const now = getVNTime(); // Dùng giờ VN chuẩn
@@ -21,6 +22,9 @@ export default function CalendarApp() {
     const [createModal, setCreateModal] = useState({ isOpen: false, tab: 'event' });
     const [clickPosition, setClickPosition] = useState(null);
     const [previewEvent, setPreviewEvent] = useState(null); // State mới cho khối tab bóng mờ
+
+    // ── Year Day Popup state ──
+    const [yearDayPopup, setYearDayPopup] = useState({ isOpen: false, date: null, position: null });
 
     // ── MiniCalendar double-click logic ──
     const [lastMiniClick, setLastMiniClick] = useState(null);
@@ -45,31 +49,50 @@ export default function CalendarApp() {
         }
     };
 
-    // Nhận dữ liệu tọa độ từ TimeGrid truyền lên (đã thêm topOffset và columnRect)
+    // Nhận dữ liệu tọa độ từ TimeGrid truyền lên
     const handleGridClick = ({ x, y, fullDate, hour, topOffset, columnRect }) => {
         const dateWithTime = new Date(fullDate);
         dateWithTime.setHours(hour);
         dateWithTime.setMinutes(0);
 
         setClickPosition({ x, y, columnRect });
-        setPreviewEvent({ fullDate: dateWithTime, top: topOffset, type: 'grid', ts: Date.now() }); // Lưu vị trí bóng mờ
+        setPreviewEvent({ fullDate: dateWithTime, top: topOffset, type: 'grid', ts: Date.now() });
         setCreateModal({ isOpen: true, tab: 'event' });
         setSelectedDate(dateWithTime);
     };
 
-    // Mở modal từ nút "Tạo mới" (Tự động tìm đường kẻ đỏ)
+    // Mở modal từ nút "Tạo mới" (Tự động nhảy về hôm nay và tìm đường kẻ đỏ)
     const openCreate = (tab) => {
-        const today = getVNTime(); // Dùng giờ VN
+        const today = getVNTime(); 
+        
+        // Cập nhật ngày để nhảy về view hôm nay
         setViewDate(today);
         setSelectedDate(today);
-        
-        // Thêm timestamp để force CreateModal re-positioning mỗi lần bấm
+
+        // Thêm timestamp và view để force CreateModal re-positioning
         const ts = Date.now();
         setClickPosition({ type: 'now', ts }); 
         setPreviewEvent({ fullDate: today, type: 'now', ts }); 
         
         setIsCreateMenuOpen(false);
         setCreateModal({ isOpen: true, tab });
+    };
+
+    // Khi click vào ngày ở trang Năm
+    const handleYearDayClick = (date, event) => {
+        const rect = event.target.getBoundingClientRect();
+        setYearDayPopup({
+            isOpen: true,
+            date: date,
+            position: { x: rect.left + rect.width / 2, y: rect.top }
+        });
+    };
+
+    const handleNavigateFromYearPopup = (date) => {
+        setSelectedDate(date);
+        setViewDate(date);
+        setView("Ngày");
+        setYearDayPopup({ isOpen: false, date: null, position: null });
     };
 
     // Đóng Modal và xóa bóng mờ
@@ -80,7 +103,6 @@ export default function CalendarApp() {
 
     return (
         <div className="flex h-screen bg-white text-slate-800 font-sans overflow-hidden">
-
             {/* ── SIDEBAR ── */}
             <aside className="w-72 flex-shrink-0 border-r border-slate-200 flex flex-col bg-slate-50/50">
                 <div className="h-16 flex items-center px-6 border-b border-slate-200">
@@ -158,12 +180,13 @@ export default function CalendarApp() {
             {/* ── MAIN ── */}
             <main className="flex-1 overflow-x-auto overflow-y-hidden bg-white relative z-20">
                 <Calendar
-                    view={view}               setView={setView}
-                    viewDate={viewDate}       setViewDate={setViewDate}
+                    view={view}                 setView={setView}
+                    viewDate={viewDate}         setViewDate={setViewDate}
                     selectedDate={selectedDate} setSelectedDate={setSelectedDate}
                     onOpenCreate={openCreate}
                     onGridClick={handleGridClick}
-                    previewEvent={previewEvent} // Truyền tab bóng mờ xuống Calendar
+                    previewEvent={previewEvent} 
+                    onYearDayClick={handleYearDayClick}
                 />
             </main>
 
@@ -183,8 +206,21 @@ export default function CalendarApp() {
                 initialTab={createModal.tab}
                 position={clickPosition}
                 initialDate={selectedDate}
-                onClose={handleCloseModal} // Đã đổi để xóa cả tab bóng mờ khi tắt
+                onClose={handleCloseModal}
+                view={view}
             />
+
+            {/* ── YEAR DAY POPUP ── */}
+            <YearDayPopup 
+                key={yearDayPopup.date?.toDateString() || 'none'}
+                isOpen={yearDayPopup.isOpen}
+                date={yearDayPopup.date}
+                position={yearDayPopup.position}
+                onClose={() => setYearDayPopup({ ...yearDayPopup, isOpen: false })}
+                onNavigateToDay={handleNavigateFromYearPopup}
+                events={[]} // Mock events, có thể kết nối data sau
+            />
+
 
             <style dangerouslySetInnerHTML={{
                 __html: `

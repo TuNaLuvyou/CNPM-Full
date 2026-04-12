@@ -1,7 +1,7 @@
 "use client";
 import { useState } from 'react';
 import { CheckSquare, Clock, Calendar as CalendarIcon, AlignLeft } from 'lucide-react';
-import { FieldRow, InputBase, TextareaBase, toDateInputVal, toTimeInputVal } from './FormHelpers';
+import { FieldRow, InputBase, TextareaBase, toDateInputVal, toTimeInputVal, DateTimeSelector } from './FormHelpers';
 
 export default function TaskForm({ now, onSave }) {
     const [form, setForm] = useState({
@@ -29,20 +29,22 @@ export default function TaskForm({ now, onSave }) {
             </FieldRow>
 
             <FieldRow icon={Clock}>
-                <div className="flex flex-wrap gap-2">
-                    <InputBase type="date" value={form.date} onChange={set('date')} style={{ width: 'auto' }} />
-                    <InputBase type="time" value={form.time} onChange={set('time')} style={{ width: '120px' }} />
-                </div>
+                <DateTimeSelector date={form.date} timeStart={form.time}>
+                    <div className="flex flex-col gap-3">
+                        <InputBase type="date" value={form.date} onChange={set('date')} />
+                        <InputBase type="time" value={form.time} onChange={set('time')} />
+                    </div>
+                </DateTimeSelector>
             </FieldRow>
 
             <FieldRow icon={CalendarIcon}>
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs text-slate-500 font-medium">Thời hạn</label>
-                    <div className="flex flex-wrap gap-2">
-                        <InputBase type="date" value={form.deadlineDate} onChange={set('deadlineDate')} style={{ width: 'auto' }} />
-                        <InputBase type="time" value={form.deadlineTime} onChange={set('deadlineTime')} style={{ width: '120px' }} />
+                <DateTimeSelector date={form.deadlineDate} timeStart={form.deadlineTime}>
+                    <div className="flex flex-col gap-3">
+                        <label className="text-xs text-slate-500 font-medium">Thời hạn</label>
+                        <InputBase type="date" value={form.deadlineDate} onChange={set('deadlineDate')} />
+                        <InputBase type="time" value={form.deadlineTime} onChange={set('deadlineTime')} />
                     </div>
-                </div>
+                </DateTimeSelector>
             </FieldRow>
 
             <FieldRow icon={AlignLeft}>

@@ -1,7 +1,7 @@
 "use client";
 import { useState } from 'react';
 import { Calendar as CalendarIcon, Clock, Link, MapPin, AlignLeft, Paperclip, Palette } from 'lucide-react';
-import { FieldRow, InputBase, TextareaBase, EVENT_COLORS, toDateInputVal, toTimeInputVal } from './FormHelpers';
+import { FieldRow, InputBase, TextareaBase, EVENT_COLORS, toDateInputVal, toTimeInputVal, DateTimeSelector } from './FormHelpers';
 
 export default function EventForm({ now, onSave }) {
     const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
@@ -40,12 +40,16 @@ export default function EventForm({ now, onSave }) {
             </FieldRow>
 
             <FieldRow icon={Clock}>
-                <div className="flex flex-wrap gap-2">
-                    <InputBase type="date" value={form.date}      onChange={set('date')}      style={{ width: 'auto' }} />
-                    <InputBase type="time" value={form.timeStart}  onChange={set('timeStart')}  style={{ width: '120px' }} />
-                    <span className="self-center text-slate-400 text-sm">→</span>
-                    <InputBase type="time" value={form.timeEnd}    onChange={set('timeEnd')}    style={{ width: '120px' }} />
-                </div>
+                <DateTimeSelector date={form.date} timeStart={form.timeStart} timeEnd={form.timeEnd}>
+                    <div className="flex flex-col gap-3">
+                        <InputBase type="date" value={form.date} onChange={set('date')} />
+                        <div className="flex items-center gap-2">
+                            <InputBase type="time" value={form.timeStart} onChange={set('timeStart')} className="flex-1" />
+                            <span className="text-slate-400 text-sm">→</span>
+                            <InputBase type="time" value={form.timeEnd} onChange={set('timeEnd')} className="flex-1" />
+                        </div>
+                    </div>
+                </DateTimeSelector>
             </FieldRow>
 
             <FieldRow icon={Link}>

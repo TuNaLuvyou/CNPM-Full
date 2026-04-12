@@ -1,3 +1,4 @@
+import React from 'react';
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const EVENT_COLORS = [
     { label: 'Xanh dương', value: 'blue',    cls: 'bg-blue-500'    },
@@ -23,12 +24,57 @@ export function toTimeInputVal(d) {
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+export const VI_FULL_DAY_NAMES = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+
+export function formatVNDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const dayName = VI_FULL_DAY_NAMES[d.getDay()];
+    return `${dayName}, ${d.getDate()} tháng ${d.getMonth() + 1}`;
+}
+
 // ─── Shared UI primitives ─────────────────────────────────────────────────────
 export function FieldRow({ icon: Icon, children }) {
     return (
         <div className="flex items-start gap-3">
-            <Icon className="w-5 h-5 text-slate-400 mt-2.5 flex-shrink-0" />
+            <Icon className="w-5 h-5 text-slate-400 mt-[10px] flex-shrink-0" />
             <div className="flex-1">{children}</div>
+        </div>
+    );
+}
+
+export function DateTimeSelector({ date, timeStart, timeEnd, children }) {
+    const [isExpanded, setIsExpanded] = React.useState(false);
+
+    const summary = React.useMemo(() => {
+        let text = formatVNDate(date);
+        if (timeStart) {
+            text += ` · ${timeStart}`;
+            if (timeEnd) text += ` – ${timeEnd}`;
+        }
+        return text;
+    }, [date, timeStart, timeEnd]);
+
+    return (
+        <div className="space-y-2">
+            <button
+                type="button"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full text-left px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors flex items-center justify-between group"
+            >
+                <span className="group-hover:text-blue-600 transition-colors text-[14px]">
+                    {summary}
+                </span>
+                <span className="text-[11px] text-slate-400 font-normal">
+                    {isExpanded ? 'Thu gọn' : 'Đổi ngày/giờ'}
+                </span>
+            </button>
+            
+            {isExpanded && (
+                <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {children}
+                </div>
+            )}
         </div>
     );
 }

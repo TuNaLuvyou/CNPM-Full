@@ -39,8 +39,12 @@ export default function MiniCalendar({ onDayClick, viewDate, selectedDate }) {
                 </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-slate-500 mb-2">
-                {['T2','T3','T4','T5','T6','T7','CN'].map(d => <div key={d}>{d}</div>)}
+            <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-400 mb-2">
+                {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'].map(d => (
+                    <div key={d} className="truncate px-0.5" title={d}>
+                        {d === 'Chủ Nhật' ? 'CN' : d.replace('Thứ ', 'T')}
+                    </div>
+                ))}
             </div>
 
             <div className="grid grid-cols-7 gap-1 text-center text-sm">

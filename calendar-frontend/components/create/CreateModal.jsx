@@ -25,6 +25,7 @@ export default function CreateModal({
   onClose,
   onSave,
   position,
+  view, // Thêm prop view
 }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const modalRef = useRef(null);
@@ -38,7 +39,7 @@ export default function CreateModal({
 
   // Tính toán lại vị trí Modal
   useEffect(() => {
-    if (!isOpen || !position || !modalRef.current) {
+    if (!isOpen || !modalRef.current) {
       setModalStyle({ opacity: 0 });
       return;
     }
@@ -47,46 +48,70 @@ export default function CreateModal({
       const rect = modalRef.current.getBoundingClientRect();
       let top, left;
 
-      // NẾU BẤM NÚT "TẠO MỚI" TỪ SIDEBAR (truyền type: 'now')
-      if (position.type === "now") {
-        const redLine = document.getElementById("current-time-line");
-        if (redLine) {
-          const lineRect = redLine.getBoundingClientRect();
-          // Cố gắng đặt ở bên phải của vạch đỏ
-          top = lineRect.top - 20;
-          left = lineRect.right + 20;
+      // ══ XỬ LÝ THEO VIEW ══
+      
+      // 1. VIEW NGÀY - LUÔN Ở GIỮA
+      if (view === "Ngày") {
+        top = window.innerHeight / 2 - rect.height / 2;
+        left = window.innerWidth / 2 - rect.width / 2;
+      }
+      // 2. VIEW THÁNG - CẠNH Ô NGÀY (THỬ TÌM Ô HÔM NAY)
+      else if (view === "Tháng" && position?.type === "now") {
+        const todayCell = document.getElementById("today-cell");
+        if (todayCell) {
+          const cellRect = todayCell.getBoundingClientRect();
+          top = cellRect.top - 20;
+          left = cellRect.right + 20;
         } else {
-          // Fallback: Căn giữa nếu không thấy vạch đỏ (ví dụ đang ở tháng khác)
           top = window.innerHeight / 2 - rect.height / 2;
           left = window.innerWidth / 2 - rect.width / 2;
         }
       }
-      // NẾU BẤM TỪ LƯỚI GRID (Có columnRect để né)
-      else if (position.columnRect) {
-        top = position.y - 40; // Nhích lên 1 chút để không che chuột
-        left = position.columnRect.right + 10; // Đặt bên phải cột
+      // 3. VIEW TUẦN HOẶC BẤM TỪ SIDEBAR (CÓ TYPE 'NOW')
+      else if (position?.type === "now") {
+        const redLine = document.getElementById("current-time-line");
+        if (redLine) {
+          const lineRect = redLine.getBoundingClientRect();
+          top = lineRect.top - 80;
+          // Nếu là Chủ Nhật (mép phải), tự động nhảy sang trái để không bị che/tràn
+          if (now.getDay() === 0) {
+            left = lineRect.left - rect.width - 40;
+          } else {
+            left = lineRect.right + 120;
+          }
+        } else {
+          top = window.innerHeight / 2 - rect.height / 2;
+          left = window.innerWidth / 2 - rect.width / 2;
+        }
       }
-      // Fallback cho tọa độ x, y cũ
-      else {
+      // 4. BẤM TỪ LƯỚI GRID (TimeGrid)
+      else if (position?.columnRect) {
+        top = position.y - 40;
+        // Nếu là Chủ Nhật, ưu tiên hiện bên trái cột
+        if (now.getDay() === 0) {
+          left = position.columnRect.left - rect.width - 20;
+        } else {
+          left = position.columnRect.right + 10;
+        }
+      }
+      // 5. FALLBACK
+      else if (position?.x && position?.y) {
         top = position.y;
-        left = (position.x || 0) + 20;
+        left = position.x + 20;
+      } else {
+        top = window.innerHeight / 2 - rect.height / 2;
+        left = window.innerWidth / 2 - rect.width / 2;
       }
 
-      // Xử lý chống tràn viền màn hình
-      // Nếu tràn bên phải -> đẩy sang bên trái cột/vạch
+      // ══ CHỐNG TRÀN VIỀN ══
       if (left + rect.width > window.innerWidth - 20) {
-        if (position.columnRect) {
+        if (position?.columnRect) {
           left = position.columnRect.left - rect.width - 10;
-        } else if (position.type === 'now') {
-            const redLine = document.getElementById("current-time-line");
-            if (redLine) left = redLine.getBoundingClientRect().left - rect.width - 20;
-            else left = window.innerWidth - rect.width - 20;
         } else {
-          left = (position.x || window.innerWidth / 2) - rect.width - 20;
+          left = window.innerWidth - rect.width - 20;
         }
       }
 
-      // Chống tràn dọc
       if (top + rect.height > window.innerHeight - 20) {
         top = window.innerHeight - rect.height - 20;
       }
@@ -96,10 +121,9 @@ export default function CreateModal({
       setModalStyle({ top, left, opacity: 1 });
     };
 
-    // Sử dụng setTimeout 0 để đảm bảo DOM (vạch đỏ) đã kịp render/update
-    const timer = setTimeout(calculatePosition, 0);
+    const timer = setTimeout(calculatePosition, 50); // Tăng delay một chút để DOM ổn định
     return () => clearTimeout(timer);
-  }, [isOpen, position]);
+  }, [isOpen, position, view]);
 
   if (!isOpen) return null;
 
@@ -126,35 +150,40 @@ export default function CreateModal({
         style={modalStyle}
       >
         {/* ── Tabs header ── */}
-        <div className="flex items-center border-b border-slate-200 px-4 pt-4 pb-0 gap-1 flex-shrink-0 cursor-move">
-          {TABS.map(({ key, label, Icon }) => {
-            const active = activeTab === key;
-            return (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors
-                                    ${
-                                      active
-                                        ? "border-blue-600 text-blue-600 bg-blue-50/60"
-                                        : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                                    }`}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </button>
-            );
-          })}
+        <div className="relative pt-8 pb-4 px-6 flex-shrink-0">
+          {/* Close button - Absolute corner */}
           <button
             onClick={onClose}
-            className="ml-auto mb-2 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition"
+            className="absolute right-4 top-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"
           >
             <X className="w-5 h-5" />
           </button>
+
+          {/* Tabs - Pill style */}
+          <div className="flex items-center gap-3">
+            {TABS.map(({ key, label, Icon }) => {
+              const active = activeTab === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full transition-all duration-200
+                                    ${
+                                      active
+                                        ? "bg-blue-600 text-white shadow-md shadow-blue-200 scale-105"
+                                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                                    }`}
+                >
+                  <Icon className={`w-4 h-4 ${active ? 'text-white' : 'text-slate-400'}`} />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* ── Form body ── */}
-        <div className="overflow-y-auto custom-scrollbar px-6 py-4 flex-1">
+        <div className="overflow-y-auto custom-scrollbar px-6 py-4 flex-1 border-t border-slate-50">
           {activeTab === "event" && <EventForm {...formProps} />}
           {activeTab === "task" && <TaskForm {...formProps} />}
           {activeTab === "appointment" && <AppointmentForm {...formProps} />}
