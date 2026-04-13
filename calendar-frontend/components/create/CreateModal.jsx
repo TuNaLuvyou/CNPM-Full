@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
-import { X, Calendar as CalendarIcon, CheckSquare, Clock } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { X, Calendar as CalendarIcon, CheckSquare, Clock, GripHorizontal } from "lucide-react";
 import EventForm from "./EventForm";
 import TaskForm from "./TaskForm";
 import AppointmentForm from "./AppointmentForm";
@@ -11,7 +11,6 @@ const TABS = [
   { key: "task", label: "Việc cần làm", Icon: CheckSquare },
   { key: "appointment", label: "Lên lịch hẹn", Icon: Clock },
 ];
-
 const SAVE_BTN_ID = {
   event: "__eventSave",
   task: "__taskSave",
@@ -25,19 +24,27 @@ export default function CreateModal({
   onClose,
   onSave,
   position,
-  view, // Thêm prop view
+  view,
 }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const modalRef = useRef(null);
-  const [modalStyle, setModalStyle] = useState({ opacity: 0 }); // Ẩn lúc render lần đầu để đo kích thước
 
-  const now = initialDate || getVNTime(); // Ưu tiên ngày được truyền vào (từ grid click)
+  // modalStyle lưu vị trí hiển thị (opacity + top + left)
+  const [modalStyle, setModalStyle] = useState({ opacity: 0 });
 
+  // ── Drag state ──
+  const [isDragging, setIsDragging] = useState(false);
+  const dragOrigin = useRef({ mouseX: 0, mouseY: 0, boxLeft: 0, boxTop: 0 });
+
+  const now = initialDate || getVNTime();
+
+  // Reset tab khi mở lại
   useEffect(() => {
     if (isOpen) setActiveTab(initialTab);
   }, [isOpen, initialTab]);
 
-  // Tính toán lại vị trí Modal
+  // ── Tính toán vị trí ban đầu mỗi lần modal mở ──
+  // (luôn chạy lại → không giữ vị trí cũ sau khi kéo)
   useEffect(() => {
     if (!isOpen || !modalRef.current) {
       setModalStyle({ opacity: 0 });
@@ -48,15 +55,10 @@ export default function CreateModal({
       const rect = modalRef.current.getBoundingClientRect();
       let top, left;
 
-      // ══ XỬ LÝ THEO VIEW ══
-      
-      // 1. VIEW NGÀY - LUÔN Ở GIỮA
       if (view === "Ngày") {
         top = window.innerHeight / 2 - rect.height / 2;
         left = window.innerWidth / 2 - rect.width / 2;
-      }
-      // 2. VIEW THÁNG - CẠNH Ô NGÀY (THỬ TÌM Ô HÔM NAY)
-      else if (view === "Tháng" && position?.type === "now") {
+      } else if (view === "Tháng" && position?.type === "now") {
         const todayCell = document.getElementById("today-cell");
         if (todayCell) {
           const cellRect = todayCell.getBoundingClientRect();
@@ -66,36 +68,26 @@ export default function CreateModal({
           top = window.innerHeight / 2 - rect.height / 2;
           left = window.innerWidth / 2 - rect.width / 2;
         }
-      }
-      // 3. VIEW TUẦN HOẶC BẤM TỪ SIDEBAR (CÓ TYPE 'NOW')
-      else if (position?.type === "now") {
+      } else if (position?.type === "now") {
         const redLine = document.getElementById("current-time-line");
         if (redLine) {
           const lineRect = redLine.getBoundingClientRect();
           top = lineRect.top - 80;
-          // Nếu là Chủ Nhật (mép phải), tự động nhảy sang trái để không bị che/tràn
-          if (now.getDay() === 0) {
-            left = lineRect.left - rect.width - 40;
-          } else {
-            left = lineRect.right + 120;
-          }
+          left =
+            now.getDay() === 0
+              ? lineRect.left - rect.width - 40
+              : lineRect.right + 120;
         } else {
           top = window.innerHeight / 2 - rect.height / 2;
           left = window.innerWidth / 2 - rect.width / 2;
         }
-      }
-      // 4. BẤM TỪ LƯỚI GRID (TimeGrid)
-      else if (position?.columnRect) {
+      } else if (position?.columnRect) {
         top = position.y - 40;
-        // Nếu là Chủ Nhật, ưu tiên hiện bên trái cột
-        if (now.getDay() === 0) {
-          left = position.columnRect.left - rect.width - 20;
-        } else {
-          left = position.columnRect.right + 10;
-        }
-      }
-      // 5. FALLBACK
-      else if (position?.x && position?.y) {
+        left =
+          now.getDay() === 0
+            ? position.columnRect.left - rect.width - 20
+            : position.columnRect.right + 10;
+      } else if (position?.x && position?.y) {
         top = position.y;
         left = position.x + 20;
       } else {
@@ -103,27 +95,73 @@ export default function CreateModal({
         left = window.innerWidth / 2 - rect.width / 2;
       }
 
-      // ══ CHỐNG TRÀN VIỀN ══
+      // Chống tràn viền
       if (left + rect.width > window.innerWidth - 20) {
-        if (position?.columnRect) {
-          left = position.columnRect.left - rect.width - 10;
-        } else {
-          left = window.innerWidth - rect.width - 20;
-        }
+        left = position?.columnRect
+          ? position.columnRect.left - rect.width - 10
+          : window.innerWidth - rect.width - 20;
       }
-
-      if (top + rect.height > window.innerHeight - 20) {
+      if (top + rect.height > window.innerHeight - 20)
         top = window.innerHeight - rect.height - 20;
-      }
       if (top < 20) top = 20;
       if (left < 20) left = 20;
 
       setModalStyle({ top, left, opacity: 1 });
     };
 
-    const timer = setTimeout(calculatePosition, 50); // Tăng delay một chút để DOM ổn định
+    const timer = setTimeout(calculatePosition, 50);
     return () => clearTimeout(timer);
-  }, [isOpen, position, view]);
+  }, [isOpen, position, view]); // isOpen thay đổi → luôn tính lại từ đầu
+
+  // ── Drag: mousemove & mouseup ──
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - dragOrigin.current.mouseX;
+      const dy = e.clientY - dragOrigin.current.mouseY;
+
+      let newLeft = dragOrigin.current.boxLeft + dx;
+      let newTop = dragOrigin.current.boxTop + dy;
+
+      // Giữ modal trong viewport
+      const w = modalRef.current?.offsetWidth || 500;
+      const h = modalRef.current?.offsetHeight || 400;
+      newLeft = Math.max(8, Math.min(newLeft, window.innerWidth - w - 8));
+      newTop = Math.max(8, Math.min(newTop, window.innerHeight - h - 8));
+
+      setModalStyle((prev) => ({ ...prev, left: newLeft, top: newTop }));
+    },
+    [isDragging]
+  );
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  // Bắt đầu kéo khi giữ vùng header
+  const handleDragStart = (e) => {
+    // Không kéo khi click vào button (tab, close…)
+    if (e.target.closest("button")) return;
+    if (e.button !== 0) return; // chỉ chuột trái
+    e.preventDefault();
+    dragOrigin.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      boxLeft: modalStyle.left,
+      boxTop: modalStyle.top,
+    };
+    setIsDragging(true);
+  };
 
   if (!isOpen) return null;
 
@@ -140,41 +178,53 @@ export default function CreateModal({
   const formProps = { now, onSave: handleFormSave };
 
   return (
-    // Xóa class nền mờ, đổi thành div bọc ngoài xử lý click ra ngoài để đóng modal
     <div className="fixed inset-0 z-50 pointer-events-none" onClick={onClose}>
-      {/* Modal Box */}
       <div
         ref={modalRef}
-        onClick={(e) => e.stopPropagation()} // Ngăn không cho click xuyên xuống div bọc ngoài
+        onClick={(e) => e.stopPropagation()}
         className="fixed w-full max-w-lg bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] flex flex-col max-h-[90vh] border border-slate-200 pointer-events-auto transition-opacity duration-200"
-        style={modalStyle}
+        style={{
+          ...modalStyle,
+          cursor: isDragging ? "grabbing" : "default",
+          userSelect: isDragging ? "none" : "auto",
+        }}
       >
-        {/* ── Tabs header ── */}
-        <div className="relative pt-8 pb-4 px-6 flex-shrink-0">
-          {/* Close button - Absolute corner */}
+        {/* ── Header / Drag handle ── */}
+        <div
+          onMouseDown={handleDragStart}
+          className={`relative pt-3 pb-4 px-6 flex-shrink-0 rounded-t-2xl select-none
+            ${isDragging ? "cursor-grabbing" : "cursor-grab"}`}
+        >
+          {/* Grip icon – gợi ý kéo thả */}
+          <div className="flex justify-center mb-1 pointer-events-none">
+            <GripHorizontal className="w-5 h-5 text-slate-300" />
+          </div>
+
+          {/* Close button */}
           <button
+            onMouseDown={(e) => e.stopPropagation()} // tránh trigger drag
             onClick={onClose}
-            className="absolute right-4 top-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"
+            className="absolute right-4 top-3 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
 
-          {/* Tabs - Pill style */}
+          {/* Tabs */}
           <div className="flex items-center gap-3">
             {TABS.map(({ key, label, Icon }) => {
               const active = activeTab === key;
               return (
                 <button
                   key={key}
+                  onMouseDown={(e) => e.stopPropagation()} // tránh trigger drag
                   onClick={() => setActiveTab(key)}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full transition-all duration-200
-                                    ${
-                                      active
-                                        ? "bg-blue-600 text-white shadow-md shadow-blue-200 scale-105"
-                                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
-                                    }`}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full transition-all duration-200 cursor-pointer
+                    ${active
+                      ? "bg-blue-600 text-white shadow-md shadow-blue-200 scale-105"
+                      : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                    }`}
                 >
-                  <Icon className={`w-4 h-4 ${active ? 'text-white' : 'text-slate-400'}`} />
+                  <Icon className={`w-4 h-4 ${active ? "text-white" : "text-slate-400"}`} />
                   {label}
                 </button>
               );
@@ -193,13 +243,13 @@ export default function CreateModal({
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100 flex-shrink-0 bg-gray-50/50 rounded-b-2xl">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition"
+            className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition cursor-pointer"
           >
             Huỷ
           </button>
           <button
             onClick={handleLuu}
-            className="px-5 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-colors"
+            className="px-5 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-colors cursor-pointer"
           >
             Lưu
           </button>

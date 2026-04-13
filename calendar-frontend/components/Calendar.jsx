@@ -13,6 +13,9 @@ import {
   Columns,
   Grid3X3,
   Calendar as CalendarIcon,
+  X,
+  CheckSquare,
+  Clock,
 } from "lucide-react";
 import {
   VI_DAY_NAMES,
@@ -21,10 +24,49 @@ import {
   buildMonthCells,
   getVNTime,
 } from "../lib/CalendarHelper";
-
 import TimeGrid from "./TimeGrid";
 import AuthModal from "./AuthModal";
 import MonthCard from "./MonthsCard";
+import TrashModal from "./TrashModal";
+import SettingsModal from "./SettingsModal";
+
+// ── Mock notifications (thay bằng data thật sau) ──
+const MOCK_NOTIFS = [
+  {
+    id: 1,
+    type: "event",
+    title: "Họp nhóm dự án",
+    desc: "Hôm nay lúc 15:00",
+    read: false,
+  },
+  {
+    id: 2,
+    type: "task",
+    title: "Nộp báo cáo tuần",
+    desc: "Hạn chót: hôm nay",
+    read: false,
+  },
+  {
+    id: 3,
+    type: "appointment",
+    title: "Khám sức khỏe định kỳ",
+    desc: "Ngày mai, 09:00",
+    read: true,
+  },
+  {
+    id: 4,
+    type: "event",
+    title: "Sinh nhật của Minh",
+    desc: "2 ngày nữa",
+    read: true,
+  },
+];
+
+const NOTIF_ICON = {
+  event: { Icon: CalendarIcon, color: "text-blue-500", bg: "bg-blue-50" },
+  task: { Icon: CheckSquare, color: "text-emerald-500", bg: "bg-emerald-50" },
+  appointment: { Icon: Clock, color: "text-purple-500", bg: "bg-purple-50" },
+};
 
 export default function Calendar({
   view,
@@ -36,16 +78,38 @@ export default function Calendar({
   onGridClick,
   previewEvent,
   onOpenCreate,
-  onYearDayClick, // Thêm prop này
+  onYearDayClick,
 }) {
   const now = getVNTime();
 
+  // ── UI states ──
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
-  const settingsRef = useRef(null);
-  const viewRef = useRef(null);
   const [authModal, setAuthModal] = useState({ isOpen: false, type: "login" });
   const [currentUser, setCurrentUser] = useState(null);
+
+  // ── Search ──
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef(null);
+
+  // ── Notifications ──
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState(MOCK_NOTIFS);
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  // ── Trash ──
+  const [isTrashOpen, setIsTrashOpen] = useState(false);
+  const [deletedItems, setDeletedItems] = useState([]);
+
+  // ── Settings ──
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  // ── Refs cho click-outside ──
+  const settingsRef = useRef(null);
+  const viewRef = useRef(null);
+  const notifRef = useRef(null);
+  const searchRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
@@ -53,15 +117,44 @@ export default function Calendar({
         setIsSettingsOpen(false);
       if (viewRef.current && !viewRef.current.contains(e.target))
         setIsViewOpen(false);
+      if (notifRef.current && !notifRef.current.contains(e.target))
+        setIsNotifOpen(false);
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(e.target) &&
+        isSearchOpen
+      ) {
+        setIsSearchOpen(false);
+        setSearchQuery("");
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [isSearchOpen]);
+
+  // Focus input khi mở search
+  useEffect(() => {
+    if (isSearchOpen) {
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    }
+  }, [isSearchOpen]);
+
+  // ── Handlers ──
+  const markAllRead = () =>
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+
+  const handleRestore = (id) =>
+    setDeletedItems((prev) => prev.filter((item) => item.id !== id));
+
+  const handlePermanentDelete = (id) =>
+    setDeletedItems((prev) => prev.filter((item) => item.id !== id));
+
+  const handleClearAll = () => setDeletedItems([]);
 
   const weekDays = buildWeekDays(viewDate);
   const monthCells = buildMonthCells(
     viewDate.getFullYear(),
-    viewDate.getMonth(),
+    viewDate.getMonth()
   );
 
   const navigate = (dir) => {
@@ -75,7 +168,6 @@ export default function Calendar({
     setViewDate(d);
   };
 
-  // Giữ nguyên view hiện tại, chỉ nhảy về hôm nay
   const goToToday = () => {
     const today = getVNTime();
     setViewDate(today);
@@ -105,6 +197,7 @@ export default function Calendar({
     <div className="flex flex-col h-full bg-white relative min-w-[700px]">
       {/* ══ HEADER ══ */}
       <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 bg-white flex-shrink-0 sticky top-0 z-50">
+        {/* Trái: điều hướng */}
         <div className="flex items-center space-x-4">
           <button
             onClick={goToToday}
@@ -131,30 +224,213 @@ export default function Calendar({
           </h1>
         </div>
 
+        {/* Phải: actions */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1 text-slate-500 relative z-50">
-            <button className="p-2 hover:text-slate-700 hover:bg-slate-100 rounded-full transition">
-              <Search className="w-5 h-5" />
-            </button>
-            <button className="p-2 hover:text-slate-700 hover:bg-slate-100 rounded-full transition">
-              <Bell className="w-5 h-5" />
-            </button>
+
+            {/* ── SEARCH ── */}
+            <div ref={searchRef} className="relative">
+              <button
+                onClick={() => {
+                  setIsSearchOpen((v) => !v);
+                  setSearchQuery("");
+                  setIsNotifOpen(false);
+                  setIsSettingsOpen(false);
+                }}
+                className={`p-2 rounded-full transition
+                  ${isSearchOpen
+                    ? "bg-blue-50 text-blue-600"
+                    : "hover:text-slate-700 hover:bg-slate-100"
+                  }`}
+              >
+                <Search className="w-5 h-5" />
+              </button>
+
+              {/* Search dropdown */}
+              {isSearchOpen && (
+                <div className="absolute right-0 top-11 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-50">
+                  {/* Input */}
+                  <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
+                    <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Tìm kiếm sự kiện, lịch hẹn..."
+                      className="flex-1 text-sm text-slate-700 placeholder-slate-400 outline-none bg-transparent"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery("")}
+                        className="text-slate-400 hover:text-slate-600 transition"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Results / placeholder */}
+                  <div className="py-8 flex flex-col items-center gap-2 text-slate-400">
+                    <Search className="w-8 h-8 text-slate-200" />
+                    <p className="text-sm font-medium">
+                      {searchQuery
+                        ? `Không tìm thấy "${searchQuery}"`
+                        : "Nhập từ khóa để tìm kiếm"}
+                    </p>
+                    {!searchQuery && (
+                      <p className="text-xs text-slate-300">
+                        Sự kiện, việc làm, lịch hẹn...
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── NOTIFICATIONS ── */}
+            <div ref={notifRef} className="relative">
+              <button
+                onClick={() => {
+                  setIsNotifOpen((v) => !v);
+                  setIsSearchOpen(false);
+                  setIsSettingsOpen(false);
+                }}
+                className={`relative p-2 rounded-full transition
+                  ${isNotifOpen
+                    ? "bg-blue-50 text-blue-600"
+                    : "hover:text-slate-700 hover:bg-slate-100"
+                  }`}
+              >
+                <Bell className="w-5 h-5" />
+                {/* Badge số thông báo chưa đọc */}
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification dropdown */}
+              {isNotifOpen && (
+                <div className="absolute right-0 top-11 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-50">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                    <h3 className="text-sm font-bold text-slate-700">
+                      Thông báo
+                    </h3>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllRead}
+                        className="text-xs text-blue-500 hover:text-blue-700 font-medium transition"
+                      >
+                        Đánh dấu đã đọc
+                      </button>
+                    )}
+                  </div>
+
+                  {/* List */}
+                  <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                    {notifications.length === 0 ? (
+                      <div className="py-8 flex flex-col items-center gap-2 text-slate-400">
+                        <Bell className="w-8 h-8 text-slate-200" />
+                        <p className="text-sm">Không có thông báo mới</p>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => {
+                        const cfg =
+                          NOTIF_ICON[notif.type] || NOTIF_ICON.event;
+                        const { Icon } = cfg;
+                        return (
+                          <div
+                            key={notif.id}
+                            onClick={() =>
+                              setNotifications((prev) =>
+                                prev.map((n) =>
+                                  n.id === notif.id
+                                    ? { ...n, read: true }
+                                    : n
+                                )
+                              )
+                            }
+                            className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 transition border-b border-slate-50 last:border-0
+                              ${!notif.read ? "bg-blue-50/40" : ""}`}
+                          >
+                            <div
+                              className={`w-8 h-8 rounded-lg ${cfg.bg} flex items-center justify-center flex-shrink-0 mt-0.5`}
+                            >
+                              <Icon className={`w-4 h-4 ${cfg.color}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className={`text-sm truncate ${!notif.read ? "font-semibold text-slate-800" : "font-medium text-slate-600"}`}
+                              >
+                                {notif.title}
+                              </p>
+                              <p className="text-xs text-slate-400 mt-0.5">
+                                {notif.desc}
+                              </p>
+                            </div>
+                            {!notif.read && (
+                              <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5" />
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/50">
+                    <button className="w-full text-xs text-center text-slate-500 hover:text-blue-600 font-medium transition py-1">
+                      Xem tất cả thông báo
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── SETTINGS ── */}
             <div className="relative" ref={settingsRef}>
               <button
-                onClick={() => setIsSettingsOpen((v) => !v)}
-                className={`p-2 rounded-full transition hover:bg-slate-100
-                                    ${isSettingsOpen ? "text-slate-700 bg-slate-100" : "hover:text-slate-700"}`}
+                onClick={() => {
+                  setIsSettingsOpen((v) => !v);
+                  setIsNotifOpen(false);
+                  setIsSearchOpen(false);
+                }}
+                className={`p-2 rounded-full transition
+                  ${isSettingsOpen
+                    ? "text-slate-700 bg-slate-100"
+                    : "hover:text-slate-700 hover:bg-slate-100"
+                  }`}
               >
                 <Settings className="w-5 h-5" />
               </button>
+
               {isSettingsOpen && (
                 <div className="absolute right-0 top-10 w-44 bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 z-50">
-                  <button className="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center gap-3 text-sm text-slate-700">
+                  <button
+                    onClick={() => {
+                      setIsSettingsModalOpen(true);
+                      setIsSettingsOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center gap-3 text-sm text-slate-700 transition">
                     <Settings className="w-4 h-4 text-slate-400" /> Cài đặt
                   </button>
                   <div className="my-1 border-t border-slate-100" />
-                  <button className="w-full text-left px-4 py-2.5 hover:bg-red-50 flex items-center gap-3 text-sm text-red-500">
+                  <button
+                    onClick={() => {
+                      setIsTrashOpen(true);
+                      setIsSettingsOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 hover:bg-red-50 flex items-center gap-3 text-sm text-red-500 transition"
+                  >
                     <Trash2 className="w-4 h-4" /> Thùng rác
+                    {deletedItems.length > 0 && (
+                      <span className="ml-auto bg-red-100 text-red-500 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                        {deletedItems.length}
+                      </span>
+                    )}
                   </button>
                 </div>
               )}
@@ -163,6 +439,7 @@ export default function Calendar({
 
           <div className="h-6 w-px bg-slate-200"></div>
 
+          {/* ── VIEW SWITCHER ── */}
           <div className="relative" ref={viewRef}>
             <button
               onClick={() => setIsViewOpen(!isViewOpen)}
@@ -173,9 +450,8 @@ export default function Calendar({
                 className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isViewOpen ? "rotate-180" : ""}`}
               />
             </button>
-
             {isViewOpen && (
-              <div className="absolute right-0 top-11 w-40 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+              <div className="absolute right-0 top-11 w-40 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
                 {[
                   {
                     label: "Ngày",
@@ -201,12 +477,13 @@ export default function Calendar({
                       setIsViewOpen(false);
                     }}
                     className={`w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center gap-3 text-sm transition-colors
-                                            ${view === item.label ? "text-blue-600 font-semibold bg-blue-50/50" : "text-slate-600"}`}
+                      ${view === item.label
+                        ? "text-blue-600 font-semibold bg-blue-50/50"
+                        : "text-slate-600"
+                      }`}
                   >
                     <span
-                      className={
-                        view === item.label ? "opacity-100" : "opacity-70"
-                      }
+                      className={view === item.label ? "opacity-100" : "opacity-70"}
                     >
                       {item.icon}
                     </span>
@@ -217,6 +494,7 @@ export default function Calendar({
             )}
           </div>
 
+          {/* ── AUTH ── */}
           {currentUser ? (
             <div className="flex items-center gap-3 h-9 px-3 bg-white border border-slate-200 rounded-lg shadow-sm">
               <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">
@@ -278,10 +556,7 @@ export default function Calendar({
             <div className="flex shadow-sm flex-shrink-0 sticky top-0 z-20 bg-slate-200">
               <div className="flex-1 grid grid-cols-7 gap-px">
                 {["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"].map((d) => (
-                  <div
-                    key={d}
-                    className="bg-white text-center py-3 text-sm font-semibold text-slate-500"
-                  >
+                  <div key={d} className="bg-white text-center py-3 text-sm font-semibold text-slate-500">
                     {d}
                   </div>
                 ))}
@@ -291,11 +566,11 @@ export default function Calendar({
               {monthCells.map((cell, idx) => (
                 <div key={idx} className="bg-white p-2 min-h-[120px]">
                   <div
-                    onClick={(e) => handleDayClick(cell.fullDate)}
+                    onClick={() => handleDayClick(cell.fullDate)}
                     id={cell.isToday ? "today-cell" : `cell-${cell.num}`}
                     className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-all cursor-pointer
-                                            ${!cell.isCurrentMonth ? "text-slate-400 opacity-60" : ""}
-                                            ${cell.isToday
+                      ${!cell.isCurrentMonth ? "text-slate-400 opacity-60" : ""}
+                      ${cell.isToday
                         ? "bg-blue-600 text-white shadow-md font-bold"
                         : cell.isCurrentMonth
                           ? "text-slate-700 hover:bg-slate-100"
@@ -317,19 +592,17 @@ export default function Calendar({
               <div className="w-16 flex-shrink-0 border-r border-slate-200"></div>
               <div className="flex-1 grid grid-cols-7">
                 {weekDays.map((day, idx) => (
-                  <div
-                    key={idx}
-                    className="flex flex-col items-center justify-center py-3 border-l border-slate-200"
-                  >
-                    <span
-                      className={`text-xs font-medium mb-1 ${day.isToday ? "text-blue-600" : "text-slate-500"}`}
-                    >
+                  <div key={idx} className="flex flex-col items-center justify-center py-3 border-l border-slate-200">
+                    <span className={`text-xs font-medium mb-1 ${day.isToday ? "text-blue-600" : "text-slate-500"}`}>
                       {day.day}
                     </span>
                     <span
                       onClick={() => handleDayClick(day.fullDate)}
                       className={`text-xl flex items-center justify-center w-10 h-10 rounded-full transition-all cursor-pointer
-                                                ${day.isToday ? "bg-blue-600 text-white font-bold shadow-md" : "text-slate-700 hover:bg-slate-100"}`}
+                        ${day.isToday
+                          ? "bg-blue-600 text-white font-bold shadow-md"
+                          : "text-slate-700 hover:bg-slate-100"
+                        }`}
                     >
                       {day.date}
                     </span>
@@ -338,7 +611,12 @@ export default function Calendar({
               </div>
               <div className="w-[8px] flex-shrink-0 bg-[#f8fafc] border-l border-slate-200"></div>
             </div>
-            <TimeGrid mode="week" weekDays={weekDays} onGridClick={onGridClick} previewEvent={previewEvent} />
+            <TimeGrid
+              mode="week"
+              weekDays={weekDays}
+              onGridClick={onGridClick}
+              previewEvent={previewEvent}
+            />
           </>
         )}
 
@@ -379,13 +657,28 @@ export default function Calendar({
         isOpen={authModal.isOpen}
         type={authModal.type}
         onClose={() => setAuthModal((p) => ({ ...p, isOpen: false }))}
-        onSwitchType={(newType) =>
-          setAuthModal({ isOpen: true, type: newType })
-        }
+        onSwitchType={(newType) => setAuthModal({ isOpen: true, type: newType })}
         onLoginSuccess={(username) => {
           setCurrentUser(username);
           setAuthModal((p) => ({ ...p, isOpen: false }));
         }}
+      />
+
+      {/* ══ TRASH MODAL ══ */}
+      <TrashModal
+        isOpen={isTrashOpen}
+        onClose={() => setIsTrashOpen(false)}
+        deletedItems={deletedItems}
+        onRestore={handleRestore}
+        onPermanentDelete={handlePermanentDelete}
+        onClearAll={handleClearAll}
+      />
+
+      {/* ══ SETTINGS MODAL ══ */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onSave={(newSettings) => console.log("Settings saved:", newSettings)}
       />
     </div>
   );
