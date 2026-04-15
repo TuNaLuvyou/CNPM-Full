@@ -11,6 +11,10 @@ export default function WeekView({
   onInteractionEnd,
   setSelectedDate,
   handleDayClick,
+  events = [],
+  onEventClick,
+  onEventUpdate,
+  onInteractionUpdate,
 }) {
   return (
     <>
@@ -23,7 +27,11 @@ export default function WeekView({
         setPreviewEvent={setPreviewEvent}
         setIsPreviewDragging={setIsPreviewDragging}
         onInteractionEnd={onInteractionEnd}
+        onInteractionUpdate={onInteractionUpdate}
         setSelectedDate={setSelectedDate}
+        events={events}
+        onEventClick={onEventClick}
+        onEventUpdate={onEventUpdate}
       />
     </>
   );

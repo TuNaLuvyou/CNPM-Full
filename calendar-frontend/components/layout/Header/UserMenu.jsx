@@ -3,18 +3,24 @@ import { LogOut } from "lucide-react";
 
 export default function UserMenu({ currentUser, setCurrentUser, setAuthModal }) {
   if (currentUser) {
+    const displayName = currentUser.full_name || currentUser.username || "User";
     return (
       <div className="flex items-center gap-3 h-9 px-3 bg-white border border-slate-200 rounded-lg shadow-sm">
         <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">
-          {currentUser.charAt(0).toUpperCase()}
+          {displayName.charAt(0).toUpperCase()}
         </div>
         <span className="text-sm text-slate-600">
           Xin Chào,{" "}
-          <span className="font-bold text-blue-600">{currentUser}</span>
+          <span className="font-bold text-blue-600">{displayName}</span>
         </span>
         <div className="w-px h-4 bg-slate-200 mx-1"></div>
         <button
-          onClick={() => setCurrentUser(null)}
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("authToken");
+            }
+            setCurrentUser(null);
+          }}
           className="text-slate-400 hover:text-red-500 transition-colors"
           title="Đăng xuất"
         >

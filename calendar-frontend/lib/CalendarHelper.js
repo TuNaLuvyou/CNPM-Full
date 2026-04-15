@@ -5,6 +5,8 @@ export const VI_MONTH_NAMES = [
     'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12',
 ];
 
+export const HOUR_HEIGHT = 64;
+
 /** Lấy thời gian chuẩn Việt Nam (GMT+7) */
 export function getVNTime() {
     // Cách này giúp lấy được giờ Việt Nam chuẩn bất kể múi giờ hệ thống bằng cách dịch chuyển absolute time
@@ -14,6 +16,40 @@ export function getVNTime() {
 
     // Dịch chuyển date để khi gọi .getHours(), .getMinutes() sẽ ra giờ VN
     return new Date(d.getTime() + (localOffset - targetOffset));
+}
+
+/** Tính vị trí và chiều cao của event trên lưới giờ */
+export function getEventStyle(event) {
+    if (!event) return { top: 0, height: HOUR_HEIGHT };
+    
+    const start = new Date(event.start_time);
+    const startMinutes = start.getHours() * 60 + start.getMinutes();
+    const top = (startMinutes / 60) * HOUR_HEIGHT;
+
+    let height;
+    if (event.duration_minutes !== undefined) {
+        // Ưu tiên dùng duration_minutes nếu có (mới refactor)
+        height = (event.duration_minutes / 60) * HOUR_HEIGHT;
+    } else {
+        // Fallback dùng end_time/deadline như cũ
+        let end = new Date(event.end_time || event.deadline);
+        if (isNaN(end.getTime())) {
+            end = new Date(start.getTime() + 60 * 60 * 1000);
+        }
+        const endMinutes = end.getHours() * 60 + end.getMinutes();
+        height = ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT;
+    }
+
+    return { top, height: Math.max(height, 30) };
+}
+
+/** Format Date thành YYYY-MM-DD theo giờ địa phương */
+export function formatDateLocal(date) {
+    if (!date) return "";
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
 }
 
 /** Trả về ngày Thứ 2 của tuần chứa ngày d */

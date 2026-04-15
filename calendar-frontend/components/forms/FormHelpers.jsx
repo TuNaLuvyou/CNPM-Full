@@ -9,6 +9,13 @@ export const EVENT_COLORS = [
     { label: 'Hồng',      value: 'pink',    cls: 'bg-pink-500'    },
 ];
 
+export const CALENDAR_CATEGORIES = [
+    { label: 'Mặc định', value: 'Mặc định' },
+    { label: 'Công việc', value: 'Công việc' },
+    { label: 'Gia đình', value: 'Gia đình' },
+    { label: 'Cá nhân', value: 'Cá nhân' },
+];
+
 export const TABS = [
     { key: 'event',       label: 'Sự kiện',      icon: 'CalendarIcon' },
     { key: 'task',        label: 'Việc cần làm', icon: 'CheckSquare'  },

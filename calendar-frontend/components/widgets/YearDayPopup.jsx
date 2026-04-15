@@ -10,6 +10,7 @@ export default function YearDayPopup({
   onClose,
   onNavigateToDay,
   position,
+  onEventClick,
 }) {
   const popupRef = useRef(null);
   const [finalStyle, setFinalStyle] = React.useState({ opacity: 0 });
@@ -52,6 +53,8 @@ export default function YearDayPopup({
 
   useEffect(() => {
     const handleClickOutside = (e) => {
+      // Bỏ qua nếu click vào vùng của CreateModal
+      if (e.target.closest('.create-modal-root')) return;
       if (popupRef.current && !popupRef.current.contains(e.target)) {
         onClose();
       }
@@ -80,7 +83,7 @@ export default function YearDayPopup({
       <div
         ref={popupRef}
         style={finalStyle}
-        className="absolute pointer-events-auto w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="year-day-popup absolute pointer-events-auto w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
       >
         {/* ══ HEADER ══ */}
         <div className="p-4 flex flex-col items-center relative border-b border-slate-100 bg-slate-50/30">
@@ -113,18 +116,19 @@ export default function YearDayPopup({
               {events.map((ev, i) => (
                 <div
                   key={i}
-                  className="flex gap-3 items-start p-2 rounded-lg hover:bg-slate-50 transition-colors"
+                  onClick={(e) => { e.stopPropagation(); onEventClick?.(ev, e); }}
+                  className="flex gap-3 items-start p-2 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors active:scale-95"
                 >
                   <div
-                    className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${ev.type === "task" ? "bg-emerald-500" : ev.type === "appointment" ? "bg-purple-500" : "bg-blue-500"}`}
+                    className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${ev.event_type === "task" ? "bg-emerald-500" : ev.event_type === "appointment" ? "bg-purple-500" : "bg-blue-500"}`}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-700 truncate">
                       {ev.title}
                     </p>
                     <p className="text-[11px] text-slate-400 font-medium">
-                      {ev.timeStart
-                        ? `${ev.timeStart} ${ev.timeEnd ? `- ${ev.timeEnd}` : ""}`
+                      {ev.time_start_display
+                        ? `${ev.time_start_display} ${ev.time_end_display ? `- ${ev.time_end_display}` : ""}`
                         : "Cả ngày"}
                     </p>
                   </div>

@@ -1,16 +1,17 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { getVNTime } from "../../lib/CalendarHelper"; // Import hàm giờ VN
+import { getVNTime, formatDateLocal, getEventStyle, HOUR_HEIGHT } from "../../lib/CalendarHelper";
+import EventBlock from "./EventBlock";
 
-const HOUR_HEIGHT = 64;
-
-/** Tính vị trí px của đường đỏ từ 00:00 (chuẩn giờ VN) */
 function getNowOffset() {
   const now = getVNTime();
-  // 10:00 AM -> 10 * 64px = 640px. 
-  // Vì lưới grid thực sự bắt đầu từ 64px (h-16), nên offset này sẽ khớp với vạch kẻ ngang của từng giờ.
   return (now.getHours() + now.getMinutes() / 60) * HOUR_HEIGHT;
 }
+
+
+/**
+ * TimeGrid component
+ */
 
 export default function TimeGrid({
   hours,
@@ -22,6 +23,10 @@ export default function TimeGrid({
   setIsPreviewDragging,
   onInteractionEnd,
   setSelectedDate,
+  events = [], // Events từ API
+  onEventClick,
+  onEventUpdate,
+  onInteractionUpdate,
 }) {
   const displayHours = hours || Array.from({ length: 24 }, (_, i) => i);
   const displayWeekDays = weekDays || [];
@@ -30,174 +35,339 @@ export default function TimeGrid({
   const scrollRef = useRef(null);
   const gridContainerRef = useRef(null);
   const isInteractingRef = useRef(false);
+  const didMoveRef = useRef(false);
 
-  // Interaction state
-  const [interaction, setInteraction] = useState(null); // { type, startY, startTop, startHeight, startDayIdx, grabOffsetY }
-
-  // Ref để luôn truy cập được previewEvent mới nhất trong các closure handler (mouseup)
+  const [interaction, setInteraction] = useState(null);
   const latestPreviewRef = useRef(previewEvent);
+  useEffect(() => { latestPreviewRef.current = previewEvent; }, [previewEvent]);
+
+  // Bộ nhớ đệm cho hành động vừa xong (để xử lý click bồi, kéo giãn xong rồi kéo đi ngay)
+  const lastResultRef = useRef(null);
+
+  // Refs cho các callback để giữ useEffect dependency ổn định
+  const callbacksRef = useRef({
+    onInteractionUpdate,
+    onEventUpdate,
+    onInteractionEnd,
+    onGridClick,
+    onEventClick
+  });
   useEffect(() => {
-    latestPreviewRef.current = previewEvent;
-  }, [previewEvent]);
+    callbacksRef.current = { onInteractionUpdate, onEventUpdate, onInteractionEnd, onGridClick, onEventClick };
+  }, [onInteractionUpdate, onEventUpdate, onInteractionEnd, onGridClick, onEventClick]);
 
   useEffect(() => {
     const id = setInterval(() => setNowOffset(getNowOffset()), 60_000);
     return () => clearInterval(id);
   }, []);
 
-  // Sync scroll to preview - Tự động cuộn khi preview thay đổi hoặc ra ngoài vùng nhìn thấy
   useEffect(() => {
     if (previewEvent && scrollRef.current) {
-      // Bù 64px header
       const top = (previewEvent.type === "now" ? nowOffset : (previewEvent.top || 0)) + 64;
       const scrollEl = scrollRef.current;
       const currentScroll = scrollEl.scrollTop;
       const containerHeight = scrollEl.clientHeight;
-      
-      // Chỉ cuộn nếu nằm ngoài vùng nhìn thấy hoặc là lần tạo đầu tiên (ts thay đổi)
       const buffer = 100;
       const isOutOfBounds = top < currentScroll + buffer || top > currentScroll + containerHeight - buffer;
-      
       if (isOutOfBounds || !interaction) {
         const targetScroll = Math.max(0, top - containerHeight / 3);
         scrollEl.scrollTo({ top: targetScroll, behavior: "smooth" });
       }
     }
-  }, [previewEvent?.ts, previewEvent?.top, !!interaction]);
+  }, [previewEvent?.ts, previewEvent?.top, !!interaction, nowOffset]);
 
-  const handleInteractionStart = (e, type) => {
+  const handleInteractionStart = (e, type, existingEvent = null) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!previewEvent) return;
 
+    if (!existingEvent && !previewEvent) return;
     isInteractingRef.current = true;
+    didMoveRef.current = false; // Reset khi bắt đầu
     const rect = e.currentTarget.getBoundingClientRect();
     const grabOffsetY = e.clientY - rect.top;
     
+    // Cache containerRect để tối ưu hiệu năng (giảm rít)
+    const containerRect = gridContainerRef.current.getBoundingClientRect();
+
+    // Tìm kiếm bản ghi tươi mới nhất từ props để tránh dùng stale state
+    const currentPreview = latestPreviewRef.current;
+    let freshEvent = existingEvent ? (events.find(ev => ev.id === existingEvent.id) || existingEvent) : null;
+    let baseItem = freshEvent || currentPreview || previewEvent;
+
+    let startTop = freshEvent ? getEventStyle(freshEvent).top : (baseItem.type === 'now' ? nowOffset : (baseItem.top || 0));
+    let startHeight = freshEvent ? getEventStyle(freshEvent).height : (baseItem.height || 64);
+    let itemDate = freshEvent ? new Date(freshEvent.start_time) : baseItem.fullDate;
+
+    // Ưu tiên dùng bộ nhớ đệm vừa xong nếu ID khớp và thời gian gần đây (< 2s)
+    const lr = lastResultRef.current;
+    if (lr && (Date.now() - lr.ts < 2000)) {
+        const isSameEvent = freshEvent && lr.id === freshEvent.id;
+        const isSamePreview = !freshEvent && !lr.id;
+        if (isSameEvent || isSamePreview) {
+            startTop = lr.topOffset ?? startTop;
+            startHeight = lr.height ?? startHeight;
+            itemDate = lr.fullDate ?? itemDate;
+        }
+    }
+
+    // Cache info cho né tránh va chạm
+    const currentDayStr = formatDateLocal(itemDate);
+    const sortedEvents = events
+      .filter(ev => ev.id !== (freshEvent?.id || ''))
+      .filter(ev => formatDateLocal(new Date(ev.start_time)) === currentDayStr)
+      .sort((a, b) => getEventStyle(a).top - getEventStyle(b).top);
+
     setInteraction({
       type,
+      existingEvent: freshEvent,
       startY: e.clientY,
-      startTop: previewEvent.type === 'now' ? nowOffset : (previewEvent.top || 0),
-      startHeight: previewEvent.height || 64,
-      startDayIdx: displayWeekDays.findIndex(d => d.fullDate.toDateString() === previewEvent.fullDate.toDateString()),
-      grabOffsetY: type === 'move' ? grabOffsetY : 0
+      startTop,
+      startHeight,
+      currentTop: startTop,
+      currentHeight: startHeight,
+      currentDate: itemDate,
+      grabOffsetY: type === 'move' ? grabOffsetY : 0,
+      containerRect,
+      sortedEvents // Cache danh sách đã sắp xếp 
     });
-
-    if (type === 'move') {
-      setIsPreviewDragging(true);
-    }
+    setIsPreviewDragging(true);
   };
 
   useEffect(() => {
     if (!interaction) return;
 
+    let rafId;
     const handleMouseMove = (e) => {
-      const containerRect = gridContainerRef.current.getBoundingClientRect();
-      const contentTop = containerRect.top + 64; // Vạch 00:00
-      // SNAP 1 phút = 64 / 60 = 1.066px
-      const SNAP = 64 / 60; 
+      if (rafId) cancelAnimationFrame(rafId);
 
-      if (interaction.type === 'move') {
-        const mouseRelY = e.clientY - contentTop;
-        const newTopUnsnapped = mouseRelY - interaction.grabOffsetY;
-        const newTop = Math.max(0, Math.round(newTopUnsnapped / SNAP) * SNAP);
-        
-        // Cần tính lại ngày nếu kéo ngang
-        const columnWidth = (containerRect.width - 64) / (mode === 'day' ? 1 : 7);
-        const relativeX = e.clientX - (containerRect.left + 64);
-        let dayIdx = 0;
-        
-        if (mode === 'week') {
-            const calculatedIdx = Math.floor(relativeX / columnWidth);
-            dayIdx = Math.max(0, Math.min(displayWeekDays.length - 1, calculatedIdx));
-        }
+      rafId = requestAnimationFrame(() => {
+        // Rào chắn bảo vệ: Nếu interaction đã bị xóa (null) thì dừng việc tính toán
+        if (!interaction || !interaction.containerRect) return;
 
-        const newDate = displayWeekDays[dayIdx]?.fullDate;
-        
-        if (newDate) {
-          // Tính toán chính xác giờ và phút từ newTop
-          const totalMinutes = Math.round((newTop / HOUR_HEIGHT) * 60);
-          const hours = Math.floor(totalMinutes / 60);
-          const minutes = totalMinutes % 60;
-          
-          const updatedDate = new Date(newDate);
-          updatedDate.setHours(hours, minutes, 0, 0);
+        const { containerRect, sortedEvents } = interaction;
+        const contentTop = containerRect.top + 64;
+        const SNAP = 64 / 60;
 
-          // Cập nhật selectedDate để MiniCalendar nhảy theo thời gian thực
-          if (setSelectedDate) {
-             setSelectedDate(updatedDate);
+        if (interaction.type === 'move') {
+          const mouseRelY = e.clientY - contentTop;
+          const newTopUnsnapped = mouseRelY - interaction.grabOffsetY;
+          let newTop = Math.max(0, Math.round(newTopUnsnapped / SNAP) * SNAP);
+
+          if (Math.abs(e.clientY - interaction.startY) > 3) didMoveRef.current = true;
+
+          const columnWidth = (containerRect.width - 64) / (mode === 'day' ? 1 : 7);
+          const relativeX = e.clientX - (containerRect.left + 64);
+          let dayIdx = 0;
+          if (mode === 'week') {
+            dayIdx = Math.max(0, Math.min(displayWeekDays.length - 1, Math.floor(relativeX / columnWidth)));
           }
 
-          setPreviewEvent(prev => ({
-            ...prev,
-            top: newTop,
-            fullDate: updatedDate,
-            type: 'grid' 
-          }));
-        }
-      } else if (interaction.type === 'resize') {
-        const deltaY = e.clientY - interaction.startY;
-        const newHeightUnsnapped = interaction.startHeight + deltaY;
-        const newHeight = Math.max(SNAP, Math.round(newHeightUnsnapped / SNAP) * SNAP);
+          const targetDate = displayWeekDays[dayIdx]?.fullDate;
+          if (targetDate) {
+            // Né tránh va chạm dùng danh sách đã cache
+            let snappedTop = newTop;
+            for (const ev of sortedEvents) {
+              const { top: et, height: eh } = getEventStyle(ev);
+              const eb = et + eh;
+              if (snappedTop < eb && (snappedTop + interaction.currentHeight) > et) {
+                if ((snappedTop + interaction.currentHeight / 2) < (et + eh / 2)) {
+                  snappedTop = et - interaction.currentHeight;
+                } else {
+                  snappedTop = eb;
+                }
+              }
+            }
+            newTop = Math.max(0, snappedTop);
 
-        setPreviewEvent(prev => ({
-          ...prev,
-          height: newHeight
-        }));
-      }
-    };
+            // Không cho phép kéo vượt quá 11h59p đêm (Giới hạn lưới là 1536px)
+            // Cố định kết thúc tối đa là 11h59p (khoảng 1535px)
+            const MAX_GRID_Y = 1535; 
+            if (newTop + interaction.currentHeight > MAX_GRID_Y) {
+              newTop = MAX_GRID_Y - interaction.currentHeight;
+            }
 
-    const handleMouseUp = (e) => {
-      const latest = latestPreviewRef.current;
-      if (interaction && latest) {
-        const targetDateStr = latest.fullDate?.toDateString();
-        const targetCol = document.querySelector(`[data-column-date="${targetDateStr}"]`);
-        if (targetCol) {
-          onInteractionEnd?.({
-            fullDate: latest.fullDate,
-            topOffset: latest.top,
-            columnRect: targetCol.getBoundingClientRect()
+            // Nếu kéo vào vùng sau 11h đêm (1472px), tự động hít về đúng 11h
+            if (newTop >= 1472) {
+              newTop = 1472;
+            }
+
+            const totalMinutes = Math.round((newTop / 64) * 60);
+            const updatedDate = new Date(targetDate);
+            updatedDate.setHours(Math.floor(totalMinutes / 60), totalMinutes % 60, 0, 0);
+
+            // Báo cáo tọa độ thực tế để Modal có thể bám theo (Sticky Modal)
+            callbacksRef.current.onInteractionUpdate?.({
+              id: interaction.existingEvent?.id,
+              top: newTop,
+              fullDate: updatedDate,
+              height: interaction.currentHeight,
+              columnRect: containerRect,
+              ts: Date.now()
+            });
+
+            if (interaction.existingEvent) {
+              if (newTop !== interaction.currentTop || updatedDate.getTime() !== interaction.currentDate?.getTime()) {
+                setInteraction(prev => ({ ...prev, currentTop: newTop, currentDate: updatedDate }));
+              }
+            } else {
+              const currentPreview = latestPreviewRef.current;
+              if (newTop !== currentPreview?.top || updatedDate.getTime() !== currentPreview?.fullDate?.getTime()) {
+                setPreviewEvent(prev => ({ ...prev, top: newTop, fullDate: updatedDate, height: interaction.currentHeight, type: 'grid' }));
+              }
+            }
+          }
+        } else if (interaction.type === 'resize') {
+          const deltaY = e.clientY - interaction.startY;
+          let newHeight = Math.round(Math.max(SNAP, interaction.startHeight + deltaY) / SNAP) * SNAP;
+          
+          const startTop = interaction.existingEvent ? interaction.startTop : latestPreviewRef.current?.top;
+          const MAX_GRID_Y = 1535;
+          
+          // Chặn không cho kéo giãn vượt quá 11h59p đêm
+          if (startTop + newHeight > MAX_GRID_Y) {
+            newHeight = MAX_GRID_Y - startTop;
+          }
+
+          if (Math.abs(deltaY) > 3) didMoveRef.current = true;
+          
+          // Báo cáo khi thay đổi kích thước (để Modal cũng lướt theo nút kéo giãn)
+          callbacksRef.current.onInteractionUpdate?.({
+            id: interaction.existingEvent?.id,
+            top: startTop,
+            fullDate: interaction.existingEvent ? interaction.currentDate : latestPreviewRef.current?.fullDate,
+            height: newHeight,
+            columnRect: containerRect,
+            ts: Date.now()
           });
+
+          if (interaction.existingEvent) {
+            if (newHeight !== interaction.currentHeight) setInteraction(prev => ({ ...prev, currentHeight: newHeight }));
+          } else {
+            if (newHeight !== latestPreviewRef.current?.height) setPreviewEvent(prev => ({ ...prev, height: newHeight }));
+          }
         }
-      }
-      setInteraction(null);
-      setIsPreviewDragging(false);
-      // Giữ flag interacting thêm 50ms để chặn onClick của Grid
-      setTimeout(() => {
-        isInteractingRef.current = false;
-      }, 50);
+      });
     };
 
+
+    const handleMouseUp = async (e) => {
+      if (!interaction) return;
+
+      const { existingEvent } = interaction;
+      const latest = interaction.existingEvent ? {
+          fullDate: interaction.currentDate,
+          height: interaction.currentHeight
+      } : latestPreviewRef.current;
+
+      if (interaction && latest) {
+        // Sử dụng didMoveRef để xác định có di chuyển thực tế không
+        const hasMoved = didMoveRef.current;
+
+        if (existingEvent) {
+          let newDurationMin = Math.round((latest.height / 64) * 60);
+          const start = latest.fullDate;
+          
+          // Nếu sự kiện bắt đầu lúc 11h đêm và kéo dài >= 1 tiếng, fix kết thúc lúc 11h59p (59 phút)
+          if (start.getHours() >= 23 && newDurationMin >= 60) {
+            newDurationMin = 59;
+          }
+
+          // Gọi callback của cha để xử lý cập nhật (bao gồm độ dài mới)
+          callbacksRef.current.onEventUpdate?.(existingEvent, start, newDurationMin);
+          callbacksRef.current.onInteractionEnd?.({ fullDate: latest.fullDate, isUpdate: true, hasMoved }); 
+        } else {
+          const targetCol = e.target.closest('.day-column');
+          if (targetCol) {
+            callbacksRef.current.onInteractionEnd?.({ 
+               fullDate: latest.fullDate, 
+               topOffset: latest.top, 
+               height: latest.height,
+               columnRect: targetCol.getBoundingClientRect(),
+               hasMoved 
+            });
+          }
+        }
+
+        // Lưu vào bộ nhớ đệm kết quả vừa tương tác (để dùng cho click bồi)
+        lastResultRef.current = {
+            id: interaction.existingEvent?.id,
+            topOffset: interaction.existingEvent ? interaction.currentTop : latest.top,
+            height: latest.height,
+            fullDate: latest.fullDate,
+            ts: Date.now()
+        };
+      }
+
+      // Trì hoãn việc set null 50ms để tránh race condition (tab bị nháy nhỏ lại khi vừa thả chuột)
+      setTimeout(() => {
+        setInteraction(null);
+        setIsPreviewDragging(false);
+        // Chặn click ảo trong 150ms sau khi tương tác xong
+        setTimeout(() => { 
+            isInteractingRef.current = false; 
+            didMoveRef.current = false; 
+        }, 150);
+      }, 50);
+
+      if (rafId) cancelAnimationFrame(rafId);
+    };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
+      if (rafId) cancelAnimationFrame(rafId);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [interaction]);
+  }, [interaction, displayWeekDays, mode]);
 
   const handleColumnClick = (e, day) => {
-    if (isInteractingRef.current || !onGridClick) return;
+    if (didMoveRef.current || isInteractingRef.current || !onGridClick) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
-    
-    // 00:00 start at post 64px
     const clickedHour = Math.floor((offsetY - 64) / HOUR_HEIGHT);
-    // Snap theo 1 phút khi click (64/60 pixels)
     const SNAP_1MIN = 64 / 60;
-    const topOffset = Math.max(0, Math.round((offsetY - 64) / SNAP_1MIN) * SNAP_1MIN); 
+    let topOffset = Math.max(0, Math.round((offsetY - 64) / SNAP_1MIN) * SNAP_1MIN);
+    
+    // Nếu click vào khung giờ sau 11h đêm (giờ thứ 23), tự động hít về đúng 11h
+    if (clickedHour >= 23) {
+      topOffset = 23 * 64; // 1472px
+    }
 
     onGridClick({ x: e.clientX, y: e.clientY, fullDate: day.fullDate, hour: clickedHour, topOffset, columnRect: rect });
   };
 
+  function getEventsForDay(fullDate) {
+    if (!fullDate || !events.length) {
+        // Nếu đang kéo vào ngày trống này, hãy tiêm nó vào
+        if (interaction?.existingEvent && interaction.currentDate?.toDateString() === fullDate?.toDateString()) {
+            return [interaction.existingEvent];
+        }
+        return [];
+    }
+
+    const dateStr = formatDateLocal(fullDate);
+    let dayEvents = events.filter(ev => {
+      if (interaction?.existingEvent?.id === ev.id) return false; // Ẩn bản gốc
+      const evDate = formatDateLocal(new Date(ev.start_time));
+      return evDate === dateStr;
+    });
+
+    // Tiêm sự kiện đang kéo vào ngày mục tiêu
+    if (interaction?.existingEvent && interaction.currentDate?.toDateString() === fullDate?.toDateString()) {
+        dayEvents.push(interaction.existingEvent);
+    }
+
+    return dayEvents;
+  }
+
   return (
-    <div 
+    <div
       ref={scrollRef}
       className="flex-1 overflow-y-auto bg-white relative scroll-smooth custom-scrollbar grid-interaction-area"
     >
-      <div className="flex min-h-max" ref={gridContainerRef}>
-        {/* Cột thời gian (Bên trái) */}
-        <div className="w-16 flex-shrink-0 flex flex-col bg-white border-r border-slate-200 relative z-10">
+      <div className="flex min-h-full" ref={gridContainerRef}>
+        {/* Cột thời gian */}
+        <div className="w-16 flex-shrink-0 flex flex-col bg-white border-r border-b border-slate-200 relative z-10">
           <div className="h-16 flex items-start justify-end pr-3 pt-2">
             <span className="text-[10px] font-medium text-slate-400">GMT+07</span>
           </div>
@@ -212,51 +382,99 @@ export default function TimeGrid({
 
         {/* Lưới ngày */}
         <div className={`flex-1 grid ${mode === "day" ? "grid-cols-1" : "grid-cols-7"} relative`}>
-          <div className="absolute inset-0 pointer-events-none flex flex-col">
+          <div className="absolute inset-x-0 top-0 h-[1536px] pointer-events-none flex flex-col border-b border-slate-200">
             {displayHours.map((hour) => (
               <div key={hour} className="h-16 border-t border-slate-200 w-full" />
             ))}
           </div>
-          {displayWeekDays.map((day, idx) => (
-            <div
-              key={idx}
-              data-column-date={day.fullDate?.toDateString()}
-              className="border-l border-slate-200 relative h-[1536px] hover:bg-slate-50/50 transition-colors cursor-pointer"
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => handleColumnClick(e, day)}
-            >
-              {/* Lớp phủ chứa vạch đỏ và preview - Tách biệt vùng header (top-16) */}
-              <div className="absolute inset-0 top-16 pointer-events-none">
+
+          {displayWeekDays.map((day, idx) => {
+            const dayEvents = getEventsForDay(day.fullDate);
+            return (
+              <div
+                key={idx}
+                data-column-date={day.fullDate?.toDateString()}
+                className="border-l border-slate-200 relative min-h-full hover:bg-slate-50/50 transition-colors cursor-pointer"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => handleColumnClick(e, day)}
+              >
+                {/* Spacer để đảm bảo cột đủ 24 giờ và kéo dài xuống hết */}
+                <div className="h-[1536px]" />
+                <div className="absolute inset-0 top-16 pointer-events-none">
+                  {/* Events từ API */}
+                  {dayEvents.map((ev) => {
+                    const isDragging = interaction?.existingEvent?.id === ev.id;
+                    const { top: originalTop, height: originalHeight } = getEventStyle(ev);
+                    
+                    const top = isDragging ? interaction.currentTop : originalTop;
+                    const height = isDragging ? interaction.currentHeight : originalHeight;
+
+                    const startLabel = new Date(ev.start_time).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+                    return (
+                      <EventBlock
+                        key={ev.id}
+                        title={ev.title}
+                        time={startLabel}
+                        type={ev.color || "blue"}
+                        top={top}
+                        height={height}
+                        location={ev.location}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (didMoveRef.current) return; // Chặn popup nếu vừa kéo xong
+                            onEventClick?.(ev, { 
+                                clientX: e.clientX, 
+                                clientY: e.clientY, 
+                                columnRect: e.currentTarget.getBoundingClientRect() 
+                            });
+                        }}
+                        onMouseDown={(e) => handleInteractionStart(e, 'move', ev)}
+                        onResizeMouseDown={(e) => handleInteractionStart(e, 'resize', ev)}
+                        className={isDragging ? "shadow-2xl ring-2 ring-blue-500/50 z-50 opacity-90 scale-[1.01]" : "transition-all duration-200"}
+                      />
+                    );
+                  })}
+
+                  {/* Preview khi đang tạo */}
                   {previewEvent?.fullDate &&
                     previewEvent.fullDate.toDateString() === day.fullDate?.toDateString() && (
                     <div
                       onMouseDown={(e) => handleInteractionStart(e, 'move')}
-                      onClick={(e) => e.stopPropagation()}
-                      className={`preview-tab absolute left-1 right-1 z-30 bg-blue-50 border border-blue-400 rounded-md p-1 shadow-md opacity-95 transition-shadow flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing
-                        ${interaction?.type === 'move' ? 'shadow-lg ring-2 ring-blue-500/20' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onGridClick?.({
+                          x: e.clientX,
+                          y: e.clientY,
+                          fullDate: previewEvent.fullDate,
+                          topOffset: previewEvent.top,
+                          columnRect: e.currentTarget.parentElement.getBoundingClientRect()
+                        });
+                      }}
+                      className={`preview-tab absolute left-1 right-1 z-30 bg-blue-50 border-l-4 border-blue-500 rounded-md p-2 shadow-md flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing
+                        ${interaction ? 'shadow-lg ring-2 ring-blue-500/20 scale-[1.01]' : 'transition-all duration-200'}`}
                       style={{
                         top: `${previewEvent.type === "now" ? nowOffset : previewEvent.top}px`,
-                        height: `${previewEvent.height || 64}px`,
+                        height: `${(interaction && !interaction.existingEvent) ? interaction.currentHeight : (previewEvent.height || 64)}px`,
                       }}
                     >
                       <div className="flex justify-between items-start mb-0.5">
-                        <span className="text-[11px] font-bold text-blue-600 truncate px-1 uppercase tracking-tight">
+                        <span className="text-[11px] font-bold text-blue-700 truncate uppercase tracking-tight">
                           (Đang tạo...)
                         </span>
                       </div>
-                      
-                      {/* Resize handle at bottom - Increase hit area to h-3 */}
-                      <div 
+                      <div
                         onMouseDown={(e) => handleInteractionStart(e, 'resize')}
                         className="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize group"
                       >
-                         <div className="mx-auto w-8 h-1 bg-blue-200 rounded-full mt-1.5 group-hover:bg-blue-400 transition-colors" />
+                        <div className="mx-auto w-8 h-1 bg-blue-200 rounded-full mt-1.5 group-hover:bg-blue-400 transition-colors" />
                       </div>
                     </div>
                   )}
 
+                  {/* Vạch thời gian hiện tại */}
                   {day.isToday && (
                     <div
+                      id="current-time-line"
                       className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
                       style={{ top: `${nowOffset - 4}px` }}
                     >
@@ -264,9 +482,10 @@ export default function TimeGrid({
                       <div className="flex-1 h-px bg-red-500"></div>
                     </div>
                   )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

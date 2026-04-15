@@ -12,6 +12,10 @@ export default function DayView({
   setIsPreviewDragging,
   onInteractionEnd,
   setSelectedDate,
+  events = [],
+  onEventClick,
+  onEventUpdate,
+  onInteractionUpdate,
 }) {
   return (
     <>
@@ -28,7 +32,11 @@ export default function DayView({
         setPreviewEvent={setPreviewEvent}
         setIsPreviewDragging={setIsPreviewDragging}
         onInteractionEnd={onInteractionEnd}
+        onInteractionUpdate={onInteractionUpdate}
         setSelectedDate={setSelectedDate}
+        events={events}
+        onEventClick={onEventClick}
+        onEventUpdate={onEventUpdate}
         weekDays={[
           {
             day: selectedDayName,
