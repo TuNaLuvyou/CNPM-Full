@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { getVNTime, formatDateLocal, getEventStyle, HOUR_HEIGHT } from "../../lib/CalendarHelper";
+import { getLocalizedTime, formatDateLocal, getEventStyle, HOUR_HEIGHT, getTimezoneOffsetMinutes, formatTimezoneOffset } from "../../lib/CalendarHelper";
+import { t } from "@/lib/i18n";
 import EventBlock from "./EventBlock";
 
-function getNowOffset() {
-  const now = getVNTime();
+function getNowOffset(timezone = "Asia/Ho_Chi_Minh") {
+  const now = getLocalizedTime(timezone);
   return (now.getHours() + now.getMinutes() / 60) * HOUR_HEIGHT;
 }
 
@@ -27,17 +28,31 @@ export default function TimeGrid({
   onEventClick,
   onEventUpdate,
   onInteractionUpdate,
+  onToggleTask,
+  appSettings = {},
 }) {
+    const timeFormat = appSettings.timeFormat || "24h";
   const displayHours = hours || Array.from({ length: 24 }, (_, i) => i);
-  const displayWeekDays = weekDays || [];
+  const showWeekends = appSettings.showWeekends !== false;
+  const displayWeekDays = (weekDays || []).filter(day => {
+    if (mode === "day") return true;
+    if (showWeekends) return true;
+    const d = day.fullDate.getDay();
+    return d !== 0 && d !== 6;
+  });
 
-  const [nowOffset, setNowOffset] = useState(getNowOffset);
+  const primaryTz = appSettings.primaryTimezone || "Asia/Ho_Chi_Minh";
+  const secondaryTz = appSettings.secondaryTimezone || "America/New_York";
+  const showSecondary = appSettings.showSecondaryTimezone || false;
+
+  const [nowOffset, setNowOffset] = useState(() => getNowOffset(primaryTz));
   const scrollRef = useRef(null);
   const gridContainerRef = useRef(null);
   const isInteractingRef = useRef(false);
   const didMoveRef = useRef(false);
 
   const [interaction, setInteraction] = useState(null);
+  const [optimisticUpdates, setOptimisticUpdates] = useState({});
   const latestPreviewRef = useRef(previewEvent);
   useEffect(() => { latestPreviewRef.current = previewEvent; }, [previewEvent]);
 
@@ -53,13 +68,13 @@ export default function TimeGrid({
     onEventClick
   });
   useEffect(() => {
-    callbacksRef.current = { onInteractionUpdate, onEventUpdate, onInteractionEnd, onGridClick, onEventClick };
-  }, [onInteractionUpdate, onEventUpdate, onInteractionEnd, onGridClick, onEventClick]);
+    callbacksRef.current = { onInteractionUpdate, onEventUpdate, onInteractionEnd, onGridClick, onEventClick, onToggleTask };
+  }, [onInteractionUpdate, onEventUpdate, onInteractionEnd, onGridClick, onEventClick, onToggleTask]);
 
   useEffect(() => {
-    const id = setInterval(() => setNowOffset(getNowOffset()), 60_000);
+    const id = setInterval(() => setNowOffset(getNowOffset(primaryTz)), 60_000);
     return () => clearInterval(id);
-  }, []);
+  }, [primaryTz]);
 
   useEffect(() => {
     if (previewEvent && scrollRef.current) {
@@ -76,9 +91,35 @@ export default function TimeGrid({
     }
   }, [previewEvent?.ts, previewEvent?.top, !!interaction, nowOffset]);
 
+  // Xóa optimistic update khi data thật từ API đã về
+  useEffect(() => {
+    if (!Object.keys(optimisticUpdates).length) return;
+    setOptimisticUpdates(prev => {
+      const next = { ...prev };
+      let changed = false;
+      for (const id of Object.keys(next)) {
+        const ev = events.find(e => String(e.id) === String(id));
+        if (ev) {
+          const { top, height } = getEventStyle(ev);
+          // Nếu data thật đã khớp với optimistic thì xóa
+          if (Math.abs(top - next[id].top) < 2 && Math.abs(height - next[id].height) < 2) {
+            delete next[id];
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [events]);
+
   const handleInteractionStart = (e, type, existingEvent = null) => {
     e.stopPropagation();
     e.preventDefault();
+
+    // Check permission
+    if (existingEvent && existingEvent.my_permission === 'view') {
+        return;
+    }
 
     if (!existingEvent && !previewEvent) return;
     isInteractingRef.current = true;
@@ -162,26 +203,98 @@ export default function TimeGrid({
             dayIdx = Math.max(0, Math.min(displayWeekDays.length - 1, Math.floor(relativeX / columnWidth)));
           }
 
-          const targetDate = displayWeekDays[dayIdx]?.fullDate;
-          if (targetDate) {
-            // Né tránh va chạm dùng danh sách đã cache
-            let snappedTop = newTop;
-            for (const ev of sortedEvents) {
-              const { top: et, height: eh } = getEventStyle(ev);
-              const eb = et + eh;
-              if (snappedTop < eb && (snappedTop + interaction.currentHeight) > et) {
-                if ((snappedTop + interaction.currentHeight / 2) < (et + eh / 2)) {
-                  snappedTop = et - interaction.currentHeight;
-                } else {
-                  snappedTop = eb;
-                }
+          // ✅ Clamp dayIdx for Tasks if they have a deadline
+          if (interaction.existingEvent?.event_type === 'task' && interaction.existingEvent.deadline) {
+            const deadlineDate = new Date(interaction.existingEvent.deadline);
+            const deadlineDateOnly = new Date(deadlineDate);
+            deadlineDateOnly.setHours(0, 0, 0, 0);
+
+            // Tìm index của ngày deadline trong displayWeekDays
+            const deadlineIdx = displayWeekDays.findIndex(d => {
+               const dOnly = new Date(d.fullDate);
+               dOnly.setHours(0,0,0,0);
+               return dOnly.getTime() === deadlineDateOnly.getTime();
+            });
+
+            // Nếu ngày đang hover sau ngày deadline, clamp lại
+            if (deadlineIdx !== -1 && dayIdx > deadlineIdx) {
+              dayIdx = deadlineIdx;
+            } else if (deadlineIdx === -1) {
+              // Nếu deadline nằm ở tuần trước, có thể cần logic chặn kéo qua tuần sau
+              // Để đơn giản, nếu không tìm thấy deadline trong tuần này và deadline là quá khứ, chặn kéo.
+              const firstDayOfWeek = new Date(displayWeekDays[0]?.fullDate);
+              firstDayOfWeek.setHours(0,0,0,0);
+              if (deadlineDateOnly < firstDayOfWeek) {
+                 // Đã quá hạn từ tuần trước, không cho kéo đi đâu cả (hoặc chỉ cho kéo trong tuần cũ)
+                 // Tạm thời cho phép kéo trong ngày hiện tại nhưng clamp giờ ở bước sau
               }
             }
+          }
+
+          let targetDate = displayWeekDays[dayIdx]?.fullDate;
+          if (targetDate) {
+            // ══ SMART COLLISION AVOIDANCE (JUMPING) ══
+            // Lấy danh sách sự kiện của ngày đích (loại trừ chính nó)
+            const targetDayStr = targetDate.toDateString();
+            const dayEvents = events.filter(e => 
+              new Date(e.start_time).toDateString() === targetDayStr && 
+              e.id !== interaction.existingEvent?.id
+            );
+
+            let snappedTop = newTop;
+            let collisionFound = true;
+            let safetyCounter = 0;
+
+            while (collisionFound && safetyCounter < 10) {
+              collisionFound = false;
+              for (const ev of dayEvents) {
+                const { top: et, height: eh } = getEventStyle(ev);
+                const eb = et + eh;
+                const buffer = 1; // Khoảng cách nhỏ để tránh dính lẹo
+                
+                // Kiểm tra va chạm: [snappedTop, snappedTop + height] chồng lấp với [et, eb]
+                if (snappedTop < eb && (snappedTop + interaction.currentHeight) > et) {
+                  collisionFound = true;
+                  // Nhảy lên trên hoặc xuống dưới tùy vào điểm giữa
+                  if ((snappedTop + interaction.currentHeight / 2) < (et + eh / 2)) {
+                    snappedTop = et - interaction.currentHeight - buffer;
+                  } else {
+                    snappedTop = eb + buffer;
+                  }
+                  break; // Kiểm tra lại từ đầu với vị trí mới
+                }
+              }
+              safetyCounter++;
+            }
+            
             newTop = Math.max(0, snappedTop);
 
-            // Không cho phép kéo vượt quá 11h59p đêm (Giới hạn lưới là 1536px)
-            // Cố định kết thúc tối đa là 11h59p (khoảng 1535px)
             const MAX_GRID_Y = 1535; 
+            
+            // ✅ Enforce Time Clamping for Tasks (MOVE)
+            let isClamped = false;
+            if (interaction.existingEvent?.event_type === 'task' && interaction.existingEvent.deadline) {
+              const deadlineDate = new Date(interaction.existingEvent.deadline);
+              const targetDateOnly = new Date(targetDate);
+              targetDateOnly.setHours(0, 0, 0, 0);
+              const deadlineDateOnly = new Date(deadlineDate);
+              deadlineDateOnly.setHours(0, 0, 0, 0);
+
+              if (targetDateOnly.getTime() === deadlineDateOnly.getTime()) {
+                // Same day: Clamp so Bottom <= Deadline
+                const deadlineMinutes = deadlineDate.getHours() * 60 + deadlineDate.getMinutes();
+                const deadlineY = (deadlineMinutes / 60) * 64;
+                if (newTop + interaction.currentHeight > deadlineY) {
+                    newTop = Math.max(0, deadlineY - interaction.currentHeight);
+                    isClamped = true;
+                }
+              } else if (targetDateOnly.getTime() > deadlineDateOnly.getTime()) {
+                  newTop = 0;
+                  isClamped = true;
+              }
+              interaction.isClamped = isClamped;
+            }
+
             if (newTop + interaction.currentHeight > MAX_GRID_Y) {
               newTop = MAX_GRID_Y - interaction.currentHeight;
             }
@@ -206,8 +319,8 @@ export default function TimeGrid({
             });
 
             if (interaction.existingEvent) {
-              if (newTop !== interaction.currentTop || updatedDate.getTime() !== interaction.currentDate?.getTime()) {
-                setInteraction(prev => ({ ...prev, currentTop: newTop, currentDate: updatedDate }));
+              if (newTop !== interaction.currentTop || updatedDate.getTime() !== interaction.currentDate?.getTime() || isClamped !== interaction.isClamped) {
+                setInteraction(prev => ({ ...prev, currentTop: newTop, currentDate: updatedDate, isClamped }));
               }
             } else {
               const currentPreview = latestPreviewRef.current;
@@ -223,7 +336,25 @@ export default function TimeGrid({
           const startTop = interaction.existingEvent ? interaction.startTop : latestPreviewRef.current?.top;
           const MAX_GRID_Y = 1535;
           
-          // Chặn không cho kéo giãn vượt quá 11h59p đêm
+          let isClamped = false;
+          if (interaction.existingEvent?.event_type === 'task' && interaction.existingEvent.deadline) {
+            const deadlineDate = new Date(interaction.existingEvent.deadline);
+            const startDayDate = new Date(interaction.existingEvent.start_time);
+            startDayDate.setHours(0, 0, 0, 0);
+            const deadlineDayDate = new Date(deadlineDate);
+            deadlineDayDate.setHours(0, 0, 0, 0);
+
+            if (startDayDate.getTime() === deadlineDayDate.getTime()) {
+              const dlMin = deadlineDate.getHours() * 60 + deadlineDate.getMinutes();
+              const dlY = (dlMin / 60) * 64;
+              if (startTop + newHeight > dlY) {
+                newHeight = dlY - startTop;
+                isClamped = true;
+              }
+            }
+            interaction.isClamped = isClamped;
+          }
+
           if (startTop + newHeight > MAX_GRID_Y) {
             newHeight = MAX_GRID_Y - startTop;
           }
@@ -241,9 +372,17 @@ export default function TimeGrid({
           });
 
           if (interaction.existingEvent) {
-            if (newHeight !== interaction.currentHeight) setInteraction(prev => ({ ...prev, currentHeight: newHeight }));
+            if (newHeight !== interaction.currentHeight || isClamped !== interaction.isClamped) {
+              setInteraction(prev => ({ ...prev, currentHeight: newHeight, isClamped }));
+            }
           } else {
-            if (newHeight !== latestPreviewRef.current?.height) setPreviewEvent(prev => ({ ...prev, height: newHeight }));
+            // ✅ Cập nhật cả interaction.currentHeight để UI (dòng 650) phản hồi ngay lập tức
+            if (newHeight !== interaction.currentHeight) {
+                setInteraction(prev => ({ ...prev, currentHeight: newHeight }));
+            }
+            if (newHeight !== latestPreviewRef.current?.height) {
+                setPreviewEvent(prev => ({ ...prev, height: newHeight }));
+            }
           }
         }
       });
@@ -267,12 +406,19 @@ export default function TimeGrid({
           let newDurationMin = Math.round((latest.height / 64) * 60);
           const start = latest.fullDate;
           
-          // Nếu sự kiện bắt đầu lúc 11h đêm và kéo dài >= 1 tiếng, fix kết thúc lúc 11h59p (59 phút)
           if (start.getHours() >= 23 && newDurationMin >= 60) {
             newDurationMin = 59;
           }
 
-          // Gọi callback của cha để xử lý cập nhật (bao gồm độ dài mới)
+          // ✅ Lưu optimistic ngay lập tức — giữ vị trí mới trong khi đợi API
+          setOptimisticUpdates(prev => ({
+            ...prev,
+            [String(existingEvent.id)]: {
+              top: interaction.currentTop,
+              height: interaction.currentHeight,
+            }
+          }));
+
           callbacksRef.current.onEventUpdate?.(existingEvent, start, newDurationMin);
           callbacksRef.current.onInteractionEnd?.({ fullDate: latest.fullDate, isUpdate: true, hasMoved }); 
         } else {
@@ -367,21 +513,58 @@ export default function TimeGrid({
     >
       <div className="flex min-h-full" ref={gridContainerRef}>
         {/* Cột thời gian */}
-        <div className="w-16 flex-shrink-0 flex flex-col bg-white border-r border-b border-slate-200 relative z-10">
-          <div className="h-16 flex items-start justify-end pr-3 pt-2">
-            <span className="text-[10px] font-medium text-slate-400">GMT+07</span>
-          </div>
-          {displayHours.map((hour) => (
-            <div key={hour} className="h-16 flex items-start justify-end pr-3">
-              <span className="text-[11px] font-medium text-slate-400 -mt-2">
-                {hour === 0 ? "12 AM" : hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
+        <div className="flex bg-white border-r border-slate-200 relative z-10 flex-shrink-0">
+          {/* Múi giờ phụ (nếu bật) */}
+          {showSecondary && (
+            <div className="w-14 flex flex-col border-r border-slate-100 bg-slate-50/30">
+              <div className="h-16 flex items-start justify-end pr-2 pt-2">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                   {formatTimezoneOffset(secondaryTz)}
+                </span>
+              </div>
+              {displayHours.map((hour) => {
+                const primaryOffset = getTimezoneOffsetMinutes(primaryTz);
+                const secondaryOffset = getTimezoneOffsetMinutes(secondaryTz);
+                const diffHours = (primaryOffset - secondaryOffset) / 60;
+                let secondaryHour = (hour + diffHours) % 24;
+                if (secondaryHour < 0) secondaryHour += 24;
+                
+                return (
+                  <div key={hour} className="h-16 flex items-start justify-end pr-2">
+                    <span className="text-[10px] font-medium text-slate-300 -mt-2">
+                      {timeFormat === "24h" 
+                        ? `${String(Math.floor(secondaryHour)).padStart(2, '0')}:00` 
+                        : (secondaryHour === 0 ? "12 AM" : secondaryHour === 12 ? "12 PM" : secondaryHour > 12 ? `${Math.floor(secondaryHour - 12)} PM` : `${Math.floor(secondaryHour)} AM`)
+                      }
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Múi giờ chính */}
+          <div className="w-16 flex flex-col">
+            <div className="h-16 flex items-start justify-end pr-3 pt-2">
+              <span className="text-[10px] font-bold text-slate-500 uppercase">
+                 {formatTimezoneOffset(primaryTz)}
               </span>
             </div>
-          ))}
+            {displayHours.map((hour) => (
+              <div key={hour} className="h-16 flex items-start justify-end pr-3">
+                <span className="text-[11px] font-semibold text-slate-400 -mt-2">
+                  {timeFormat === "24h" 
+                    ? `${String(hour).padStart(2, '0')}:00` 
+                    : (hour === 0 ? "12 AM" : hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`)
+                  }
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Lưới ngày */}
-        <div className={`flex-1 grid ${mode === "day" ? "grid-cols-1" : "grid-cols-7"} relative`}>
+        <div className={`flex-1 grid ${mode === "day" ? "grid-cols-1" : (showWeekends ? "grid-cols-7" : "grid-cols-5")} relative`}>
           <div className="absolute inset-x-0 top-0 h-[1536px] pointer-events-none flex flex-col border-b border-slate-200">
             {displayHours.map((hour) => (
               <div key={hour} className="h-16 border-t border-slate-200 w-full" />
@@ -406,19 +589,33 @@ export default function TimeGrid({
                     const isDragging = interaction?.existingEvent?.id === ev.id;
                     const { top: originalTop, height: originalHeight } = getEventStyle(ev);
                     
-                    const top = isDragging ? interaction.currentTop : originalTop;
-                    const height = isDragging ? interaction.currentHeight : originalHeight;
+                    // ✅ Dùng optimistic nếu có, fallback về data gốc
+                    const optimistic = optimisticUpdates[String(ev.id)];
+                    const top = isDragging ? interaction.currentTop : (optimistic?.top ?? originalTop);
+                    const height = isDragging ? interaction.currentHeight : (optimistic?.height ?? originalHeight);
 
-                    const startLabel = new Date(ev.start_time).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+                    const timeOptions = timeFormat === "24h" 
+                        ? { hour: "2-digit", minute: "2-digit", hour12: false }
+                        : { hour: "numeric", minute: "2-digit", hour12: true };
+                    
+                    const startStr = new Date(ev.start_time).toLocaleTimeString("vi-VN", timeOptions);
+                    const endTime = ev.end_time || ev.deadline_time || ev.start_time;
+                    const endStr = new Date(endTime).toLocaleTimeString("vi-VN", timeOptions);
+                    const timeLabel = `${startStr} - ${endStr}`;
+                    const isPast = appSettings.dimPastEvents && new Date(ev.end_time || ev.deadline_time || ev.start_time) < new Date();
+
                     return (
                       <EventBlock
                         key={ev.id}
-                        title={ev.title}
-                        time={startLabel}
-                        type={ev.color || "blue"}
+                        {...ev}
+                        my_permission={ev.my_permission}
+                        isPast={isPast}
+                        time={timeLabel}
                         top={top}
                         height={height}
-                        location={ev.location}
+                        onToggleComplete={() => onToggleTask?.(ev)}
+                        onMouseDown={(e) => handleEventDragStart(e, ev)}
+                        onResizeMouseDown={(e) => handleEventResizeStart(e, ev)}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (didMoveRef.current) return; // Chặn popup nếu vừa kéo xong
@@ -429,7 +626,15 @@ export default function TimeGrid({
                             });
                         }}
                         onMouseDown={(e) => handleInteractionStart(e, 'move', ev)}
-                        onResizeMouseDown={(e) => handleInteractionStart(e, 'resize', ev)}
+                        onResizeMouseDown={(e) => {
+                          handleInteractionStart(e, 'resize', ev);
+                        }}
+                        description={ev.description}
+                        event_type={ev.event_type}
+                        is_completed={ev.is_completed}
+                        is_clamped={isDragging && interaction.isClamped}
+                        lang={appSettings.language}
+                        onToggleComplete={() => callbacksRef.current.onToggleTask?.(ev.id)}
                         className={isDragging ? "shadow-2xl ring-2 ring-blue-500/50 z-50 opacity-90 scale-[1.01]" : "transition-all duration-200"}
                       />
                     );
@@ -459,7 +664,7 @@ export default function TimeGrid({
                     >
                       <div className="flex justify-between items-start mb-0.5">
                         <span className="text-[11px] font-bold text-blue-700 truncate uppercase tracking-tight">
-                          (Đang tạo...)
+                          ({t('creating', appSettings.language)})
                         </span>
                       </div>
                       <div

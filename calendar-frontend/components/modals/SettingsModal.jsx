@@ -1,18 +1,20 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     X, Globe, Clock, Calendar, Bell, Eye, Heart,
-    Plus, Video, MapPin, Check, Settings,
+    Plus, Video, MapPin, Check, Settings, Tag,
 } from "lucide-react";
+import { t } from "@/lib/i18n";
 
 // ── Nav sections ──────────────────────────────────────────────────────────────
 const SECTIONS = [
-    { key: "language", label: "Ngôn ngữ & Khu vực", Icon: Globe },
-    { key: "timezone", label: "Múi giờ", Icon: Clock },
-    { key: "events", label: "Cài đặt sự kiện", Icon: Calendar },
-    { key: "notifications", label: "Thông báo", Icon: Bell },
-    { key: "view", label: "Tuỳ chọn xem", Icon: Eye },
-    { key: "calendars", label: "Lịch yêu thích", Icon: Heart },
+    { key: "language", labelKey: "sections.language", Icon: Globe },
+    { key: "timezone", labelKey: "sections.timezone", Icon: Clock },
+    { key: "events", labelKey: "sections.events", Icon: Calendar },
+    { key: "notifications", labelKey: "sections.notifications", Icon: Bell },
+    { key: "view", labelKey: "sections.view", Icon: Eye },
+    { key: "calendars", labelKey: "sections.calendars", Icon: Heart },
+    { key: "categories", labelKey: "sections.categories", Icon: Tag },
 ];
 
 // ── Static data ───────────────────────────────────────────────────────────────
@@ -90,6 +92,7 @@ const DEFAULT_SETTINGS = {
     worldHolidays: false,
     otherHolidays: false,
     customHolidays: [],
+    customCategories: ["Mặc định", "Công việc", "Gia đình", "Cá nhân"],
 };
 
 // ── Shared tiny components ────────────────────────────────────────────────────
@@ -162,7 +165,7 @@ function Input({ value, onChange, placeholder, icon: Icon, className = "" }) {
             {Icon && <Icon className="w-4 h-4 text-slate-400 flex-shrink-0" />}
             <input
                 type="text"
-                value={value}
+                value={value ?? ""}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
                 className={`text-sm border border-slate-200 rounded-xl px-3 py-2 text-slate-700 placeholder-slate-300
@@ -174,25 +177,25 @@ function Input({ value, onChange, placeholder, icon: Icon, className = "" }) {
 }
 
 // ── Section: Ngôn ngữ & Khu vực ───────────────────────────────────────────────
-function LanguageSection({ s, set }) {
+function LanguageSection({ s, set, lang }) {
     return (
         <div className="space-y-6">
-            <SectionLabel>Ngôn ngữ và Khu vực</SectionLabel>
+            <SectionLabel>{t('lang_region.title', lang)}</SectionLabel>
             <Card>
-                <Row label="Ngôn ngữ" desc="Ngôn ngữ hiển thị của ứng dụng">
+                <Row label={t('lang_region.language', lang)} desc={t('lang_region.language_desc', lang)}>
                     <Select value={s.language} onChange={(v) => set("language", v)} options={LANGUAGES} className="min-w-[180px]" />
                 </Row>
-                <Row label="Quốc gia" desc="Quốc gia hoặc vùng lãnh thổ của bạn">
+                <Row label={t('lang_region.country', lang)} desc={t('lang_region.country_desc', lang)}>
                     <Select value={s.country} onChange={(v) => set("country", v)} options={COUNTRIES} className="min-w-[180px]" />
                 </Row>
-                <Row label="Định dạng ngày" desc="Cách hiển thị ngày, tháng, năm">
+                <Row label={t('lang_region.date_format', lang)} desc={t('lang_region.date_format_desc', lang)}>
                     <Select value={s.dateFormat} onChange={(v) => set("dateFormat", v)} options={DATE_FORMATS} className="min-w-[240px]" />
                 </Row>
-                <Row label="Định dạng giờ" desc="Hiển thị theo kiểu 12 giờ hoặc 24 giờ">
+                <Row label={t('lang_region.time_format', lang)} desc={t('lang_region.time_format_desc', lang)}>
                     <div className="flex rounded-xl overflow-hidden border border-slate-200">
                         {[
-                            { v: "12h", label: "12 giờ" },
-                            { v: "24h", label: "24 giờ" },
+                            { v: "12h", label: t('lang_region.hour_12', lang) },
+                            { v: "24h", label: t('lang_region.hour_24', lang) },
                         ].map(({ v, label }) => (
                             <button
                                 key={v}
@@ -212,23 +215,23 @@ function LanguageSection({ s, set }) {
 }
 
 // ── Section: Múi giờ ──────────────────────────────────────────────────────────
-function TimezoneSection({ s, set }) {
+function TimezoneSection({ s, set, lang }) {
     return (
         <div className="space-y-6">
-            <SectionLabel>Múi giờ</SectionLabel>
+            <SectionLabel>{t('timezone.title', lang)}</SectionLabel>
             <Card>
                 <Row
-                    label="Hiển thị múi giờ phụ"
-                    desc="Thêm một cột múi giờ thứ hai trên lưới lịch"
+                    label={t('timezone.show_secondary', lang)}
+                    desc={t('timezone.show_secondary_desc', lang)}
                 >
                     <Toggle checked={s.showSecondaryTimezone} onChange={(v) => set("showSecondaryTimezone", v)} />
                 </Row>
-                <Row label="Múi giờ chính" desc="Múi giờ mặc định của bạn">
+                <Row label={t('timezone.primary', lang)} desc={t('timezone.primary_desc', lang)}>
                     <Select value={s.primaryTimezone} onChange={(v) => set("primaryTimezone", v)} options={TIMEZONES} className="min-w-[220px]" />
                 </Row>
                 <Row
-                    label="Múi giờ phụ"
-                    desc={s.showSecondaryTimezone ? "Múi giờ thứ hai hiển thị bên cạnh" : "Bật tuỳ chọn phía trên để dùng tính năng này"}
+                    label={t('timezone.secondary', lang)}
+                    desc={s.showSecondaryTimezone ? t('timezone.secondary_desc', lang) : t('timezone.secondary_disabled', lang)}
                     disabled={!s.showSecondaryTimezone}
                 >
                     <Select value={s.secondaryTimezone} onChange={(v) => set("secondaryTimezone", v)} options={TIMEZONES} className="min-w-[220px]" />
@@ -239,12 +242,12 @@ function TimezoneSection({ s, set }) {
 }
 
 // ── Section: Cài đặt sự kiện ──────────────────────────────────────────────────
-function EventsSection({ s, set }) {
+function EventsSection({ s, set, lang }) {
     return (
         <div className="space-y-6">
-            <SectionLabel>Cài đặt sự kiện</SectionLabel>
+            <SectionLabel>{t('event_settings.title', lang)}</SectionLabel>
             <Card>
-                <Row label="Link Meet mặc định" desc="Tự động điền vào mỗi sự kiện mới tạo">
+                <Row label={t('event_settings.meet_link', lang)} desc={t('event_settings.meet_link_desc', lang)}>
                     <Input
                         value={s.defaultMeetLink}
                         onChange={(v) => set("defaultMeetLink", v)}
@@ -252,11 +255,11 @@ function EventsSection({ s, set }) {
                         icon={Video}
                     />
                 </Row>
-                <Row label="Vị trí mặc định" desc="Địa điểm được điền sẵn khi tạo sự kiện">
+                <Row label={t('event_settings.location', lang)} desc={t('event_settings.location_desc', lang)}>
                     <Input
                         value={s.defaultLocation}
                         onChange={(v) => set("defaultLocation", v)}
-                        placeholder="Nhập địa điểm..."
+                        placeholder={t('event_settings.location_placeholder', lang)}
                         icon={MapPin}
                     />
                 </Row>
@@ -266,20 +269,20 @@ function EventsSection({ s, set }) {
 }
 
 // ── Section: Thông báo ────────────────────────────────────────────────────────
-function NotificationsSection({ s, set }) {
+function NotificationsSection({ s, set, lang }) {
     const NOTIF_OPTS = [
-        { value: "off", label: "Tắt", desc: "Không nhận bất kỳ thông báo nào" },
-        { value: "screen", label: "Thông báo trên màn hình", desc: "Hiện popup bên trong ứng dụng" },
-        { value: "push", label: "Thông báo đẩy", desc: "Thông báo từ trình duyệt / hệ thống" },
+        { value: "off", label: t('notif_settings.off', lang), desc: t('notif_settings.off_desc', lang) },
+        { value: "screen", label: t('notif_settings.screen', lang), desc: t('notif_settings.screen_desc', lang) },
+        { value: "push", label: t('notif_settings.push', lang), desc: t('notif_settings.push_desc', lang) },
     ];
     return (
         <div className="space-y-6">
-            <SectionLabel>Cài đặt thông báo</SectionLabel>
+            <SectionLabel>{t('notif_settings.title', lang)}</SectionLabel>
 
             {/* Radio group */}
             <Card>
                 <div className="px-5 py-4 border-b border-slate-50">
-                    <p className="text-sm font-semibold text-slate-700 mb-4">Loại thông báo</p>
+                    <p className="text-sm font-semibold text-slate-700 mb-4">{t('notif_settings.type', lang)}</p>
                     <div className="space-y-3">
                         {NOTIF_OPTS.map((opt) => {
                             const active = s.notificationType === opt.value;
@@ -302,8 +305,8 @@ function NotificationsSection({ s, set }) {
                     </div>
                 </div>
                 <Row
-                    label="Nhắc nhở trước"
-                    desc="Hiển thị thông báo bao nhiêu phút trước khi sự kiện bắt đầu"
+                    label={t('notif_settings.reminder', lang)}
+                    desc={t('notif_settings.reminder_desc', lang)}
                     disabled={s.notificationType === "off"}
                 >
                     <div className="flex items-center gap-2">
@@ -316,7 +319,7 @@ function NotificationsSection({ s, set }) {
                             className="w-16 text-sm text-center border border-slate-200 rounded-xl px-2 py-2 text-slate-700
                 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
                         />
-                        <span className="text-sm text-slate-500 font-medium">phút</span>
+                        <span className="text-sm text-slate-500 font-medium">{t('notif_settings.minutes', lang)}</span>
                     </div>
                 </Row>
             </Card>
@@ -325,16 +328,16 @@ function NotificationsSection({ s, set }) {
 }
 
 // ── Section: Tuỳ chọn xem ─────────────────────────────────────────────────────
-function ViewSection({ s, set }) {
+function ViewSection({ s, set, lang }) {
     const TOGGLES = [
-        { key: "showWeekends", label: "Hiển thị các ngày cuối tuần", desc: "Hiện Thứ Bảy và Chủ Nhật trên lưới lịch" },
-        { key: "showCompletedTasks", label: "Hiển thị việc cần làm đã hoàn tất", desc: "Các task đã đánh dấu xong vẫn hiện trên lịch" },
-        { key: "showWeekNumbers", label: "Hiện số tuần", desc: "Số thứ tự tuần trong năm (1–52)" },
-        { key: "dimPastEvents", label: "Giảm độ sáng sự kiện trước đây", desc: "Làm mờ nhẹ sự kiện đã qua để dễ phân biệt" },
+        { key: "showWeekends", label: t('view_options.show_weekends', lang), desc: t('view_options.show_weekends_desc', lang) },
+        { key: "showCompletedTasks", label: t('view_options.show_completed', lang), desc: t('view_options.show_completed_desc', lang) },
+        { key: "showWeekNumbers", label: t('view_options.show_week_num', lang), desc: t('view_options.show_week_num_desc', lang) },
+        { key: "dimPastEvents", label: t('view_options.dim_past', lang), desc: t('view_options.dim_past_desc', lang) },
     ];
     return (
         <div className="space-y-6">
-            <SectionLabel>Tuỳ chọn xem</SectionLabel>
+            <SectionLabel>{t('view_options.title', lang)}</SectionLabel>
             <Card>
                 {TOGGLES.map((item) => (
                     <Row key={item.key} label={item.label} desc={item.desc}>
@@ -343,8 +346,13 @@ function ViewSection({ s, set }) {
                 ))}
             </Card>
             <Card>
-                <Row label="Bắt đầu tuần vào" desc="Ngày đầu tiên hiển thị trong mỗi hàng tuần">
-                    <Select value={s.weekStartDay} onChange={(v) => set("weekStartDay", v)} options={WEEK_DAYS} className="min-w-[160px]" />
+                <Row label={t('view_options.week_start', lang)} desc={t('view_options.week_start_desc', lang)}>
+                    <Select 
+                        value={s.weekStartDay} 
+                        onChange={(v) => set("weekStartDay", v)} 
+                        options={WEEK_DAYS} 
+                        className="min-w-[160px]" 
+                    />
                 </Row>
             </Card>
         </div>
@@ -352,38 +360,66 @@ function ViewSection({ s, set }) {
 }
 
 // ── Section: Lịch yêu thích ───────────────────────────────────────────────────
-function CalendarsSection({ s, set }) {
+function CalendarsSection({ s, set, lang }) {
     const [newHoliday, setNewHoliday] = useState("");
-    const [customHolidays, setCustomHolidays] = useState(s.customHolidays || []);
+    const customHolidays = s.customHolidays || [];
 
     const addHoliday = () => {
         const name = newHoliday.trim();
         if (!name) return;
         const updated = [...customHolidays, { id: Date.now(), name }];
-        setCustomHolidays(updated);
         set("customHolidays", updated);
         setNewHoliday("");
     };
 
     const removeHoliday = (id) => {
         const updated = customHolidays.filter((h) => h.id !== id);
-        setCustomHolidays(updated);
         set("customHolidays", updated);
     };
 
+    // Tạo danh sách lịch đang kích hoạt để hiển thị tóm tắt
+    const activePresets = [
+        { key: "vietnamHolidays", label: "Ngày lễ ở Việt Nam", icon: "🇻🇳" },
+        { key: "worldHolidays", label: "Ngày lễ thế giới", icon: "🌍" },
+        { key: "otherHolidays", label: "Ngày lễ khác", icon: "🗓" },
+    ].filter(p => s[p.key]);
+
     return (
         <div className="space-y-6">
-            <SectionLabel>Duyệt qua lịch yêu thích</SectionLabel>
+            <SectionLabel>{t('fav_calendars.title', lang)}</SectionLabel>
+
+            {/* Active Summary */}
+            {(activePresets.length > 0 || customHolidays.length > 0) && (
+                <Card className="bg-blue-50/30 border-blue-100">
+                    <div className="px-5 py-4">
+                        <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-3">{t('sections.active_calendars', lang)}</p>
+                        <div className="flex flex-wrap gap-2">
+                            {activePresets.map(p => (
+                                <div key={p.key} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-blue-100 rounded-lg text-xs font-semibold text-blue-700 shadow-sm">
+                                    <span>{p.icon}</span>
+                                    <span>{p.label}</span>
+                                </div>
+                            ))}
+                            {customHolidays.map(h => (
+                                <div key={h.id} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-blue-100 rounded-lg text-xs font-semibold text-blue-700 shadow-sm">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                                    <span>{h.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </Card>
+            )}
 
             {/* Preset holidays */}
             <Card>
-                <Row label="🇻🇳  Ngày lễ ở Việt Nam" desc="Tết Nguyên Đán, 30/4, 2/9 và các ngày lễ quốc gia">
+                <Row label={`🇻🇳  ${t('fav_calendars.vn_holidays', lang)}`} desc={t('fav_calendars.vn_holidays_desc', lang)}>
                     <Toggle checked={s.vietnamHolidays} onChange={(v) => set("vietnamHolidays", v)} />
                 </Row>
-                <Row label="🌍  Ngày lễ thế giới" desc="Giáng sinh, Tết Dương Lịch, Halloween...">
+                <Row label={`🌍  ${t('fav_calendars.world_holidays', lang)}`} desc={t('fav_calendars.world_holidays_desc', lang)}>
                     <Toggle checked={s.worldHolidays} onChange={(v) => set("worldHolidays", v)} />
                 </Row>
-                <Row label="🗓  Ngày lễ khác" desc="Ngày lễ của các tôn giáo và văn hóa khác">
+                <Row label={`🗓  ${t('fav_calendars.other_holidays', lang)}`} desc={t('fav_calendars.other_holidays_desc', lang)}>
                     <Toggle checked={s.otherHolidays} onChange={(v) => set("otherHolidays", v)} />
                 </Row>
             </Card>
@@ -391,8 +427,8 @@ function CalendarsSection({ s, set }) {
             {/* Custom holidays */}
             <Card>
                 <div className="px-5 py-4">
-                    <p className="text-sm font-semibold text-slate-700 mb-1">Thêm các ngày lễ tuỳ chỉnh</p>
-                    <p className="text-xs text-slate-400 mb-4">Thêm ngày lễ riêng của bạn để hiển thị trên lịch</p>
+                    <p className="text-sm font-semibold text-slate-700 mb-1">{t('fav_calendars.custom_title', lang)}</p>
+                    <p className="text-xs text-slate-400 mb-4">{t('fav_calendars.custom_desc', lang)}</p>
 
                     {/* Input row */}
                     <div className="flex gap-2 mb-4">
@@ -401,7 +437,7 @@ function CalendarsSection({ s, set }) {
                             value={newHoliday}
                             onChange={(e) => setNewHoliday(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && addHoliday()}
-                            placeholder="VD: Ngày thành lập công ty..."
+                            placeholder={t('fav_calendars.custom_placeholder', lang)}
                             className="flex-1 text-sm border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700
                 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
                         />
@@ -410,9 +446,9 @@ function CalendarsSection({ s, set }) {
                             onClick={addHoliday}
                             disabled={!newHoliday.trim()}
                             className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400
-                text-white text-sm font-semibold rounded-xl transition flex items-center gap-1.5 whitespace-nowrap"
+                text-white text-sm font-semibold rounded-xl transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
                         >
-                            <Plus className="w-4 h-4" /> Thêm
+                            <Plus className="w-4 h-4" /> {t('fav_calendars.add', lang)}
                         </button>
                     </div>
 
@@ -422,7 +458,7 @@ function CalendarsSection({ s, set }) {
                             {customHolidays.map((h) => (
                                 <div
                                     key={h.id}
-                                    className="flex items-center justify-between px-3 py-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl transition group"
+                                    className="flex items-center justify-between px-3 py-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition group"
                                 >
                                     <div className="flex items-center gap-2.5">
                                         <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
@@ -431,7 +467,7 @@ function CalendarsSection({ s, set }) {
                                     <button
                                         type="button"
                                         onClick={() => removeHoliday(h.id)}
-                                        className="text-slate-300 hover:text-red-500 transition p-1 opacity-0 group-hover:opacity-100"
+                                        className="text-slate-300 hover:text-red-500 transition p-1.5 cursor-pointer"
                                     >
                                         <X className="w-4 h-4" />
                                     </button>
@@ -440,7 +476,7 @@ function CalendarsSection({ s, set }) {
                         </div>
                     ) : (
                         <div className="text-center py-4 text-slate-300">
-                            <p className="text-xs">Chưa có ngày lễ tuỳ chỉnh nào</p>
+                            <p className="text-xs">{t('fav_calendars.no_custom', lang)}</p>
                         </div>
                     )}
                 </div>
@@ -449,11 +485,95 @@ function CalendarsSection({ s, set }) {
     );
 }
 
+
+// ── Section: Danh mục ────────────────────────────────────────────────────────
+function CategoriesSection({ s, set, lang }) {
+    const [newCat, setNewCat] = useState("");
+    const categories = s.customCategories || [];
+
+    const addCategory = () => {
+        const name = newCat.trim();
+        if (!name || categories.includes(name)) return;
+        const updated = [...categories, name];
+        set("customCategories", updated);
+        setNewCat("");
+    };
+
+    const removeCategory = (name) => {
+        const updated = categories.filter((c) => c !== name);
+        set("customCategories", updated);
+    };
+
+    return (
+        <div className="space-y-6">
+            <SectionLabel>{t('categories_settings.title', lang)}</SectionLabel>
+
+            <Card>
+                <div className="px-5 py-4">
+                    <p className="text-sm font-semibold text-slate-700 mb-1">{t('categories_settings.add_title', lang)}</p>
+                    <p className="text-xs text-slate-400 mb-4">{t('categories_settings.add_desc', lang)}</p>
+
+                    <div className="flex gap-2 mb-6">
+                        <input
+                            type="text"
+                            value={newCat}
+                            onChange={(e) => setNewCat(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && addCategory()}
+                            placeholder={t('categories_settings.placeholder', lang)}
+                            className="flex-1 text-sm border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700
+                                placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
+                        />
+                        <button
+                            type="button"
+                            onClick={addCategory}
+                            disabled={!newCat.trim() || categories.includes(newCat.trim())}
+                            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400
+                                text-white text-sm font-semibold rounded-xl transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+                        >
+                            <Plus className="w-4 h-4" /> {t('fav_calendars.add', lang)}
+                        </button>
+                    </div>
+
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">{t('sections.category_list', lang)} ({categories.length})</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {categories.map((cat) => (
+                            <div
+                                key={cat}
+                                className="flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 rounded-xl transition group"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                    <span className="text-sm text-slate-700 font-medium">{cat}</span>
+                                </div>
+                                {cat !== "Mặc định" && (
+                                    <button
+                                        type="button"
+                                        onClick={() => removeCategory(cat)}
+                                        className="text-slate-300 hover:text-red-500 transition p-1 cursor-pointer"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function SettingsModal({ isOpen, onClose, onSave }) {
+export default function SettingsModal({ isOpen, onClose, onSave, settings: initialSettings }) {
     const [activeSection, setActiveSection] = useState("language");
-    const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+    const [settings, setSettings] = useState(initialSettings || DEFAULT_SETTINGS);
     const [saveState, setSaveState] = useState("idle"); // "idle" | "saved"
+
+    useEffect(() => {
+        if (isOpen && initialSettings) {
+            setSettings(initialSettings);
+        }
+    }, [isOpen, initialSettings]);
 
     if (!isOpen) return null;
 
@@ -467,12 +587,13 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
     };
 
     const SECTION_CONTENT = {
-        language: <LanguageSection s={settings} set={set} />,
-        timezone: <TimezoneSection s={settings} set={set} />,
-        events: <EventsSection s={settings} set={set} />,
-        notifications: <NotificationsSection s={settings} set={set} />,
-        view: <ViewSection s={settings} set={set} />,
-        calendars: <CalendarsSection s={settings} set={set} />,
+        language: <LanguageSection s={settings} set={set} lang={settings.language} />,
+        timezone: <TimezoneSection s={settings} set={set} lang={settings.language} />,
+        events: <EventsSection s={settings} set={set} lang={settings.language} />,
+        notifications: <NotificationsSection s={settings} set={set} lang={settings.language} />,
+        view: <ViewSection s={settings} set={set} lang={settings.language} />,
+        calendars: <CalendarsSection s={settings} set={set} lang={settings.language} />,
+        categories: <CategoriesSection s={settings} set={set} lang={settings.language} />,
     };
 
     return (
@@ -494,8 +615,8 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
                             <Settings className="w-5 h-5 text-slate-600" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-slate-800 leading-tight">Cài đặt</h2>
-                            <p className="text-xs text-slate-400">Tuỳ chỉnh lịch của bạn</p>
+                            <h2 className="text-lg font-bold text-slate-800 leading-tight">{t('settings', settings.language)}</h2>
+                            <p className="text-xs text-slate-400">{t('settings_desc', settings.language)}</p>
                         </div>
                     </div>
                     <button
@@ -511,7 +632,7 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
 
                     {/* Sidebar nav */}
                     <nav className="w-52 bg-white border-r border-slate-200 py-3 flex-shrink-0 overflow-y-auto">
-                        {SECTIONS.map(({ key, label, Icon }) => {
+                        {SECTIONS.map(({ key, labelKey, Icon }) => {
                             const active = activeSection === key;
                             return (
                                 <button
@@ -519,13 +640,13 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
                                     type="button"
                                     onClick={() => setActiveSection(key)}
                                     className={`w-full flex items-center gap-3 px-5 py-3 text-sm font-medium transition-all text-left
-                    ${active
+                                        ${active
                                             ? "text-blue-600 bg-blue-50 border-r-[3px] border-blue-600"
                                             : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"
                                         }`}
                                 >
                                     <Icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-blue-600" : "text-slate-400"}`} />
-                                    <span className="truncate">{label}</span>
+                                    <span className="truncate">{t(labelKey, settings.language)}</span>
                                 </button>
                             );
                         })}
@@ -540,7 +661,7 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
                 {/* ── Footer ── */}
                 <div className="flex items-center justify-between px-8 py-4 bg-white border-t border-slate-200 flex-shrink-0">
                     <p className="text-xs text-slate-400">
-                        Cài đặt áp dụng cho phiên hiện tại
+                        {settings.language === 'en' ? 'Settings apply to the current session' : 'Cài đặt áp dụng cho phiên hiện tại'}
                     </p>
                     <div className="flex gap-2">
                         <button
@@ -548,7 +669,7 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
                             onClick={onClose}
                             className="px-5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition"
                         >
-                            Huỷ
+                            {t('cancel', settings.language)}
                         </button>
                         <button
                             type="button"
@@ -560,9 +681,9 @@ export default function SettingsModal({ isOpen, onClose, onSave }) {
                                 }`}
                         >
                             {saveState === "saved" ? (
-                                <><Check className="w-4 h-4" /> Đã lưu!</>
+                                <><Check className="w-4 h-4" /> {t('saved', settings.language)}</>
                             ) : (
-                                "Lưu cài đặt"
+                                t('save_settings', settings.language)
                             )}
                         </button>
                     </div>

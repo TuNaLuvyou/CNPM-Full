@@ -1,10 +1,11 @@
-"use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { Lightbulb, Plus, Loader2 } from "lucide-react";
 import NoteCard from "@/components/ui/NoteCard";
 import { getNotes, createNote, togglePinNote, deleteNote } from "@/lib/api";
+import { t } from "@/lib/i18n";
 
-export default function KeepPanel() {
+export default function KeepPanel({ appSettings }) {
+  const lang = appSettings?.language || "vi";
   const [notes, setNotes] = useState([]);
   const [addingNote, setAddingNote] = useState(false);
   const [newNoteTitle, setNewNoteTitle] = useState("");
@@ -20,12 +21,12 @@ export default function KeepPanel() {
       setNotes(data);
       setError(null);
     } catch (e) {
-      setError("Không thể tải ghi chú.");
+      setError(t('keep_panel.loading_error', lang) || "Không thể tải ghi chú.");
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     fetchNotes();
@@ -35,7 +36,7 @@ export default function KeepPanel() {
   const addNote = async () => {
     if (!newNoteContent.trim() && !newNoteTitle.trim()) return;
     const payload = {
-      title: newNoteTitle || "Ghi chú mới",
+      title: newNoteTitle || t('keep_panel.default_title', lang),
       content: newNoteContent,
       color: "#fef9c3",
       is_pinned: false,
@@ -47,7 +48,7 @@ export default function KeepPanel() {
       setNewNoteContent("");
       setAddingNote(false);
     } catch (e) {
-      alert("Không thể lưu ghi chú: " + e.message);
+      alert(t('keep_panel.save_error', lang) || "Không thể lưu ghi chú: " + e.message);
     }
   };
 
@@ -84,7 +85,7 @@ export default function KeepPanel() {
     <div className="flex flex-col h-full bg-white">
       <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
         <h2 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-          <Lightbulb className="w-4 h-4 text-yellow-500" /> Google Keep
+          <Lightbulb className="w-4 h-4 text-yellow-500" /> {t('sidebar_tools.keep', lang)}
         </h2>
         <button
           onClick={() => setAddingNote((v) => !v)}
@@ -100,13 +101,13 @@ export default function KeepPanel() {
           <input
             value={newNoteTitle}
             onChange={(e) => setNewNoteTitle(e.target.value)}
-            placeholder="Tiêu đề"
+            placeholder={t('keep_panel.title_placeholder', lang)}
             className="w-full px-3 py-2 text-sm font-semibold text-slate-700 placeholder-slate-400 outline-none border-b border-slate-100 bg-white"
           />
           <textarea
             value={newNoteContent}
             onChange={(e) => setNewNoteContent(e.target.value)}
-            placeholder="Nhập ghi chú..."
+            placeholder={t('keep_panel.content_placeholder', lang)}
             rows={3}
             className="w-full px-3 py-2 text-sm text-slate-700 placeholder-slate-400 outline-none resize-none bg-white"
             autoFocus
@@ -120,13 +121,13 @@ export default function KeepPanel() {
               }}
               className="text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg transition font-medium"
             >
-              Hủy
+              {t('cancel', lang)}
             </button>
             <button
               onClick={addNote}
               className="text-xs text-blue-600 hover:text-white hover:bg-blue-600 font-semibold px-3 py-1.5 rounded-lg transition"
             >
-              Lưu
+              {t('save', lang)}
             </button>
           </div>
         </div>
@@ -137,19 +138,19 @@ export default function KeepPanel() {
         {loading ? (
           <div className="flex items-center justify-center h-32 gap-2 text-slate-400">
             <Loader2 className="w-5 h-5 animate-spin" />
-            <span className="text-xs">Đang tải...</span>
+            <span className="text-xs">{t('loading', lang)}</span>
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-32 text-red-400 gap-2 px-4 text-center">
             <p className="text-xs">{error}</p>
-            <button onClick={fetchNotes} className="text-xs text-blue-500 underline">Thử lại</button>
+            <button onClick={fetchNotes} className="text-xs text-blue-500 underline">{t('retry', lang)}</button>
           </div>
         ) : (
           <>
             {pinned.length > 0 && (
               <div className="space-y-2">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">
-                  Đã ghim
+                  {t('keep_panel.pinned', lang)}
                 </p>
                 <div className="grid gap-2">
                   {pinned.map((note) => (
@@ -168,7 +169,7 @@ export default function KeepPanel() {
               <div className="space-y-2 pt-2">
                 {pinned.length > 0 && (
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">
-                    Khác
+                    {t('keep_panel.other', lang)}
                   </p>
                 )}
                 <div className="grid gap-2">
@@ -187,7 +188,7 @@ export default function KeepPanel() {
             {notes.length === 0 && (
               <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-2">
                 <Lightbulb className="w-10 h-10 text-slate-200" />
-                <p className="text-xs font-medium">Chưa có ghi chú nào</p>
+                <p className="text-xs font-medium">{t('keep_panel.no_notes', lang)}</p>
               </div>
             )}
           </>

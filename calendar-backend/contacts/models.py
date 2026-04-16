@@ -22,3 +22,24 @@ class Contact(models.Model):
         if not self.avatar_char and self.name:
             self.avatar_char = self.name[0].upper()
         super().save(*args, **kwargs)
+
+class Connection(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('declined', 'Declined'),
+        ('blocked', 'Blocked'),
+    ]
+    
+    sender = models.ForeignKey(User, related_name='sent_connections', on_delete=models.CASCADE)
+    receiver = models.ForeignKey(User, related_name='received_connections', on_delete=models.CASCADE)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    is_pinned = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('sender', 'receiver')
+
+    def __str__(self):
+        return f"{self.sender.username} -> {self.receiver.username} ({self.status})"

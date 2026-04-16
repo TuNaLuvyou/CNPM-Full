@@ -17,6 +17,10 @@ export default function MainLayout({
   deletedItems,
   setIsSettingsModalOpen,
   setIsTrashOpen,
+  notifications,
+  setNotifications,
+  appSettings,
+  setEventSavedTick,
 }) {
   return (
     <div className="flex flex-col h-full bg-white relative min-w-[700px]">
@@ -34,12 +38,16 @@ export default function MainLayout({
         deletedItems={deletedItems}
         setIsSettingsModalOpen={setIsSettingsModalOpen}
         setIsTrashOpen={setIsTrashOpen}
+        notifications={notifications}
+        setNotifications={setNotifications}
+        appSettings={appSettings}
+        setEventSavedTick={setEventSavedTick}
       />
       <div className="flex flex-1 overflow-hidden">
         <main className="flex-1 overflow-hidden flex flex-col bg-white border-r border-slate-200">
           {children}
         </main>
-        <RightSidebar />
+        <RightSidebar appSettings={appSettings} />
       </div>
     </div>
   );

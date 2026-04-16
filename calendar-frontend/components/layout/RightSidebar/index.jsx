@@ -5,8 +5,10 @@ import KeepPanel from "@/components/panels/KeepPanel";
 import MapsPanel from "@/components/panels/MapsPanel";
 import ContactsPanel from "@/components/panels/ContactsPanel";
 import { CheckSquare, Lightbulb, MapPin, Users } from "lucide-react";
+import { t } from "@/lib/i18n";
 
-export default function RightSidebar() {
+export default function RightSidebar({ appSettings }) {
+  const lang = appSettings?.language || "vi";
   const [rightPanel, setRightPanel] = useState(null);
   const [rightPanelWidth, setRightPanelWidth] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
@@ -52,7 +54,7 @@ export default function RightSidebar() {
     {
       id: "tasks",
       icon: <CheckSquare className="w-5 h-5" />,
-      label: "Google Tasks",
+      label: t('sidebar_tools.tasks', lang),
       activeColor: "text-blue-600",
       activeBg: "bg-blue-50",
       badge: tasksCount || null,
@@ -61,7 +63,7 @@ export default function RightSidebar() {
     {
       id: "keep",
       icon: <Lightbulb className="w-5 h-5" />,
-      label: "Google Keep",
+      label: t('sidebar_tools.keep', lang),
       activeColor: "text-yellow-500",
       activeBg: "bg-yellow-50",
       badge: null,
@@ -70,7 +72,7 @@ export default function RightSidebar() {
     {
       id: "maps",
       icon: <MapPin className="w-5 h-5" />,
-      label: "Google Maps",
+      label: t('sidebar_tools.maps', lang),
       activeColor: "text-red-500",
       activeBg: "bg-red-50",
       badge: null,
@@ -79,7 +81,7 @@ export default function RightSidebar() {
     {
       id: "contacts",
       icon: <Users className="w-5 h-5" />,
-      label: "Danh bạ",
+      label: t('sidebar_tools.contacts', lang),
       activeColor: "text-emerald-600",
       activeBg: "bg-emerald-50",
       badge: contactUnreadTotal || null,
@@ -90,13 +92,13 @@ export default function RightSidebar() {
   const getRightPanelContent = () => {
     switch (rightPanel) {
       case "tasks":
-        return <TasksPanel />;
+        return <TasksPanel appSettings={appSettings} />;
       case "keep":
-        return <KeepPanel />;
+        return <KeepPanel appSettings={appSettings} />;
       case "maps":
-        return <MapsPanel />;
+        return <MapsPanel appSettings={appSettings} />;
       case "contacts":
-        return <ContactsPanel />;
+        return <ContactsPanel appSettings={appSettings} />;
       default:
         return null;
     }

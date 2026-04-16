@@ -7,7 +7,15 @@ export default function CalendarHeader({
   selectedDayName,
   isSelectedToday,
   onDayClick,
+  appSettings = {},
 }) {
+  const showWeekends = appSettings.showWeekends !== false;
+  const displayWeekDays = (weekDays || []).filter(day => {
+    if (mode === "day") return true;
+    if (showWeekends) return true;
+    const d = day.fullDate.getDay();
+    return d !== 0 && d !== 6;
+  });
   return (
     <div className="flex border-b border-slate-200 bg-white z-10 shadow-sm flex-shrink-0">
       <div className="w-16 flex-shrink-0 border-r border-slate-200"></div>
@@ -26,8 +34,8 @@ export default function CalendarHeader({
           </span>
         </div>
       ) : (
-        <div className="flex-1 grid grid-cols-7">
-          {weekDays.map((day, idx) => (
+        <div className={`flex-1 grid ${showWeekends ? "grid-cols-7" : "grid-cols-5"}`}>
+          {displayWeekDays.map((day, idx) => (
             <div
               key={idx}
               className="flex flex-col items-center justify-center py-3 border-l border-slate-200"

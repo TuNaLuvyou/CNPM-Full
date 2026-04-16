@@ -18,6 +18,8 @@ function getHeaders(extra = {}) {
   return headers;
 }
 
+let isLoggingOut = false;
+
 async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: getHeaders(),
@@ -26,6 +28,13 @@ async function request(path, options = {}) {
   if (res.status === 204) return null;
   const data = await res.json();
   if (!res.ok) {
+    if (res.status === 401 && !isLoggingOut) {
+      isLoggingOut = true;
+      localStorage.removeItem('authToken');
+      if (typeof window !== 'undefined') {
+        window.location.reload(); // Force app to go back to login state
+      }
+    }
     // Ném lỗi với message từ BE
     const msg = typeof data === 'object'
       ? Object.values(data).flat().join(' ')
@@ -190,4 +199,68 @@ export async function updateContact(id, data) {
 
 export async function deleteContact(id) {
   return request(`/contacts/${id}/`, { method: 'DELETE' });
+}
+
+// ─── CONNECTIONS (Social) ──────────────────────────────────────────────────
+export async function searchUserByEmail(email) {
+  return request(`/contacts/search/by_email/?email=${encodeURIComponent(email)}`);
+}
+
+export async function sendConnectionRequest(receiverId) {
+  return request('/contacts/connections/', {
+    method: 'POST',
+    body: JSON.stringify({ receiver: receiverId }),
+  });
+}
+
+export async function getFriends() {
+  return request('/contacts/connections/friends/');
+}
+
+export async function getInvitations() {
+  return request('/contacts/connections/invitations/');
+}
+
+export async function acceptInvitation(connectionId) {
+  return request(`/contacts/connections/${connectionId}/accept/`, { method: 'POST' });
+}
+
+export async function declineInvitation(connectionId) {
+  return request(`/contacts/connections/${connectionId}/decline/`, { method: 'POST' });
+}
+
+export async function blockConnection(connectionId) {
+  return request(`/contacts/connections/${connectionId}/block/`, { method: 'POST' });
+}
+
+export async function togglePinConnection(connectionId) {
+  return request(`/contacts/connections/${connectionId}/toggle_pin/`, { method: 'POST' });
+}
+
+// ── Notifications & Invitations ──
+export async function getNotifications() {
+  return request('/events/notifications/');
+}
+
+export async function markAllNotificationsRead() {
+  return request('/events/notifications/mark_all_as_read/', { method: 'POST' });
+}
+
+export async function markNotificationRead(id) {
+  return request(`/events/notifications/${id}/mark_read/`, { method: 'POST' });
+}
+
+export async function acceptEventInvitation(id, force = false) {
+  return request(`/events/invitations/${id}/accept/`, { 
+    method: 'POST', 
+    body: JSON.stringify({ force }) 
+  });
+}
+
+export async function declineEventInvitation(id) {
+  return request(`/events/invitations/${id}/decline/`, { method: 'POST' });
+}
+
+export async function leaveEvent(eventId) {
+  return request(`/events/${eventId}/leave/`, { method: 'POST' });
 }

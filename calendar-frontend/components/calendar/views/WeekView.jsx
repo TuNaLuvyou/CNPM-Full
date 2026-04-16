@@ -15,10 +15,12 @@ export default function WeekView({
   onEventClick,
   onEventUpdate,
   onInteractionUpdate,
+  onToggleTask,
+  appSettings,
 }) {
   return (
     <>
-      <CalendarHeader weekDays={weekDays} onDayClick={handleDayClick} />
+      <CalendarHeader weekDays={weekDays} onDayClick={handleDayClick} appSettings={appSettings} />
       <TimeGrid
         mode="week"
         weekDays={weekDays}
@@ -32,6 +34,8 @@ export default function WeekView({
         events={events}
         onEventClick={onEventClick}
         onEventUpdate={onEventUpdate}
+        onToggleTask={onToggleTask}
+        appSettings={appSettings}
       />
     </>
   );

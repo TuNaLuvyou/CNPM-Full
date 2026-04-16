@@ -1,6 +1,26 @@
 from rest_framework import serializers
-from .models import Contact
+from django.contrib.auth.models import User
+from .models import Contact, Connection
 
+class UserSearchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+
+class ConnectionSerializer(serializers.ModelSerializer):
+    sender_name = serializers.ReadOnlyField(source='sender.username')
+    receiver_name = serializers.ReadOnlyField(source='receiver.username')
+    receiver_email = serializers.ReadOnlyField(source='receiver.email')
+    sender_email = serializers.ReadOnlyField(source='sender.email')
+
+    class Meta:
+        model = Connection
+        fields = [
+            'id', 'sender', 'receiver', 'status', 'is_pinned',
+            'sender_name', 'receiver_name', 'sender_email', 'receiver_email',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['sender', 'status', 'is_pinned', 'created_at', 'updated_at']
 
 class ContactSerializer(serializers.ModelSerializer):
     class Meta:

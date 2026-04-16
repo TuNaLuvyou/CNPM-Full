@@ -1,8 +1,10 @@
-import React from "react";
-import { buildMonthCells, VI_MONTH_NAMES, formatDateLocal } from "../../../lib/CalendarHelper";
+import { buildMonthCells, MONTH_NAMES, formatDateLocal, getOrderedDayKeys } from "../../../lib/CalendarHelper";
+import { t } from "@/lib/i18n";
 
-function MonthCard({ year, month, onDayClick, events = [] }) {
-  const cells = buildMonthCells(year, month);
+function MonthCard({ year, month, onDayClick, events = [], appSettings = {} }) {
+  const lang = appSettings.language || "vi";
+  const showWeekends = appSettings.showWeekends !== false;
+  const cells = buildMonthCells(year, month, "monday");
   
   const hasEvent = (date) => {
     const dStr = formatDateLocal(date);
@@ -12,15 +14,27 @@ function MonthCard({ year, month, onDayClick, events = [] }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 min-w-[196px]">
       <h3 className="text-sm font-semibold text-slate-700 mb-3 text-center">
-        {VI_MONTH_NAMES[month]} {year}
+        {(MONTH_NAMES[lang] || MONTH_NAMES.vi)[month]} {year}
       </h3>
-      <div className="grid grid-cols-7 gap-0.5 text-center text-[11px] font-medium text-slate-400 mb-1">
-        {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
-          <div key={d}>{d}</div>
-        ))}
+      <div className={`grid ${showWeekends ? "grid-cols-7" : "grid-cols-5"} gap-0.5 text-center text-[11px] font-medium text-slate-400 mb-1`}>
+        {getOrderedDayKeys("monday").filter(key => {
+          if (showWeekends) return true;
+          return key !== 'sat' && key !== 'sun';
+        }).map((key) => {
+          const label = t(`mini_calendar.days.${key}`, lang);
+          return (
+            <div key={key} className="truncate" title={label}>
+              {label}
+            </div>
+          );
+        })}
       </div>
-      <div className="grid grid-cols-7 gap-0.5 text-center text-[11px]">
-        {cells.map((cell, idx) => {
+      <div className={`grid ${showWeekends ? "grid-cols-7" : "grid-cols-5"} gap-0.5 text-center text-[11px]`}>
+        {cells.filter(cell => {
+          if (showWeekends) return true;
+          const d = cell.fullDate.getDay();
+          return d !== 0 && d !== 6;
+        }).map((cell, idx) => {
           const hasEv = cell.isCurrentMonth && hasEvent(cell.fullDate);
           
           return (
@@ -51,7 +65,7 @@ function MonthCard({ year, month, onDayClick, events = [] }) {
   );
 }
 
-export default function YearView({ viewDate, onYearDayClick, events = [] }) {
+export default function YearView({ viewDate, onYearDayClick, events = [], appSettings = {} }) {
   return (
     <div className="flex-1 overflow-auto custom-scrollbar">
       <div className="grid grid-cols-4 gap-5 p-6 min-w-[880px]">
@@ -62,6 +76,7 @@ export default function YearView({ viewDate, onYearDayClick, events = [] }) {
             month={m}
             onDayClick={onYearDayClick}
             events={events}
+            appSettings={appSettings}
           />
         ))}
       </div>

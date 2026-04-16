@@ -1,7 +1,9 @@
 import React, { useState, useRef } from "react";
 import { MapPin, Search, ExternalLink } from "lucide-react";
+import { t } from "@/lib/i18n";
 
-export default function MapsPanel() {
+export default function MapsPanel({ appSettings }) {
+  const lang = appSettings?.language || "vi";
   const [mapQuery, setMapQuery] = useState("");
   const [mapSearch, setMapSearch] = useState("Ho Chi Minh City");
   const mapInputRef = useRef(null);
@@ -10,7 +12,7 @@ export default function MapsPanel() {
     <div className="flex flex-col h-full bg-white">
       <div className="px-4 py-3 border-b border-slate-100">
         <h2 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-red-500" /> Google Maps
+          <MapPin className="w-4 h-4 text-red-500" /> {t('sidebar_tools.maps', lang)}
         </h2>
       </div>
       {/* Search */}
@@ -27,15 +29,15 @@ export default function MapsPanel() {
             ref={mapInputRef}
             value={mapQuery}
             onChange={(e) => setMapQuery(e.target.value)}
-            placeholder="Tìm kiếm địa điểm..."
+            placeholder={t('maps_panel.search_placeholder', lang)}
             className="flex-1 text-sm bg-transparent outline-none text-slate-700 placeholder-slate-400"
           />
           {mapQuery && (
             <button
               type="submit"
-              className="text-red-500 hover:text-red-600 transition"
+              className="text-xs font-bold text-red-500 hover:text-red-600 transition px-2 py-1 rounded-md hover:bg-red-50"
             >
-              <Search className="w-3.5 h-3.5" />
+              {t('search', lang)} 
             </button>
           )}
         </form>
@@ -62,7 +64,7 @@ export default function MapsPanel() {
           className="flex items-center justify-center gap-2 text-xs text-blue-600 hover:text-blue-700 font-medium transition py-1"
         >
           <ExternalLink className="w-3.5 h-3.5" />
-          Mở trong Google Maps
+          {t('maps_panel.open_in_maps', lang)}
         </a>
       </div>
     </div>

@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
@@ -8,9 +8,10 @@ from .serializers import TaskSerializer
 
 class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        qs = Task.objects.filter(is_deleted=False).order_by('created_at')
+        qs = Task.objects.filter(user=self.request.user, is_deleted=False).order_by('created_at')
 
         # Filter theo trạng thái: ?done=true hoặc ?done=false
         done_param = self.request.query_params.get('done')
@@ -47,7 +48,7 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='trash')
     def list_trash(self, request):
-        qs = Task.objects.filter(is_deleted=True).order_by('-deleted_at')
+        qs = Task.objects.filter(user=request.user, is_deleted=True).order_by('-deleted_at')
         return Response(TaskSerializer(qs, many=True).data)
 
     @action(detail=True, methods=['delete'], url_path='permanent')

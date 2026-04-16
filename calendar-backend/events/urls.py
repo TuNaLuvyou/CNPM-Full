@@ -1,9 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import EventViewSet
+from .views import EventViewSet, InvitationViewSet, NotificationViewSet
 
 router = DefaultRouter()
-# Tạo endpoint /api/events/
+router.register(r'notifications', NotificationViewSet, basename='notification')
+router.register(r'invitations', InvitationViewSet, basename='invitation')
 router.register(r'', EventViewSet, basename='event')
 
 urlpatterns = [

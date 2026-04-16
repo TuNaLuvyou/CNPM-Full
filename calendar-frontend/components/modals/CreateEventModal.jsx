@@ -5,12 +5,13 @@ import EventForm from "@/components/forms/EventForm";
 import TaskForm from "@/components/forms/TaskForm";
 import AppointmentForm from "@/components/forms/AppointmentForm";
 import { getVNTime, getEventStyle } from "@/lib/CalendarHelper";
-import { createEvent, createTask, updateEvent, trashEvent, updateTask, trashTask } from "@/lib/api";
+import { createEvent, createTask, updateEvent, trashEvent, updateTask, trashTask, leaveEvent } from "@/lib/api";
+import { t } from "@/lib/i18n";
 
 const TABS = [
-  { key: "event", label: "Sự kiện", Icon: CalendarIcon },
-  { key: "task", label: "Việc cần làm", Icon: CheckSquare },
-  { key: "appointment", label: "Lên lịch hẹn", Icon: Clock },
+  { key: "event", label: "Sự kiện", i18nKey: "event", Icon: CalendarIcon },
+  { key: "task", label: "Việc cần làm", i18nKey: "task", Icon: CheckSquare },
+  { key: "appointment", label: "Lên lịch hẹn", i18nKey: "appointment", Icon: Clock },
 ];
 const SAVE_BTN_ID = {
   event: "__eventSave",
@@ -29,18 +30,51 @@ export default function CreateModal({
   previewEvent,
   editingItem = null,
   interactionState = null,
+  appSettings,
 }) {
+  const lang = appSettings?.language || "vi";
   const [activeTab, setActiveTab] = useState(initialTab);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const modalRef = useRef(null);
   
-  // Nạp thông tin từ editingItem nếu có
-  const now = editingItem ? new Date(editingItem.start_time) : (previewEvent?.fullDate || initialDate || getVNTime());
-  const diffMs = editingItem ? (new Date(editingItem.end_time) - new Date(editingItem.start_time)) : null;
-  const duration = editingItem ? Math.round(diffMs / 60000) : Math.round(((previewEvent?.height || 64) / 64) * 60);
+  // Xác định xem có sự tương tác kéo thả đang diễn ra cho item này không
+  const isInteracting = !!(interactionState && (
+    (editingItem && interactionState.id === editingItem.id) || 
+    (!editingItem && !interactionState.id)
+  ));
+
+  // Nạp thông tin: ưu tiên interactionState (đang kéo) -> editingItem (đang sửa) -> previewEvent (vừa kéo xong/click)
+  const activeSource = isInteracting ? interactionState : (editingItem ? null : previewEvent);
+
+  const now = activeSource?.fullDate || (editingItem ? new Date(editingItem.start_time) : (initialDate || getVNTime()));
+  
+  const duration = activeSource 
+    ? Math.round(((activeSource.height || 64) / 64) * 60) 
+    : (editingItem 
+        ? Math.round((new Date(editingItem.end_time) - new Date(editingItem.start_time)) / 60000) 
+        : Math.round(((previewEvent?.height || 64) / 64) * 60));
 
   const [modalStyle, setModalStyle] = useState({ opacity: 0, transition: 'none' });
+
+  const isOwner = !editingItem || editingItem.is_owner;
+  const canEdit = !editingItem || editingItem.is_owner || editingItem.my_permission === 'edit';
+
+  const handleLeave = async () => {
+    if (!editingItem) return;
+    if (!confirm(t('contacts_panel.leave_event', lang) + "?")) return;
+    setDeleting(true);
+    try {
+      const cleanId = editingItem.id.toString().replace('task-', '').replace('event-', '');
+      await leaveEvent(cleanId);
+      onSaved?.();
+      onClose();
+    } catch (e) {
+      alert("Lỗi: " + e.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // ── Drag state ──
   const [isDragging, setIsDragging] = useState(false);
@@ -116,7 +150,10 @@ export default function CreateModal({
       }
 
       // 4. Calculate Horizontal Position (Left)
-      if (avoidRect) {
+      if (view === "Ngày" && avoidRect) {
+        // Trong chế độ Ngày, căn giữa modal theo cột ngày
+        left = avoidRect.left + (avoidRect.width / 2) - (modalWidth / 2);
+      } else if (avoidRect) {
         const spaceRight = window.innerWidth - avoidRect.right;
         const spaceLeft = avoidRect.left;
 
@@ -217,7 +254,7 @@ export default function CreateModal({
       onSaved?.();
       onClose();
     } catch (e) {
-      alert("Lỗi khi lưu: " + e.message);
+      alert(t('create_modal.save_error', lang, [e.message]));
     } finally {
       setSaving(false);
     }
@@ -225,7 +262,7 @@ export default function CreateModal({
 
   const handleXoa = async () => {
     if (!editingItem) return;
-    if (!confirm("Bạn có chắc chắn muốn chuyển mục này vào thùng rác?")) return;
+    if (!confirm(t('create_modal.confirm_trash', lang))) return;
     setDeleting(true);
     try {
       const cleanId = editingItem.id.toString().replace('task-', '').replace('event-', '');
@@ -234,13 +271,13 @@ export default function CreateModal({
       onSaved?.();
       onClose();
     } catch (e) {
-      alert("Lỗi khi xoá: " + e.message);
+      alert(t('create_modal.delete_error', lang, [e.message]));
     } finally {
       setDeleting(false);
     }
   };
 
-  const formProps = { now, duration, onSave: handleFormSave, initialData: editingItem };
+  const formProps = { now, duration, isInteracting, onSave: handleFormSave, initialData: editingItem, appSettings };
 
   return (
     <div className="fixed inset-0 z-50 pointer-events-none" onClick={onClose}>
@@ -266,7 +303,7 @@ export default function CreateModal({
             <X className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-3">
-            {TABS.map(({ key, label, Icon }) => {
+            {TABS.map(({ key, i18nKey, Icon }) => {
               const active = activeTab === key;
               return (
                 <button
@@ -277,7 +314,7 @@ export default function CreateModal({
                     ${active ? "bg-blue-600 text-white shadow-md shadow-blue-200 scale-105" : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"}`}
                 >
                   <Icon className={`w-4 h-4 ${active ? "text-white" : "text-slate-400"}`} />
-                  {label}
+                  {t(i18nKey, lang)}
                 </button>
               );
             })}
@@ -293,15 +330,32 @@ export default function CreateModal({
 
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 flex-shrink-0 bg-gray-50/50 rounded-b-2xl">
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 flex items-center gap-4">
             {editingItem && (
-              <button
-                onClick={handleXoa}
-                disabled={deleting}
-                className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer disabled:opacity-50"
-              >
-                {deleting ? "Đang xoá..." : "Xoá"}
-              </button>
+              isOwner ? (
+                <button
+                  onClick={handleXoa}
+                  disabled={deleting}
+                  className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer disabled:opacity-50"
+                >
+                  {deleting ? t('deleting', lang) : t('delete', lang)}
+                </button>
+              ) : (
+                <button
+                  onClick={handleLeave}
+                  disabled={deleting}
+                  className="px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 border border-red-100 rounded-lg transition cursor-pointer disabled:opacity-50"
+                >
+                  {deleting ? '...' : t('contacts_panel.leave_event', lang)}
+                </button>
+              )
+            )}
+            
+            {!isOwner && editingItem?.owner_name && (
+              <div className="flex flex-col">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{t('contacts_panel.owned_by', lang)}</span>
+                <span className="text-xs text-slate-600 font-medium">@{editingItem.owner_name}</span>
+              </div>
             )}
           </div>
           <div className="flex gap-2">
@@ -309,15 +363,17 @@ export default function CreateModal({
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition cursor-pointer"
             >
-              Huỷ
+              {t('cancel', lang)}
             </button>
-            <button
-              onClick={handleLuu}
-              disabled={saving}
-              className="px-5 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-colors cursor-pointer disabled:opacity-60"
-            >
-              {saving ? "Đang lưu..." : (editingItem ? "Cập nhật" : "Lưu")}
-            </button>
+            {canEdit && (
+              <button
+                onClick={handleLuu}
+                disabled={saving}
+                className="px-5 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-colors cursor-pointer disabled:opacity-60"
+              >
+                {saving ? t('saving', lang) : (editingItem ? t('update', lang) : t('save', lang))}
+              </button>
+            )}
           </div>
         </div>
       </div>

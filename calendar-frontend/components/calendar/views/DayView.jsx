@@ -16,6 +16,8 @@ export default function DayView({
   onEventClick,
   onEventUpdate,
   onInteractionUpdate,
+  onToggleTask,
+  appSettings,
 }) {
   return (
     <>
@@ -24,6 +26,7 @@ export default function DayView({
         selectedDate={selectedDate}
         selectedDayName={selectedDayName}
         isSelectedToday={isSelectedToday}
+        appSettings={appSettings}
       />
       <TimeGrid
         mode="day"
@@ -37,6 +40,8 @@ export default function DayView({
         events={events}
         onEventClick={onEventClick}
         onEventUpdate={onEventUpdate}
+        onToggleTask={onToggleTask}
+        appSettings={appSettings}
         weekDays={[
           {
             day: selectedDayName,
