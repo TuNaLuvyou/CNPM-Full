@@ -11,7 +11,11 @@ class TaskViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        qs = Task.objects.filter(user=self.request.user, is_deleted=False).order_by('created_at')
+        is_deleted_qs = self.request.query_params.get('trash', 'false') == 'true'
+        if self.action in ['restore', 'permanent_delete']:
+            is_deleted_qs = True
+
+        qs = Task.objects.filter(user=self.request.user, is_deleted=is_deleted_qs).order_by('created_at')
 
         # Filter theo trạng thái: ?done=true hoặc ?done=false
         done_param = self.request.query_params.get('done')
@@ -40,19 +44,19 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='restore')
     def restore(self, request, pk=None):
-        task = Task.objects.get(pk=pk)
+        task = self.get_object()
         task.is_deleted = False
         task.deleted_at = None
         task.save()
         return Response(TaskSerializer(task).data)
 
-    @action(detail=False, methods=['get'], url_path='trash')
+    @action(detail=False, methods=['get'], url_path='trashed')
     def list_trash(self, request):
         qs = Task.objects.filter(user=request.user, is_deleted=True).order_by('-deleted_at')
         return Response(TaskSerializer(qs, many=True).data)
 
-    @action(detail=True, methods=['delete'], url_path='permanent')
+    @action(detail=True, methods=['post'], url_path='permanent_delete')
     def permanent_delete(self, request, pk=None):
-        task = Task.objects.get(pk=pk)
+        task = self.get_object()
         task.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

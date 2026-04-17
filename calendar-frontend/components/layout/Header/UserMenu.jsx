@@ -20,7 +20,7 @@ export default function UserMenu({ currentUser, setCurrentUser, setAuthModal, ap
         <button
           onClick={() => {
             if (typeof window !== "undefined") {
-              localStorage.removeItem("authToken");
+              localStorage.removeItem("token");
               window.location.reload();
             }
           }}

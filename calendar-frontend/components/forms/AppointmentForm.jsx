@@ -1,35 +1,49 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Clock, MapPin, AlignLeft, Paperclip, Tag, Palette, X, Users, Shield, ShieldCheck, Plus, Search, Check, ChevronDown } from 'lucide-react';
-import { FieldRow, InputBase, TextareaBase, toDateInputVal, toTimeInputVal, DateTimeSelector, EVENT_COLORS, CALENDAR_CATEGORIES } from './FormHelpers';
+import { Calendar as CalendarIcon, Clock, MapPin, AlignLeft, Paperclip, Palette, Tag, X, Users, Shield, ShieldCheck, Plus, Search, Check, ChevronDown } from 'lucide-react';
+import { FieldRow, InputBase, TextareaBase, EVENT_COLORS, toDateInputVal, toTimeInputVal, DateTimeSelector } from './FormHelpers';
 import { getFriends } from '@/lib/api';
 import { t } from '@/lib/i18n';
 
-export default function AppointmentForm({ now, duration, isInteracting, onSave, initialData = null, appSettings }) {
+export default function AppointmentForm({ now, duration, isInteracting, onSave, initialData = null, appSettings, currentUser }) {
     const lang = appSettings?.language || "vi";
-    const oneHourLater = new Date(now.getTime() + (duration || 60) * 60 * 1000);
 
     const [form, setForm] = useState({
-        title:    initialData?.title || '',
-        date:     initialData?.date_display || toDateInputVal(now),
-        timeStart: initialData?.time_start_display || toTimeInputVal(now),
-        timeEnd:   initialData?.time_end_display || toTimeInputVal(oneHourLater),
-        location: initialData?.location || (!initialData ? appSettings?.defaultLocation : '') || '',
-        note:     initialData?.description || initialData?.note || '',
-        category: initialData?.category || 'Mặc định',
-        color:    initialData?.color || 'blue',
+        title:       initialData?.title || '',
+        date:        initialData?.date_display || toDateInputVal(now),
+        timeStart:   initialData?.time_start_display || toTimeInputVal(now),
+        timeEnd:     initialData?.time_end_display || toTimeInputVal(new Date(now.getTime() + (duration || 60) * 60 * 1000)),
+        location:    initialData?.location || '',
+        note:        initialData?.note || '',
+        color:       initialData?.color || 'emerald',
+        category:    initialData?.category || 'Mặc định',
     });
 
     const [submitted, setSubmitted] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
-    
+
     // ── Guests State ──
     const [friends, setFriends] = useState([]);
     const [guests, setGuests] = useState(initialData?.invitations || []);
+
+    useEffect(() => {
+        if (initialData?.invitations) {
+            setGuests(initialData.invitations.filter(inv => inv.status !== 'declined'));
+        }
+    }, [initialData?.invitations]);
+
     const [showGuestPicker, setShowGuestPicker] = useState(false);
     const [guestSearch, setGuestSearch] = useState("");
 
-    const filteredFriends = friends.filter(f => {
+    const filteredFriends = friends.map(conn => {
+        const isSender = conn.sender === currentUser?.id;
+        return {
+            id: isSender ? conn.receiver : conn.sender,
+            username: isSender ? conn.receiver_name : conn.sender_name,
+            email: isSender ? conn.receiver_email : conn.sender_email,
+            first_name: isSender ? conn.receiver_name : conn.sender_name, // Fallback to username for name
+        };
+    }).filter(f => {
         if (!guestSearch) return true;
         const s = guestSearch.toLowerCase();
         return (f.username?.toLowerCase().includes(s) || 
@@ -38,24 +52,28 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
     });
 
     useEffect(() => {
-        getFriends().then(setFriends).catch(console.error);
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        if (token) {
+            getFriends().then(setFriends).catch(console.error);
+        }
     }, []);
 
     const toggleGuest = (friend) => {
         setGuests(prev => {
-            const exists = prev.find(g => g.invitee === friend.id);
-            if (exists) return prev.filter(g => g.invitee !== friend.id);
+            const exists = prev.find(g => (g.invitee_details?.id || g.invitee) === friend.id);
+            if (exists) return prev.filter(g => (g.invitee_details?.id || g.invitee) !== friend.id);
             return [...prev, { 
                 invitee: friend.id, 
-                invitee_details: { username: friend.username, name: friend.first_name || friend.username },
-                permission: 'view' 
+                invitee_details: { id: friend.id, username: friend.username, name: friend.first_name || friend.username },
+                permission: 'view',
+                status: 'pending' 
             }];
         });
     };
 
     const togglePermission = (uid) => {
         setGuests(prev => prev.map(g => 
-            g.invitee === uid 
+            (g.invitee_details?.id || g.invitee) === uid 
                 ? { ...g, permission: g.permission === 'view' ? 'edit' : 'view' } 
                 : g
         ));
@@ -89,7 +107,14 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
     const handleSave = () => {
         setSubmitted(true);
         if (!form.title.trim()) return;
-        onSave?.({ type: 'appointment', ...form, file: selectedFile, guests });
+        
+        // Map guests to just the IDs and permissions that the backend expects
+        const guestsPayload = guests.map(g => ({
+            invitee: g.invitee_details?.id || g.invitee,
+            permission: g.permission
+        }));
+
+        onSave?.({ type: 'appointment', ...form, file: selectedFile, guests: guestsPayload });
     };
 
     const isTitleEmpty = submitted && !form.title.trim();
@@ -192,7 +217,8 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
                         <span className="text-sm font-semibold text-slate-700">{t('contacts_panel.guests', lang)}</span>
                         {canEdit && (
                             <button 
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.preventDefault();
                                     setShowGuestPicker(!showGuestPicker);
                                     setGuestSearch("");
                                 }}
@@ -233,10 +259,10 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
                                         </div>
                                     ) : (
                                         filteredFriends.map(f => {
-                                            const guestEntry = guests.find(g => g.invitee === f.id);
+                                            const guestEntry = guests.find(g => (g.invitee_details?.id || g.invitee) === f.id);
                                             const isAdded = !!guestEntry;
-                                            const name = f.first_name || f.username;
-                                            const initial = name[0].toUpperCase();
+                                            const name = f.first_name || f.username || f.email || "User";
+                                            const initial = (name ? name[0] : "?").toUpperCase();
                                             return (
                                                 <div key={f.id} 
                                                     onClick={() => toggleGuest(f)}
@@ -293,28 +319,45 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
                         {!showGuestPicker && (
                             <div className="p-1 space-y-1.5 mt-0.5">
                                 {guests.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center py-4 bg-white/40 border border-dashed border-slate-200 rounded-xl">
+                                    <div className="flex flex-col items-center justify-center py-4 bg-white/40 border border-dashed border-slate-200 rounded-xl" onClick={() => setShowGuestPicker(true)}>
                                         <Users className="w-5 h-5 text-slate-300 mb-1" />
                                         <span className="text-[11px] text-slate-400 italic">{t('contacts_panel.no_invitations', lang)}</span>
                                     </div>
                                 ) : (
                                     guests.map(g => (
-                                        <div key={g.invitee} className="flex items-center justify-between bg-white border border-slate-200/60 p-2.5 rounded-xl shadow-sm hover:shadow-md transition-all group active:scale-[0.99]">
+                                        <div key={g.invitee_details?.id || g.invitee} className="flex items-center justify-between bg-white border border-slate-200/60 p-2.5 rounded-xl shadow-sm hover:shadow-md transition-all group active:scale-[0.99]">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white shadow-sm transition-transform group-hover:rotate-3">
-                                                    {g.invitee_details?.username?.[0].toUpperCase()}
+                                                    {(g.invitee_details?.username?.[0] || '?').toUpperCase()}
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-slate-700 tracking-tight">{g.invitee_details?.name || g.invitee_details?.username}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-bold text-slate-700 tracking-tight">{g.invitee_details?.name || g.invitee_details?.username}</span>
+                                                        {(!g.status || g.status === 'pending') && (
+                                                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-bold border border-amber-100 flex items-center gap-1">
+                                                                <Clock className="w-2.5 h-2.5" />
+                                                                {t('contacts_panel.status_pending', lang)}
+                                                            </span>
+                                                        )}
+                                                        {g.status === 'accepted' && (
+                                                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 font-bold border border-emerald-100 flex items-center gap-1">
+                                                                <Check className="w-2.5 h-2.5" />
+                                                                {t('contacts_panel.status_accepted', lang)}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <span className="text-[10px] text-slate-400 leading-none">{g.invitee_details?.email}</span>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <div className="relative group/perm">
+                                                <div className="relative group/perm" onClick={(e) => e.stopPropagation()}>
                                                     <select 
                                                         value={g.permission}
                                                         disabled={!canEdit}
-                                                        onChange={(e) => togglePermission(g.invitee)}
+                                                        onChange={(e) => {
+                                                            e.stopPropagation();
+                                                            togglePermission(g.invitee_details?.id || g.invitee);
+                                                        }}
                                                         className="appearance-none bg-slate-50 text-slate-600 text-[10px] font-bold px-7 py-1.5 rounded-lg border border-slate-200 hover:border-blue-300 transition-all cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
                                                     >
                                                         <option value="view">{t('contacts_panel.view_only', lang)}</option>
@@ -328,7 +371,10 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
 
                                                 {canEdit && (
                                                     <button 
-                                                        onClick={() => toggleGuest({id: g.invitee})} 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            toggleGuest({id: g.invitee_details?.id || g.invitee});
+                                                        }} 
                                                         title="Gở bỏ" 
                                                         className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                                                     >
@@ -348,4 +394,4 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
             <button id="__appointmentSave" className="hidden" onClick={handleSave} />
         </div>
     );
-}
+}

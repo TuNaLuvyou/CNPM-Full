@@ -14,14 +14,22 @@ export default function TasksPanel({ appSettings }) {
 
   // ── Tải tasks từ API khi mount ──
   const fetchTasks = useCallback(async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const data = await getTasks();
       setTasks(data);
       setError(null);
     } catch (e) {
-      setError(t('tasks_panel.loading_error', lang) || "Không thể tải danh sách công việc.");
-      console.error(e);
+      if (!e.isLocalGuard) {
+        setError(t('tasks_panel.loading_error', lang) || "Không thể tải danh sách công việc.");
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -127,6 +135,12 @@ export default function TasksPanel({ appSettings }) {
             <Loader2 className="w-5 h-5 animate-spin" />
             <span className="text-xs">{t('loading', lang)}</span>
           </div>
+        ) : !localStorage.getItem('token') ? (
+            <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-2 px-6 text-center">
+              <CheckSquare className="w-8 h-8 opacity-20" />
+              <p className="text-xs font-bold text-slate-500">{t('user.login_required', lang)}</p>
+              <p className="text-[10px] text-slate-400">Bạn cần đăng nhập để quản lý công việc và đồng bộ hóa.</p>
+            </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-32 text-red-400 gap-2 px-4 text-center">
             <p className="text-xs">{error}</p>

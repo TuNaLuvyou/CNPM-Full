@@ -19,13 +19,13 @@ const SECTIONS = [
 
 // ── Static data ───────────────────────────────────────────────────────────────
 const LANGUAGES = [
-    { value: "vi", label: "🇻🇳  Tiếng Việt" },
-    { value: "en", label: "🇬🇧  English" },
-    { value: "ja", label: "🇯🇵  日本語" },
-    { value: "zh", label: "🇨🇳  中文" },
-    { value: "ko", label: "🇰🇷  한국어" },
-    { value: "fr", label: "🇫🇷  Français" },
-    { value: "de", label: "🇩🇪  Deutsch" },
+    { value: "vi", label: "Tiếng Việt" },
+    { value: "en", label: "English" },
+    { value: "ja", label: "日本語" },
+    { value: "zh", label: "中文" },
+    { value: "ko", label: "한국어" },
+    { value: "fr", label: "Français" },
+    { value: "de", label: "Deutsch" },
 ];
 
 const COUNTRIES = [
@@ -150,7 +150,7 @@ function Select({ value, onChange, options, className = "" }) {
             onChange={(e) => onChange(e.target.value)}
             className={`text-sm border border-slate-200 rounded-xl px-3 py-2 text-slate-700 bg-white
         hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400
-        transition cursor-pointer ${className}`}
+        transition cursor-pointer min-w-[240px] sm:min-w-[300px] ${className}`}
         >
             {options.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -170,7 +170,7 @@ function Input({ value, onChange, placeholder, icon: Icon, className = "" }) {
                 placeholder={placeholder}
                 className={`text-sm border border-slate-200 rounded-xl px-3 py-2 text-slate-700 placeholder-slate-300
           bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition
-          w-64 ${className}`}
+          w-full max-w-[300px] ${className}`}
             />
         </div>
     );
@@ -179,20 +179,20 @@ function Input({ value, onChange, placeholder, icon: Icon, className = "" }) {
 // ── Section: Ngôn ngữ & Khu vực ───────────────────────────────────────────────
 function LanguageSection({ s, set, lang }) {
     return (
-        <div className="space-y-6">
+        <div id="section-language" className="space-y-6 scroll-mt-6">
             <SectionLabel>{t('lang_region.title', lang)}</SectionLabel>
             <Card>
                 <Row label={t('lang_region.language', lang)} desc={t('lang_region.language_desc', lang)}>
-                    <Select value={s.language} onChange={(v) => set("language", v)} options={LANGUAGES} className="min-w-[180px]" />
+                    <Select value={s.language} onChange={(v) => set("language", v)} options={LANGUAGES} />
                 </Row>
                 <Row label={t('lang_region.country', lang)} desc={t('lang_region.country_desc', lang)}>
-                    <Select value={s.country} onChange={(v) => set("country", v)} options={COUNTRIES} className="min-w-[180px]" />
+                    <Select value={s.country} onChange={(v) => set("country", v)} options={COUNTRIES} />
                 </Row>
                 <Row label={t('lang_region.date_format', lang)} desc={t('lang_region.date_format_desc', lang)}>
-                    <Select value={s.dateFormat} onChange={(v) => set("dateFormat", v)} options={DATE_FORMATS} className="min-w-[240px]" />
+                    <Select value={s.dateFormat} onChange={(v) => set("dateFormat", v)} options={DATE_FORMATS} className="min-w-0" />
                 </Row>
                 <Row label={t('lang_region.time_format', lang)} desc={t('lang_region.time_format_desc', lang)}>
-                    <div className="flex rounded-xl overflow-hidden border border-slate-200">
+                    <div className="flex rounded-xl overflow-hidden border border-slate-200 min-w-[240px] sm:min-w-[300px]">
                         {[
                             { v: "12h", label: t('lang_region.hour_12', lang) },
                             { v: "24h", label: t('lang_region.hour_24', lang) },
@@ -201,7 +201,7 @@ function LanguageSection({ s, set, lang }) {
                                 key={v}
                                 type="button"
                                 onClick={() => set("timeFormat", v)}
-                                className={`px-5 py-2 text-sm font-semibold transition
+                                className={`flex-1 py-2 text-sm font-semibold transition
                   ${s.timeFormat === v ? "bg-blue-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
                             >
                                 {label}
@@ -217,7 +217,7 @@ function LanguageSection({ s, set, lang }) {
 // ── Section: Múi giờ ──────────────────────────────────────────────────────────
 function TimezoneSection({ s, set, lang }) {
     return (
-        <div className="space-y-6">
+        <div id="section-timezone" className="space-y-6 scroll-mt-6">
             <SectionLabel>{t('timezone.title', lang)}</SectionLabel>
             <Card>
                 <Row
@@ -227,14 +227,14 @@ function TimezoneSection({ s, set, lang }) {
                     <Toggle checked={s.showSecondaryTimezone} onChange={(v) => set("showSecondaryTimezone", v)} />
                 </Row>
                 <Row label={t('timezone.primary', lang)} desc={t('timezone.primary_desc', lang)}>
-                    <Select value={s.primaryTimezone} onChange={(v) => set("primaryTimezone", v)} options={TIMEZONES} className="min-w-[220px]" />
+                    <Select value={s.primaryTimezone} onChange={(v) => set("primaryTimezone", v)} options={TIMEZONES} />
                 </Row>
                 <Row
                     label={t('timezone.secondary', lang)}
                     desc={s.showSecondaryTimezone ? t('timezone.secondary_desc', lang) : t('timezone.secondary_disabled', lang)}
                     disabled={!s.showSecondaryTimezone}
                 >
-                    <Select value={s.secondaryTimezone} onChange={(v) => set("secondaryTimezone", v)} options={TIMEZONES} className="min-w-[220px]" />
+                    <Select value={s.secondaryTimezone} onChange={(v) => set("secondaryTimezone", v)} options={TIMEZONES} />
                 </Row>
             </Card>
         </div>
@@ -244,7 +244,7 @@ function TimezoneSection({ s, set, lang }) {
 // ── Section: Cài đặt sự kiện ──────────────────────────────────────────────────
 function EventsSection({ s, set, lang }) {
     return (
-        <div className="space-y-6">
+        <div id="section-events" className="space-y-6 scroll-mt-6">
             <SectionLabel>{t('event_settings.title', lang)}</SectionLabel>
             <Card>
                 <Row label={t('event_settings.meet_link', lang)} desc={t('event_settings.meet_link_desc', lang)}>
@@ -252,7 +252,6 @@ function EventsSection({ s, set, lang }) {
                         value={s.defaultMeetLink}
                         onChange={(v) => set("defaultMeetLink", v)}
                         placeholder="https://meet.google.com/..."
-                        icon={Video}
                     />
                 </Row>
                 <Row label={t('event_settings.location', lang)} desc={t('event_settings.location_desc', lang)}>
@@ -260,7 +259,6 @@ function EventsSection({ s, set, lang }) {
                         value={s.defaultLocation}
                         onChange={(v) => set("defaultLocation", v)}
                         placeholder={t('event_settings.location_placeholder', lang)}
-                        icon={MapPin}
                     />
                 </Row>
             </Card>
@@ -276,7 +274,7 @@ function NotificationsSection({ s, set, lang }) {
         { value: "push", label: t('notif_settings.push', lang), desc: t('notif_settings.push_desc', lang) },
     ];
     return (
-        <div className="space-y-6">
+        <div id="section-notifications" className="space-y-6 scroll-mt-6">
             <SectionLabel>{t('notif_settings.title', lang)}</SectionLabel>
 
             {/* Radio group */}
@@ -336,7 +334,7 @@ function ViewSection({ s, set, lang }) {
         { key: "dimPastEvents", label: t('view_options.dim_past', lang), desc: t('view_options.dim_past_desc', lang) },
     ];
     return (
-        <div className="space-y-6">
+        <div id="section-view" className="space-y-6 scroll-mt-6">
             <SectionLabel>{t('view_options.title', lang)}</SectionLabel>
             <Card>
                 {TOGGLES.map((item) => (
@@ -379,24 +377,27 @@ function CalendarsSection({ s, set, lang }) {
 
     // Tạo danh sách lịch đang kích hoạt để hiển thị tóm tắt
     const activePresets = [
-        { key: "vietnamHolidays", label: "Ngày lễ ở Việt Nam", icon: "🇻🇳" },
-        { key: "worldHolidays", label: "Ngày lễ thế giới", icon: "🌍" },
-        { key: "otherHolidays", label: "Ngày lễ khác", icon: "🗓" },
+        { key: "vietnamHolidays", label: t('fav_calendars.vn_holidays', lang) },
+        { key: "worldHolidays", label: t('fav_calendars.world_holidays', lang) },
+        { key: "otherHolidays", label: t('fav_calendars.other_holidays', lang) },
     ].filter(p => s[p.key]);
 
     return (
-        <div className="space-y-6">
+        <div id="section-calendars" className="space-y-6 scroll-mt-6">
             <SectionLabel>{t('fav_calendars.title', lang)}</SectionLabel>
 
             {/* Active Summary */}
-            {(activePresets.length > 0 || customHolidays.length > 0) && (
-                <Card className="bg-blue-50/30 border-blue-100">
-                    <div className="px-5 py-4">
-                        <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-3">{t('sections.active_calendars', lang)}</p>
+            <Card className="bg-blue-50/30 border-blue-100">
+                <div className="px-5 py-4">
+                    <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-3">{t('sections.active_calendars', lang)}</p>
+                    {activePresets.length === 0 && customHolidays.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic">
+                            {lang === 'en' ? 'No calendars selected' : 'Chưa có lịch nào được chọn'}
+                        </p>
+                    ) : (
                         <div className="flex flex-wrap gap-2">
                             {activePresets.map(p => (
                                 <div key={p.key} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-blue-100 rounded-lg text-xs font-semibold text-blue-700 shadow-sm">
-                                    <span>{p.icon}</span>
                                     <span>{p.label}</span>
                                 </div>
                             ))}
@@ -407,19 +408,19 @@ function CalendarsSection({ s, set, lang }) {
                                 </div>
                             ))}
                         </div>
-                    </div>
-                </Card>
-            )}
+                    )}
+                </div>
+            </Card>
 
             {/* Preset holidays */}
             <Card>
-                <Row label={`🇻🇳  ${t('fav_calendars.vn_holidays', lang)}`} desc={t('fav_calendars.vn_holidays_desc', lang)}>
+                <Row label={t('fav_calendars.vn_holidays', lang)} desc={t('fav_calendars.vn_holidays_desc', lang)}>
                     <Toggle checked={s.vietnamHolidays} onChange={(v) => set("vietnamHolidays", v)} />
                 </Row>
-                <Row label={`🌍  ${t('fav_calendars.world_holidays', lang)}`} desc={t('fav_calendars.world_holidays_desc', lang)}>
+                <Row label={t('fav_calendars.world_holidays', lang)} desc={t('fav_calendars.world_holidays_desc', lang)}>
                     <Toggle checked={s.worldHolidays} onChange={(v) => set("worldHolidays", v)} />
                 </Row>
-                <Row label={`🗓  ${t('fav_calendars.other_holidays', lang)}`} desc={t('fav_calendars.other_holidays_desc', lang)}>
+                <Row label={t('fav_calendars.other_holidays', lang)} desc={t('fav_calendars.other_holidays_desc', lang)}>
                     <Toggle checked={s.otherHolidays} onChange={(v) => set("otherHolidays", v)} />
                 </Row>
             </Card>
@@ -505,7 +506,7 @@ function CategoriesSection({ s, set, lang }) {
     };
 
     return (
-        <div className="space-y-6">
+        <div id="section-categories" className="space-y-6 scroll-mt-6 pb-20">
             <SectionLabel>{t('categories_settings.title', lang)}</SectionLabel>
 
             <Card>
@@ -563,15 +564,51 @@ function CategoriesSection({ s, set, lang }) {
     );
 }
 
+import { useRef } from "react";
+
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function SettingsModal({ isOpen, onClose, onSave, settings: initialSettings }) {
     const [activeSection, setActiveSection] = useState("language");
     const [settings, setSettings] = useState(initialSettings || DEFAULT_SETTINGS);
     const [saveState, setSaveState] = useState("idle"); // "idle" | "saved"
+    const scrollContainerRef = useRef(null);
+
+    // Scroll Spy mechanism
+    useEffect(() => {
+        const container = scrollContainerRef.current;
+        if (!container || !isOpen) return;
+
+        const handleScroll = () => {
+            const sectionElements = SECTIONS.map(s => document.getElementById(`section-${s.key}`));
+            let current = activeSection;
+
+            for (const el of sectionElements) {
+                if (!el) continue;
+                const rect = el.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                
+                // If section top is near the top of container view
+                if (rect.top <= containerRect.top + 100) {
+                    current = el.id.replace('section-', '');
+                }
+            }
+            if (current !== activeSection) {
+                setActiveSection(current);
+            }
+        };
+
+        container.addEventListener('scroll', handleScroll);
+        return () => container.removeEventListener('scroll', handleScroll);
+    }, [isOpen, activeSection]);
 
     useEffect(() => {
         if (isOpen && initialSettings) {
             setSettings(initialSettings);
+            // Reset scroll to top when opening
+            if (scrollContainerRef.current) {
+                scrollContainerRef.current.scrollTop = 0;
+                setActiveSection("language");
+            }
         }
     }, [isOpen, initialSettings]);
 
@@ -586,14 +623,12 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
         setTimeout(() => setSaveState("idle"), 2200);
     };
 
-    const SECTION_CONTENT = {
-        language: <LanguageSection s={settings} set={set} lang={settings.language} />,
-        timezone: <TimezoneSection s={settings} set={set} lang={settings.language} />,
-        events: <EventsSection s={settings} set={set} lang={settings.language} />,
-        notifications: <NotificationsSection s={settings} set={set} lang={settings.language} />,
-        view: <ViewSection s={settings} set={set} lang={settings.language} />,
-        calendars: <CalendarsSection s={settings} set={set} lang={settings.language} />,
-        categories: <CategoriesSection s={settings} set={set} lang={settings.language} />,
+    const scrollToSection = (key) => {
+        const el = document.getElementById(`section-${key}`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setActiveSection(key);
+        }
     };
 
     return (
@@ -611,9 +646,6 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
                 {/* ── Top bar ── */}
                 <div className="flex items-center justify-between px-8 py-5 bg-white border-b border-slate-200 flex-shrink-0">
                     <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center">
-                            <Settings className="w-5 h-5 text-slate-600" />
-                        </div>
                         <div>
                             <h2 className="text-lg font-bold text-slate-800 leading-tight">{t('settings', settings.language)}</h2>
                             <p className="text-xs text-slate-400">{t('settings_desc', settings.language)}</p>
@@ -632,29 +664,43 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
 
                     {/* Sidebar nav */}
                     <nav className="w-52 bg-white border-r border-slate-200 py-3 flex-shrink-0 overflow-y-auto">
-                        {SECTIONS.map(({ key, labelKey, Icon }) => {
+                        {SECTIONS.map(({ key, labelKey }) => {
                             const active = activeSection === key;
                             return (
                                 <button
                                     key={key}
                                     type="button"
-                                    onClick={() => setActiveSection(key)}
-                                    className={`w-full flex items-center gap-3 px-5 py-3 text-sm font-medium transition-all text-left
+                                    onClick={() => scrollToSection(key)}
+                                    className={`w-full flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all text-left border-r-[3px]
                                         ${active
-                                            ? "text-blue-600 bg-blue-50 border-r-[3px] border-blue-600"
-                                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"
+                                            ? "text-blue-600 bg-blue-50 border-blue-600"
+                                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-800 border-transparent"
                                         }`}
                                 >
-                                    <Icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-blue-600" : "text-slate-400"}`} />
                                     <span className="truncate">{t(labelKey, settings.language)}</span>
                                 </button>
                             );
                         })}
                     </nav>
 
-                    {/* Content area */}
-                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                        {SECTION_CONTENT[activeSection]}
+                    {/* Content area - Multi-section scrollable list */}
+                    <div 
+                        ref={scrollContainerRef}
+                        className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-12"
+                    >
+                        <LanguageSection s={settings} set={set} lang={settings.language} />
+                        <hr className="border-slate-200/60" />
+                        <TimezoneSection s={settings} set={set} lang={settings.language} />
+                        <hr className="border-slate-200/60" />
+                        <EventsSection s={settings} set={set} lang={settings.language} />
+                        <hr className="border-slate-200/60" />
+                        <NotificationsSection s={settings} set={set} lang={settings.language} />
+                        <hr className="border-slate-200/60" />
+                        <ViewSection s={settings} set={set} lang={settings.language} />
+                        <hr className="border-slate-200/60" />
+                        <CalendarsSection s={settings} set={set} lang={settings.language} />
+                        <hr className="border-slate-200/60" />
+                        <CategoriesSection s={settings} set={set} lang={settings.language} />
                     </div>
                 </div>
 

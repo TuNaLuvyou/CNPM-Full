@@ -7,7 +7,7 @@ import ContactsPanel from "@/components/panels/ContactsPanel";
 import { CheckSquare, Lightbulb, MapPin, Users } from "lucide-react";
 import { t } from "@/lib/i18n";
 
-export default function RightSidebar({ appSettings }) {
+export default function RightSidebar({ appSettings, currentUser }) {
   const lang = appSettings?.language || "vi";
   const [rightPanel, setRightPanel] = useState(null);
   const [rightPanelWidth, setRightPanelWidth] = useState(320);
@@ -98,7 +98,7 @@ export default function RightSidebar({ appSettings }) {
       case "maps":
         return <MapsPanel appSettings={appSettings} />;
       case "contacts":
-        return <ContactsPanel appSettings={appSettings} />;
+        return <ContactsPanel appSettings={appSettings} currentUser={currentUser} />;
       default:
         return null;
     }

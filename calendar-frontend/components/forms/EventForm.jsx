@@ -5,7 +5,7 @@ import { FieldRow, InputBase, TextareaBase, EVENT_COLORS, toDateInputVal, toTime
 import { getFriends } from '@/lib/api';
 import { t } from '@/lib/i18n';
 
-export default function EventForm({ now, duration, isInteracting, onSave, initialData = null, appSettings }) {
+export default function EventForm({ now, duration, isInteracting, onSave, initialData = null, appSettings, currentUser }) {
     const lang = appSettings?.language || "vi";
     const oneHourLater = new Date(now.getTime() + (duration || 60) * 60 * 1000);
 
@@ -30,7 +30,15 @@ export default function EventForm({ now, duration, isInteracting, onSave, initia
     const [showGuestPicker, setShowGuestPicker] = useState(false);
     const [guestSearch, setGuestSearch] = useState("");
 
-    const filteredFriends = friends.filter(f => {
+    const filteredFriends = friends.map(conn => {
+        const isSender = conn.sender === currentUser?.id;
+        return {
+            id: isSender ? conn.receiver : conn.sender,
+            username: isSender ? conn.receiver_name : conn.sender_name,
+            email: isSender ? conn.receiver_email : conn.sender_email,
+            first_name: isSender ? conn.receiver_name : conn.sender_name, // Fallback to username for name
+        };
+    }).filter(f => {
         if (!guestSearch) return true;
         const s = guestSearch.toLowerCase();
         return (f.username?.toLowerCase().includes(s) || 
@@ -39,7 +47,10 @@ export default function EventForm({ now, duration, isInteracting, onSave, initia
     });
 
     useEffect(() => {
-        getFriends().then(setFriends).catch(console.error);
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        if (token) {
+            getFriends().then(setFriends).catch(console.error);
+        }
     }, []);
 
     const toggleGuest = (friend) => {
@@ -49,7 +60,8 @@ export default function EventForm({ now, duration, isInteracting, onSave, initia
             return [...prev, { 
                 invitee: friend.id, 
                 invitee_details: { username: friend.username, name: friend.first_name || friend.username },
-                permission: 'view' 
+                permission: 'view',
+                status: 'pending' 
             }];
         });
     };
@@ -75,9 +87,7 @@ export default function EventForm({ now, duration, isInteracting, onSave, initia
 
     useEffect(() => {
         if (initialData?.invitations) {
-            setGuests(initialData.invitations);
-        } else if (!initialData) {
-            setGuests([]);
+            setGuests(initialData.invitations.filter(inv => inv.status !== 'declined'));
         }
     }, [initialData?.invitations]);
 
@@ -241,8 +251,8 @@ export default function EventForm({ now, duration, isInteracting, onSave, initia
                                         filteredFriends.map(f => {
                                             const guestEntry = guests.find(g => g.invitee === f.id);
                                             const isAdded = !!guestEntry;
-                                            const name = f.first_name || f.username;
-                                            const initial = name[0].toUpperCase();
+                                            const name = f.first_name || f.username || f.email || "User";
+                                            const initial = (name ? name[0] : "?").toUpperCase();
                                             return (
                                                 <div key={f.id} 
                                                     onClick={() => toggleGuest(f)}
@@ -311,7 +321,15 @@ export default function EventForm({ now, duration, isInteracting, onSave, initia
                                                     {g.invitee_details?.username?.[0].toUpperCase()}
                                                 </div>
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-slate-700 tracking-tight">{g.invitee_details?.name || g.invitee_details?.username}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-bold text-slate-700 tracking-tight">{g.invitee_details?.name || g.invitee_details?.username}</span>
+                                                        {(!g.status || g.status === 'pending') && (
+                                                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-bold border border-amber-100 flex items-center gap-1">
+                                                                <Clock className="w-2.5 h-2.5" />
+                                                                {t('contacts_panel.status_pending', lang)}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <span className="text-[10px] text-slate-400 leading-none">{g.invitee_details?.email}</span>
                                                 </div>
                                             </div>

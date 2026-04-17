@@ -613,9 +613,6 @@ export default function TimeGrid({
                         time={timeLabel}
                         top={top}
                         height={height}
-                        onToggleComplete={() => onToggleTask?.(ev)}
-                        onMouseDown={(e) => handleEventDragStart(e, ev)}
-                        onResizeMouseDown={(e) => handleEventResizeStart(e, ev)}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (didMoveRef.current) return; // Chặn popup nếu vừa kéo xong

@@ -12,7 +12,8 @@ import {
   acceptEventInvitation, 
   declineEventInvitation,
   markNotificationRead,
-  markAllNotificationsRead
+  markAllNotificationsRead,
+  deleteAllNotifications
 } from "../../../lib/api";
 
 const NOTIF_ICON = {
@@ -32,11 +33,12 @@ export default function Header({
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const viewRef = useRef(null);
   const notifRef = useRef(null);
   const settingsRef = useRef(null);
+  const [actionedNotifs, setActionedNotifs] = useState(new Set());
 
   useEffect(() => {
     const handler = (e) => {
@@ -48,15 +50,18 @@ export default function Header({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Đánh dấu đã đọc khi mở bảng thông báo
+  // Đánh dấu đã đọc khi mở bảng thông báo (trừ lời mời)
   useEffect(() => {
-    if (isNotifOpen && unreadCount > 0) {
-      // Cập nhật local state ngay lập tức để UI mượt mà
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      // Gọi API để sync với server
-      markAllNotificationsRead().catch(err => console.error("Lỗi mark all as read:", err));
+    if (isNotifOpen) {
+      const targetNotifs = notifications.filter(n => !n.is_read && n.ntype !== 'invite');
+      if (targetNotifs.length > 0) {
+        setNotifications(prev => prev.map(n => 
+          (!n.is_read && n.ntype !== 'invite') ? { ...n, is_read: true } : n
+        ));
+        markAllNotificationsRead().catch(err => console.error("Lỗi mark all as read:", err));
+      }
     }
-  }, [isNotifOpen, unreadCount, setNotifications]);
+  }, [isNotifOpen, setNotifications]);
 
   const navigate = (dir) => {
     const d = new Date(viewDate);
@@ -103,14 +108,16 @@ export default function Header({
       await acceptEventInvitation(notif.event);
       // Mark as read too
       await markNotificationRead(notif.id);
-      setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
+      setActionedNotifs(prev => new Set(prev).add(notif.id));
+      setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
       setEventSavedTick(prev => prev + 1);
     } catch (err) {
       if (err.message.includes('409') || err.message.toLowerCase().includes('collision')) {
         if (window.confirm(t('contacts_panel.collision_warning', lang))) {
           await acceptEventInvitation(notif.event, true);
           await markNotificationRead(notif.id);
-          setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
+          setActionedNotifs(prev => new Set(prev).add(notif.id));
+          setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
           setEventSavedTick(prev => prev + 1);
         }
       } else {
@@ -124,9 +131,21 @@ export default function Header({
     try {
       await declineEventInvitation(notif.event);
       await markNotificationRead(notif.id);
-      setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
+      setActionedNotifs(prev => new Set(prev).add(notif.id));
+      setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (window.confirm("Xoá tất cả thông báo?")) {
+      try {
+        await deleteAllNotifications();
+        setNotifications([]);
+      } catch (err) {
+        alert(err.message);
+      }
     }
   };
 
@@ -175,8 +194,16 @@ export default function Header({
             </button>
             {isNotifOpen && (
               <div className="absolute right-0 top-11 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-50">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white sticky top-0 z-10">
                   <h3 className="text-sm font-bold text-slate-700">{t('notifications', lang)}</h3>
+                  {notifications.length > 0 && (
+                    <button 
+                      onClick={handleDeleteAll}
+                      className="text-[10px] font-bold text-red-500 hover:text-red-600 uppercase tracking-wider transition-colors"
+                    >
+                      {t('contacts_panel.clear_all', lang) || "Xoá tất cả"}
+                    </button>
+                  )}
                 </div>
                 <div className="max-h-80 overflow-y-auto custom-scrollbar">
                   {notifications.length === 0 ? (
@@ -193,29 +220,29 @@ export default function Header({
                       return (
                         <div
                           key={notif.id}
-                          className={`flex flex-col px-4 py-4 transition border-b border-slate-50 last:border-0 ${!notif.read ? "bg-blue-50/40" : "hover:bg-slate-50"}`}
+                          className={`flex flex-col px-4 py-4 transition border-b border-slate-50 last:border-0 ${!notif.is_read ? "bg-blue-50/40" : "hover:bg-slate-50"}`}
                         >
                           <div className="flex items-start gap-3">
                             <div className={`w-9 h-9 rounded-xl ${cfg.bg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
                               <Icon className={`w-5 h-5 ${cfg.color}`} />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className={`text-[13px] leading-relaxed ${!notif.read ? "font-semibold text-slate-800" : "text-slate-600"}`}>
+                                <p className={`text-[13px] leading-relaxed ${!notif.is_read ? "font-semibold text-slate-800" : "text-slate-600"}`}>
                                   {notif.desc}
                                 </p>
                                 <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider flex items-center gap-2">
                                     {new Date(notif.time).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US')}
-                                    {isInvite && notif.read && (
+                                    {isInvite && notif.is_read && (
                                         <span className="text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded text-[9px] normal-case">
                                             ✓ {t('contacts_panel.details', lang)}
                                         </span>
                                     )}
                                 </p>
                             </div>
-                            {!notif.read && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2" />}
+                            {!notif.is_read && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2" />}
                           </div>
 
-                          {isInvite && !notif.read && (
+                          {isInvite && !actionedNotifs.has(notif.id) && (
                             <div className="flex gap-2 mt-3 ml-12">
                                 <button
                                     onClick={(e) => handleAccept(e, notif)}

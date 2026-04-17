@@ -87,13 +87,16 @@ class EventSerializer(serializers.ModelSerializer):
 
         for g in guests_data:
             try:
-                # Handle both object with 'invitee' key and raw IDs if necessary
                 uid_raw = g.get('invitee')
                 if isinstance(uid_raw, dict): uid = int(uid_raw.get('id'))
                 else: uid = int(uid_raw)
             except (TypeError, ValueError):
                 continue
             
+            # Ngăn chặn chủ sở hữu tự mời chính mình vào Guest list
+            if uid == event.user_id:
+                continue
+
             perm = g.get('permission', 'view')
             new_guest_ids.append(uid)
 
@@ -103,9 +106,9 @@ class EventSerializer(serializers.ModelSerializer):
                     invite.permission = perm
                     invite.save()
             else:
-                # Tạo mới invitation
+                # Tạo mới bản ghi invitation
                 EventInvitation.objects.create(event=event, invitee_id=uid, permission=perm)
-                # Tạo thông báo
+                # Chỉ tạo thông báo khi có bản ghi invitation thực sự
                 if request:
                     Notification.objects.create(
                         user_id=uid,
@@ -114,7 +117,7 @@ class EventSerializer(serializers.ModelSerializer):
                         content=f"{request.user.username} đã mời bạn tham gia sự kiện: {event.title}"
                     )
         
-        # Xóa những người không còn trong danh sách (uninvite)
+        # Xóa những lời mời không còn trong danh sách (uninvite)
         event.invitations.exclude(invitee_id__in=new_guest_ids).delete()
 
     def create(self, validated_data):
@@ -130,8 +133,8 @@ class EventSerializer(serializers.ModelSerializer):
         # Standard update
         instance = super().update(instance, validated_data)
         
-        # Chỉ owner mới được sửa khách mời
-        if request and instance.user == request.user:
+        # Chỉ owner mới được sửa khách mời, và chỉ khi trường 'guests' được gửi lên
+        if request and instance.user == request.user and 'guests' in request.data:
             guests_data = request.data.get('guests', [])
             self._handle_guests(instance, guests_data)
         

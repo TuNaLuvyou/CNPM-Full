@@ -31,6 +31,7 @@ export default function CreateModal({
   editingItem = null,
   interactionState = null,
   appSettings,
+  currentUser,
 }) {
   const lang = appSettings?.language || "vi";
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -323,9 +324,9 @@ export default function CreateModal({
 
         {/* Form body */}
         <div className="overflow-y-auto custom-scrollbar px-6 py-4 flex-1 border-t border-slate-50">
-          {activeTab === "event" && <EventForm key={`event-${editingItem?.id || 'new'}`} {...formProps} />}
+          {activeTab === "event" && <EventForm key={`event-${editingItem?.id || 'new'}`} {...formProps} currentUser={currentUser} />}
           {activeTab === "task" && <TaskForm key={`task-${editingItem?.id || 'new'}`} {...formProps} />}
-          {activeTab === "appointment" && <AppointmentForm key={`app-${editingItem?.id || 'new'}`} {...formProps} />}
+          {activeTab === "appointment" && <AppointmentForm key={`app-${editingItem?.id || 'new'}`} {...formProps} currentUser={currentUser} />}
         </div>
 
         {/* Footer */}

@@ -47,7 +47,7 @@ export default function MainLayout({
         <main className="flex-1 overflow-hidden flex flex-col bg-white border-r border-slate-200">
           {children}
         </main>
-        <RightSidebar appSettings={appSettings} />
+        <RightSidebar appSettings={appSettings} currentUser={currentUser} />
       </div>
     </div>
   );

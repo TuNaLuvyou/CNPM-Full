@@ -113,7 +113,7 @@ export default function CalendarApp() {
   };
 
   const fetchEvents = useCallback(async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) return;
 
     try {
@@ -182,12 +182,12 @@ export default function CalendarApp() {
 
   // ── Khôi phục session & Trash logic (Lifted from Calendar.jsx) ──
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (token) {
       getMe()
         .then(user => setCurrentUser(user))
         .catch(() => {
-          if (typeof window !== "undefined") localStorage.removeItem("authToken");
+          if (typeof window !== "undefined") localStorage.removeItem("token");
         });
     }
   }, []);
@@ -228,9 +228,11 @@ export default function CalendarApp() {
         id: n.id,
         type: n.event ? 'event' : 'task',
         ntype: n.ntype,
-        title: n.ntype === 'invite' ? t('invitation_found', appSettings.language) : n.content,
-        desc: n.content,
-        read: n.is_read,
+        title: n.ntype === 'invite' ? t('invitation_found', appSettings.language) : 
+               n.ntype === 'friend_request' ? t('contacts_panel.friend_request_title', appSettings.language) :
+               n.ntype === 'friend_accepted' ? t('contacts_panel.friend_accepted_title', appSettings.language) :
+               n.content,
+        is_read: n.is_read,
         event: n.event,
         time: n.created_at
       }));
@@ -242,7 +244,7 @@ export default function CalendarApp() {
 
   useEffect(() => {
     fetchNotifs();
-    const id = setInterval(fetchNotifs, 10000); // Poll mỗi 10s
+    const id = setInterval(fetchNotifs, 30000); // Poll mỗi 30s để giảm tải server
     return () => clearInterval(id);
   }, [fetchNotifs]);
 
@@ -661,7 +663,7 @@ export default function CalendarApp() {
                       className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                     />
                     <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
-                      🇻🇳 {t('fav_calendars.vn_holidays', appSettings.language)}
+                      {t('fav_calendars.vn_holidays', appSettings.language)}
                     </span>
                   </label>
                 )}
@@ -675,7 +677,7 @@ export default function CalendarApp() {
                       className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                     />
                     <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
-                      🌍 {t('fav_calendars.world_holidays', appSettings.language)}
+                      {t('fav_calendars.world_holidays', appSettings.language)}
                     </span>
                   </label>
                 )}
@@ -689,7 +691,7 @@ export default function CalendarApp() {
                       className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                     />
                     <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
-                      🗓 {t('fav_calendars.other_holidays', appSettings.language)}
+                      {t('fav_calendars.other_holidays', appSettings.language)}
                     </span>
                   </label>
                 )}
@@ -739,6 +741,7 @@ export default function CalendarApp() {
         onSaved={handleEventSaved} onDelete={handleDelete}
         view={view} previewEvent={previewEvent} interactionState={interactionState}
         appSettings={appSettings}
+        currentUser={currentUser}
       />
 
       <YearDayPopup

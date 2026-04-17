@@ -28,7 +28,7 @@ const TABS = {
   INVITATIONS: 'invitations'
 };
 
-export default function ContactsPanel({ appSettings }) {
+export default function ContactsPanel({ appSettings, currentUser }) {
   const lang = appSettings?.language || "vi";
   const [activeTab, setActiveTab] = useState(TABS.CONNECTED);
   
@@ -70,7 +70,7 @@ export default function ContactsPanel({ appSettings }) {
 
   // ── Load Data ──
   const fetchFriends = useCallback(async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) {
       setLoading(false);
       return;
@@ -82,10 +82,12 @@ export default function ContactsPanel({ appSettings }) {
       setFriends(data); 
       setError(null);
     } catch (e) {
-      if (e.message.includes('401')) {
-        setError(t('user.login_required', lang));
-      } else {
-        console.error(e);
+      if (!e.isLocalGuard) {
+        if (e.message.includes('401')) {
+          setError(t('user.login_required', lang));
+        } else {
+          console.error(e);
+        }
       }
     } finally {
       setLoading(false);
@@ -93,7 +95,7 @@ export default function ContactsPanel({ appSettings }) {
   }, [lang]);
 
   const fetchInvitations = useCallback(async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) return;
 
     try {
@@ -101,7 +103,7 @@ export default function ContactsPanel({ appSettings }) {
       const data = await getInvitations();
       setInvitations(data);
     } catch (e) {
-      if (!e.message.includes('401')) console.error(e);
+      if (!e.isLocalGuard && !e.message.includes('401')) console.error(e);
     } finally {
       setLoading(false);
     }
@@ -110,7 +112,15 @@ export default function ContactsPanel({ appSettings }) {
   useEffect(() => {
     if (activeTab === TABS.CONNECTED) fetchFriends();
     if (activeTab === TABS.INVITATIONS) fetchInvitations();
-  }, [activeTab, fetchFriends, fetchInvitations]);
+
+    // Auto refresh friends list to update unread counts
+    const interval = setInterval(() => {
+      if (activeTab === TABS.CONNECTED && !chatFriendId) {
+        fetchFriends();
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [activeTab, fetchFriends, fetchInvitations, chatFriendId]);
 
   // ── Actions ──
   const handleSearch = async (e) => {
@@ -166,14 +176,18 @@ export default function ContactsPanel({ appSettings }) {
   // ── Render Views ──
   
   if (chatFriendId) {
-    const friendConn = friends.find(f => f.id === chatFriendId);
-    const friend = {
-      name: friendConn.sender_name, 
-      id: friendConn.id,
-      color: "bg-blue-500",
-      avatar: friendConn.sender_name?.[0]?.toUpperCase() || "F"
-    };
-    return <ChatView contact={friend} onBack={() => setChatFriendId(null)} />;
+    const conn = friends.find(f => f.id === chatFriendId);
+    if (conn) {
+      const isSender = conn.sender === currentUser?.id;
+      const friendName = isSender ? conn.receiver_name : conn.sender_name;
+      const friend = {
+        name: friendName, 
+        id: conn.id,
+        color: "bg-blue-500",
+        avatar: friendName?.[0]?.toUpperCase() || "F"
+      };
+      return <ChatView contact={friend} onBack={() => setChatFriendId(null)} currentUser={currentUser} />;
+    }
   }
 
   return (
@@ -204,7 +218,13 @@ export default function ContactsPanel({ appSettings }) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {activeTab === TABS.NOT_CONNECTED && (
+        {!localStorage.getItem('token') ? (
+            <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2 px-6 text-center">
+              <Users className="w-10 h-10 opacity-20" />
+              <p className="text-xs font-bold text-slate-500">{t('user.login_required', lang)}</p>
+              <p className="text-[10px] text-slate-400">Bạn cần đăng nhập để tìm kiếm người dùng và quản lý danh bạ.</p>
+            </div>
+        ) : activeTab === TABS.NOT_CONNECTED && (
           <div className="p-4 space-y-4">
             <form onSubmit={handleSearch} className="flex gap-2">
               <div className="flex-1 flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2 border border-slate-100 focus-within:border-blue-300 focus-within:bg-white transition-all">
@@ -270,67 +290,78 @@ export default function ContactsPanel({ appSettings }) {
                 <p className="text-xs font-medium">{t('contacts_panel.no_contacts', lang)}</p>
               </div>
             ) : (
-              friends.map((conn) => (
-                <div key={conn.id} className="group relative flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition">
-                  {conn.is_pinned && (
-                    <div className="absolute top-2 right-2">
-                       <Pin className="w-2.5 h-2.5 text-blue-500 fill-blue-500" />
+              friends.map((conn) => {
+                const isSender = conn.sender === currentUser?.id;
+                const friendName = isSender ? conn.receiver_name : conn.sender_name;
+                const friendEmail = isSender ? conn.receiver_email : conn.sender_email;
+                
+                return (
+                  <div key={conn.id} className="group relative flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition">
+                    {conn.is_pinned && (
+                      <div className="absolute top-2 right-2">
+                         <Pin className="w-2.5 h-2.5 text-blue-500 fill-blue-500" />
+                      </div>
+                    )}
+                    <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                      {friendName?.[0]?.toUpperCase() || "?"}
                     </div>
-                  )}
-                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                    {conn.sender_name?.[0]?.toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-700 truncate">{conn.sender_name}</p>
-                    <p className="text-xs text-slate-400 truncate">{conn.sender_email}</p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button 
-                      onClick={() => setChatFriendId(conn.id)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition shadow-sm bg-white border border-slate-100"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                    </button>
-                    <div className="relative">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-700 truncate">{friendName || "Unknown"}</p>
+                      <p className="text-xs text-slate-400 truncate">{friendEmail}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
                       <button 
-                        onClick={() => setOpenMenuId(openMenuId === conn.id ? null : conn.id)}
-                        className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl transition"
+                        onClick={() => setChatFriendId(conn.id)}
+                        className="relative p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition shadow-sm bg-white border border-slate-100"
                       >
-                        <MoreVertical className="w-4 h-4" />
+                        <MessageCircle className="w-4 h-4" />
+                        {conn.unread_count > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                            {conn.unread_count > 99 ? '99+' : conn.unread_count}
+                          </span>
+                        )}
                       </button>
-                      
-                      {openMenuId === conn.id && (
-                        <div 
-                          ref={menuRef}
-                          className="absolute right-0 mt-2 w-40 bg-white border border-slate-100 rounded-xl shadow-xl z-20 py-1 overflow-hidden"
+                      <div className="relative">
+                        <button 
+                          onClick={() => setOpenMenuId(openMenuId === conn.id ? null : conn.id)}
+                          className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl transition"
                         >
-                          <button 
-                            onClick={() => handleFriendAction(conn.id, 'pin')}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-slate-600 hover:bg-slate-50 transition"
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                        
+                        {openMenuId === conn.id && (
+                          <div 
+                            ref={menuRef}
+                            className="absolute right-0 mt-2 w-40 bg-white border border-slate-100 rounded-xl shadow-xl z-20 py-1 overflow-hidden"
                           >
-                            {conn.is_pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
-                            {conn.is_pinned ? t('contacts_panel.unpin', lang) : t('contacts_panel.pin', lang)}
-                          </button>
-                          <button 
-                            onClick={() => handleFriendAction(conn.id, 'unfriend')}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-red-500 hover:bg-red-50 transition"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            {t('contacts_panel.unfriend', lang)}
-                          </button>
-                          <button 
-                            onClick={() => handleFriendAction(conn.id, 'block')}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-slate-800 hover:bg-slate-100 transition border-t border-slate-50"
-                          >
-                            <Ban className="w-3.5 h-3.5 text-slate-400" />
-                            {t('contacts_panel.block', lang)}
-                          </button>
-                        </div>
-                      )}
+                            <button 
+                              onClick={() => handleFriendAction(conn.id, 'pin')}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-slate-600 hover:bg-slate-50 transition"
+                            >
+                              {conn.is_pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+                              {conn.is_pinned ? t('contacts_panel.unpin', lang) : t('contacts_panel.pin', lang)}
+                            </button>
+                            <button 
+                              onClick={() => handleFriendAction(conn.id, 'unfriend')}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-red-500 hover:bg-red-50 transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              {t('contacts_panel.unfriend', lang)}
+                            </button>
+                            <button 
+                              onClick={() => handleFriendAction(conn.id, 'block')}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-slate-800 hover:bg-slate-100 transition border-t border-slate-50"
+                            >
+                              <Ban className="w-3.5 h-3.5 text-slate-400" />
+                              {t('contacts_panel.block', lang)}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

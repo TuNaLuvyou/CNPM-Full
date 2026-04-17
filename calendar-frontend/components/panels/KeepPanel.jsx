@@ -15,14 +15,22 @@ export default function KeepPanel({ appSettings }) {
 
   // ── Tải notes từ API ──
   const fetchNotes = useCallback(async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const data = await getNotes();
       setNotes(data);
       setError(null);
     } catch (e) {
-      setError(t('keep_panel.loading_error', lang) || "Không thể tải ghi chú.");
-      console.error(e);
+      if (!e.isLocalGuard) {
+        setError(t('keep_panel.loading_error', lang) || "Không thể tải ghi chú.");
+        console.error(e);
+      }
     } finally {
       setLoading(false);
     }
@@ -140,6 +148,12 @@ export default function KeepPanel({ appSettings }) {
             <Loader2 className="w-5 h-5 animate-spin" />
             <span className="text-xs">{t('loading', lang)}</span>
           </div>
+        ) : !localStorage.getItem('token') ? (
+            <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-2 px-6 text-center">
+              <Lightbulb className="w-8 h-8 opacity-20" />
+              <p className="text-xs font-bold text-slate-500">{t('user.login_required', lang)}</p>
+              <p className="text-[10px] text-slate-400">Bạn cần đăng nhập để tạo và xem các ghi chú cá nhân.</p>
+            </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-32 text-red-400 gap-2 px-4 text-center">
             <p className="text-xs">{error}</p>

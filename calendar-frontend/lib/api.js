@@ -1,84 +1,69 @@
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
 /**
- * lib/api.js — Centralized API service layer
- * Tất cả calls tới Django backend đều đi qua đây.
+ * Base request helper to handle auth tokens and common headers
  */
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
-
-// ─── Helpers ───────────────────────────────────────────────────────────────
-function getToken() {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('authToken');
-}
-
-function getHeaders(extra = {}) {
-  const headers = { 'Content-Type': 'application/json', ...extra };
-  const token = getToken();
-  if (token) headers['Authorization'] = `Token ${token}`;
-  return headers;
-}
-
-let isLoggingOut = false;
-
-async function request(path, options = {}) {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: getHeaders(),
+export async function request(path, options = {}) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Token ${token}` } : {}),
+    ...options.headers,
+  };
+  
+  const response = await fetch(`${API_URL}${path}`, {
     ...options,
+    headers,
   });
-  if (res.status === 204) return null;
-  const data = await res.json();
-  if (!res.ok) {
-    if (res.status === 401 && !isLoggingOut) {
-      isLoggingOut = true;
-      localStorage.removeItem('authToken');
-      if (typeof window !== 'undefined') {
-        window.location.reload(); // Force app to go back to login state
-      }
-    }
-    // Ném lỗi với message từ BE
-    const msg = typeof data === 'object'
-      ? Object.values(data).flat().join(' ')
-      : String(data);
-    throw new Error(msg || `Lỗi ${res.status}`);
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    // Extract error message from Django REST Framework default error formats
+    const errorMsg = errorData.detail || errorData.error || (typeof errorData === 'object' ? Object.values(errorData)[0] : null);
+    throw new Error(errorMsg || 'Liên kết máy chủ thất bại');
   }
-  return data;
+
+  return response.status === 204 ? null : response.json();
 }
 
-// ─── AUTH ───────────────────────────────────────────────────────────────────
+// ─── AUTH ──────────────────────────────────────────────────────────────────
 export async function login(email, password) {
   const data = await request('/accounts/login/', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
-  if (data.token) localStorage.setItem('authToken', data.token);
-  return data; // { token, user }
+  if (data.token) {
+    localStorage.setItem('token', data.token);
+  }
+  return data;
 }
 
 export async function register(fullName, email, password) {
   const data = await request('/accounts/register/', {
     method: 'POST',
-    body: JSON.stringify({ full_name: fullName, email, password }),
+    body: JSON.stringify({ email, password, full_name: fullName }),
   });
-  if (data.token) localStorage.setItem('authToken', data.token);
-  return data; // { token, user }
+  if (data.token) {
+    localStorage.setItem('token', data.token);
+  }
+  return data;
 }
 
 export async function logout() {
-  try {
-    await request('/accounts/logout/', { method: 'POST' });
-  } finally {
-    localStorage.removeItem('authToken');
-  }
+  await request('/accounts/logout/', { method: 'POST' }).catch(() => {});
+  localStorage.removeItem('token');
 }
 
 export async function getMe() {
   return request('/accounts/me/');
 }
 
-// ─── EVENTS ─────────────────────────────────────────────────────────────────
+// ─── EVENTS ────────────────────────────────────────────────────────────────
 export async function getEvents(params = {}) {
-  const qs = new URLSearchParams(params).toString();
-  return request(`/events/${qs ? '?' + qs : ''}`);
+  let url = '/events/';
+  const query = new URLSearchParams(params).toString();
+  if (query) url += `?${query}`;
+  return request(url);
 }
 
 export async function createEvent(data) {
@@ -95,6 +80,10 @@ export async function updateEvent(id, data) {
   });
 }
 
+export async function deleteEvent(id) {
+  return request(`/events/${id}/`, { method: 'DELETE' });
+}
+
 export async function trashEvent(id) {
   return request(`/events/${id}/trash/`, { method: 'POST' });
 }
@@ -104,17 +93,23 @@ export async function restoreEvent(id) {
 }
 
 export async function permanentDeleteEvent(id) {
-  return request(`/events/${id}/permanent/`, { method: 'DELETE' });
+  return request(`/events/${id}/permanent_delete/`, { method: 'POST' });
 }
 
 export async function getTrashedEvents() {
-  return request('/events/trash/');
+  return request('/events/trashed/');
 }
 
-// ─── TASKS ──────────────────────────────────────────────────────────────────
+export async function leaveEvent(id) {
+  return request(`/events/${id}/leave/`, { method: 'POST' });
+}
+
+// ─── TASKS ─────────────────────────────────────────────────────────────────
 export async function getTasks(params = {}) {
-  const qs = new URLSearchParams(params).toString();
-  return request(`/tasks/${qs ? '?' + qs : ''}`);
+  let url = '/tasks/';
+  const query = new URLSearchParams(params).toString();
+  if (query) url += `?${query}`;
+  return request(url);
 }
 
 export async function createTask(data) {
@@ -131,6 +126,10 @@ export async function updateTask(id, data) {
   });
 }
 
+export async function deleteTask(id) {
+  return request(`/tasks/${id}/`, { method: 'DELETE' });
+}
+
 export async function toggleTask(id) {
   return request(`/tasks/${id}/toggle/`, { method: 'POST' });
 }
@@ -144,41 +143,14 @@ export async function restoreTask(id) {
 }
 
 export async function permanentDeleteTask(id) {
-  return request(`/tasks/${id}/permanent/`, { method: 'DELETE' });
+  return request(`/tasks/${id}/permanent_delete/`, { method: 'POST' });
 }
 
 export async function getTrashedTasks() {
-  return request('/tasks/trash/');
+  return request('/tasks/trashed/');
 }
 
-// ─── NOTES ──────────────────────────────────────────────────────────────────
-export async function getNotes() {
-  return request('/notes/');
-}
-
-export async function createNote(data) {
-  return request('/notes/', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateNote(id, data) {
-  return request(`/notes/${id}/`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function togglePinNote(id) {
-  return request(`/notes/${id}/toggle_pin/`, { method: 'POST' });
-}
-
-export async function deleteNote(id) {
-  return request(`/notes/${id}/`, { method: 'DELETE' });
-}
-
-// ─── CONTACTS ───────────────────────────────────────────────────────────────
+// ─── CONTACTS ──────────────────────────────────────────────────────────────
 export async function getContacts() {
   return request('/contacts/');
 }
@@ -221,39 +193,47 @@ export async function getInvitations() {
   return request('/contacts/connections/invitations/');
 }
 
-export async function acceptInvitation(connectionId) {
-  return request(`/contacts/connections/${connectionId}/accept/`, { method: 'POST' });
+export async function acceptInvitation(id) {
+  return request(`/contacts/connections/${id}/accept/`, { method: 'POST' });
 }
 
-export async function declineInvitation(connectionId) {
-  return request(`/contacts/connections/${connectionId}/decline/`, { method: 'POST' });
+export async function declineInvitation(id) {
+  return request(`/contacts/connections/${id}/decline/`, { method: 'POST' });
 }
 
-export async function blockConnection(connectionId) {
-  return request(`/contacts/connections/${connectionId}/block/`, { method: 'POST' });
+export async function blockConnection(id) {
+  return request(`/contacts/connections/${id}/block/`, { method: 'POST' });
 }
 
-export async function togglePinConnection(connectionId) {
-  return request(`/contacts/connections/${connectionId}/toggle_pin/`, { method: 'POST' });
+export async function togglePinConnection(id) {
+  return request(`/contacts/connections/${id}/toggle_pin/`, { method: 'POST' });
 }
 
-// ── Notifications & Invitations ──
+// ─── MESSAGES (Chat) ───────────────────────────────────────────────────────
+export async function getMessages(connectionId) {
+  return request(`/contacts/messages/?connection=${connectionId}`);
+}
+
+export async function markMessagesRead(connectionId) {
+  return request(`/contacts/messages/mark_read/?connection=${connectionId}`, { method: 'POST' });
+}
+
+export async function sendMessage(connectionId, text) {
+  return request('/contacts/messages/', {
+    method: 'POST',
+    body: JSON.stringify({ connection: connectionId, text }),
+  });
+}
+
+// ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
 export async function getNotifications() {
   return request('/events/notifications/');
 }
 
-export async function markAllNotificationsRead() {
-  return request('/events/notifications/mark_all_as_read/', { method: 'POST' });
-}
-
-export async function markNotificationRead(id) {
-  return request(`/events/notifications/${id}/mark_read/`, { method: 'POST' });
-}
-
 export async function acceptEventInvitation(id, force = false) {
   return request(`/events/invitations/${id}/accept/`, { 
-    method: 'POST', 
-    body: JSON.stringify({ force }) 
+    method: 'POST',
+    body: JSON.stringify({ force })
   });
 }
 
@@ -261,6 +241,41 @@ export async function declineEventInvitation(id) {
   return request(`/events/invitations/${id}/decline/`, { method: 'POST' });
 }
 
-export async function leaveEvent(eventId) {
-  return request(`/events/${eventId}/leave/`, { method: 'POST' });
+export async function markNotificationRead(id) {
+  return request(`/events/notifications/${id}/mark_read/`, { method: 'POST' });
+}
+
+export async function markAllNotificationsRead() {
+  return request('/events/notifications/mark_all_as_read/', { method: 'POST' });
+}
+
+export async function deleteAllNotifications() {
+  return request('/events/notifications/delete_all/', { method: 'DELETE' });
+}
+
+// ─── NOTES (Keep) ──────────────────────────────────────────────────────────
+export async function getNotes() {
+  return request('/notes/');
+}
+
+export async function createNote(data) {
+  return request('/notes/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateNote(id, data) {
+  return request(`/notes/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteNote(id) {
+  return request(`/notes/${id}/`, { method: 'DELETE' });
+}
+
+export async function togglePinNote(id) {
+  return request(`/notes/${id}/toggle_pin/`, { method: 'POST' });
 }
