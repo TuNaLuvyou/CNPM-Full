@@ -29,7 +29,7 @@ export default function CalendarApp() {
   
 
   // ── Shared calendar state ──
-  const [view, setView] = React.useState("Tuần");
+  const [view, setView] = React.useState("week");
   const [viewDate, setViewDate] = React.useState(() => getVNTime());
   const [selectedDate, setSelectedDate] = React.useState(() => getVNTime());
 
@@ -60,11 +60,14 @@ export default function CalendarApp() {
     vietnamHolidays: true,
     worldHolidays: false,
     otherHolidays: false,
+    showFriendsCalendars: false,
     customHolidays: [],
     customCategories: ["Mặc định", "Công việc", "Gia đình", "Cá nhân"],
   });
 
   const [visibleHolidays, setVisibleHolidays] = useState(["vietnam", "world", "other"]);
+  const [friends, setFriends] = useState([]);
+  const [visibleFriends, setVisibleFriends] = useState([]);
 
   // Sync visibleCategories with appSettings.customCategories when they change
   useEffect(() => {
@@ -110,6 +113,9 @@ export default function CalendarApp() {
   const handleSaveSettings = (newSettings) => {
     setAppSettings(newSettings);
     localStorage.setItem("appSettings", JSON.stringify(newSettings));
+    if (!newSettings.showFriendsCalendars) {
+        setVisibleFriends([]);
+    }
   };
 
   const fetchEvents = useCallback(async () => {
@@ -138,6 +144,10 @@ export default function CalendarApp() {
           date_from: `${viewDate.getFullYear()}-01-01`,
           date_to: `${viewDate.getFullYear()}-12-31`,
         };
+      }
+
+      if (appSettings.showFriendsCalendars) {
+        params.include_friends = true;
       }
       const [eventsResponse, tasksResponse] = await Promise.all([
         getEvents(params),
@@ -178,7 +188,7 @@ export default function CalendarApp() {
 
   React.useEffect(() => {
     fetchEvents();
-  }, [fetchEvents, eventSavedTick]);
+  }, [fetchEvents, eventSavedTick, appSettings.showFriendsCalendars]);
 
   // ── Khôi phục session & Trash logic (Lifted from Calendar.jsx) ──
   useEffect(() => {
@@ -191,6 +201,26 @@ export default function CalendarApp() {
         });
     }
   }, []);
+
+  const fetchFriends = useCallback(async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token || !appSettings.showFriendsCalendars) return;
+    try {
+        const { getFriends } = await import('@/lib/api');
+        const data = await getFriends();
+        setFriends(data);
+        // Mặc định cho hiện tất cả khi mới bật
+        if (visibleFriends.length === 0) {
+            setVisibleFriends(data.map(f => f.friend_id));
+        }
+    } catch (e) {
+        console.error("Lỗi lấy danh sách bạn bè:", e);
+    }
+  }, [appSettings.showFriendsCalendars]);
+
+  useEffect(() => {
+    fetchFriends();
+  }, [fetchFriends]);
 
   const fetchTrash = useCallback(async () => {
     try {
@@ -225,16 +255,15 @@ export default function CalendarApp() {
       const data = await getNotifications();
       // Chuyển đổi format BE -> FE nếu cần
       const formatted = data.map(n => ({
-        id: n.id,
-        type: n.event ? 'event' : 'task',
-        ntype: n.ntype,
-        title: n.ntype === 'invite' ? t('invitation_found', appSettings.language) : 
+        ...n,
+        // Ensure desc and time are present (BE now provides them, but we keep this for safety)
+        desc: n.desc || n.content || (
+               n.ntype === 'invite' ? t('invitation_found', appSettings.language) : 
                n.ntype === 'friend_request' ? t('contacts_panel.friend_request_title', appSettings.language) :
-               n.ntype === 'friend_accepted' ? t('contacts_panel.friend_accepted_title', appSettings.language) :
-               n.content,
-        is_read: n.is_read,
-        event: n.event,
-        time: n.created_at
+               n.ntype === 'friend_accepted' ? t('contacts_panel.friend_accepted_title', appSettings.language) : 
+               ''
+        ),
+        time: n.time || n.created_at
       }));
       setNotifications(formatted);
     } catch (e) {
@@ -244,9 +273,13 @@ export default function CalendarApp() {
 
   useEffect(() => {
     fetchNotifs();
-    const id = setInterval(fetchNotifs, 30000); // Poll mỗi 30s để giảm tải server
+    fetchEvents();
+    const id = setInterval(() => {
+      fetchNotifs();
+      fetchEvents();
+    }, 30000); 
     return () => clearInterval(id);
-  }, [fetchNotifs]);
+  }, [fetchNotifs, fetchEvents]);
 
   const handleRestore = async (compositeId) => {
     const item = deletedItems.find(i => i.id === compositeId);
@@ -417,9 +450,27 @@ export default function CalendarApp() {
   const filteredEvents = React.useMemo(() => {
     return events.filter(ev => {
         const cat = ev.category || 'Mặc định';
-        return visibleCategories.includes(cat);
+        const isMyEvent = ev.user === currentUser?.id;
+        
+        let involvedFriends = [];
+        if (isMyEvent && ev.invitations) {
+            involvedFriends = ev.invitations.filter(i => i.status === 'accepted').map(i => i.invitee);
+        } else if (!isMyEvent) {
+            involvedFriends = [ev.user]; // Người mời tôi
+        }
+
+        const isPersonalEvent = involvedFriends.length === 0;
+
+        if (isPersonalEvent || !appSettings.showFriendsCalendars) {
+            // Sự kiện cá nhân (hoặc khi tắt tính năng Lịch kết nối): chỉ lọc theo Category
+            return visibleCategories.includes(cat);
+        } else {
+            // Sự kiện dùng chung: Lọc theo Category VÀ Lịch kết nối
+            const isFriendChecked = involvedFriends.some(fid => visibleFriends.includes(fid));
+            return visibleCategories.includes(cat) && isFriendChecked;
+        }
     });
-  }, [events, visibleCategories]);
+  }, [events, visibleCategories, visibleFriends, currentUser?.id, appSettings.showFriendsCalendars]);
 
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
   const [createModal, setCreateModal] = useState({ isOpen: false, tab: "event" });
@@ -458,9 +509,9 @@ export default function CalendarApp() {
     const isSameDate = lastMiniClick && clickedDate.toDateString() === lastMiniClick.toDateString();
     setLastMiniClick(clickedDate);
     setSelectedDate(clickedDate);
-    if (view === "Ngày") setViewDate(clickedDate);
-    else if (view === "Tuần" && isSameDate) { setView("Ngày"); setViewDate(clickedDate); }
-    else if (view === "Tháng" && isSameDate) { setView("Tuần"); setViewDate(clickedDate); }
+    if (view === "day") setViewDate(clickedDate);
+    else if (view === "week" && isSameDate) { setView("day"); setViewDate(clickedDate); }
+    else if (view === "month" && isSameDate) { setView("week"); setViewDate(clickedDate); }
     else setViewDate(clickedDate);
   };
 
@@ -543,6 +594,23 @@ export default function CalendarApp() {
     setCreateModal({ isOpen: true, tab });
   };
 
+  const handleEventClick = (ev, position) => {
+      openCreate(ev.event_type || 'event', ev, position);
+  };
+
+  const handleNotificationClick = async (eventId) => {
+    try {
+      const { getEvent } = await import('@/lib/api');
+      const eventData = await getEvent(eventId);
+      if (eventData) {
+        openCreate(eventData.event_type || 'event', eventData, null);
+      }
+    } catch (err) {
+      console.error("Lỗi khi mở sự kiện từ thông báo:", err);
+      alert("Không thể mở sự kiện này. Có thể nó đã bị xóa.");
+    }
+  };
+
   const handleYearDayClick = (date, event) => {
     const rect = event.target.getBoundingClientRect();
     setYearDayPopup({ isOpen: true, date, position: { x: rect.left + rect.width / 2, y: rect.top } });
@@ -551,7 +619,7 @@ export default function CalendarApp() {
   const handleNavigateFromYearPopup = (date) => {
     setSelectedDate(date);
     setViewDate(date);
-    setView("Ngày");
+    setView("day");
     setYearDayPopup({ isOpen: false, date: null, position: null });
   };
 
@@ -710,6 +778,33 @@ export default function CalendarApp() {
                   </label>
                 ))}
               </div>
+
+              {/* Connected People's Calendars Section */}
+              {appSettings.showFriendsCalendars && friends.length > 0 && (
+                <>
+                  <hr className="border-slate-100 my-4" />
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
+                    {t('connected_calendars_title', appSettings.language)}
+                  </h3>
+                  <div className="space-y-2">
+                    {friends.map(friend => (
+                      <label key={friend.friend_id} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 transition-colors">
+                        <input 
+                          type="checkbox" 
+                          checked={visibleFriends.includes(friend.friend_id)} 
+                          onChange={() => setVisibleFriends(prev => prev.includes(friend.friend_id) ? prev.filter(v => v !== friend.friend_id) : [...prev, friend.friend_id])} 
+                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
+                        />
+                        <div className="flex items-center overflow-hidden">
+                          <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors truncate">
+                            {friend.friend_email}
+                          </span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -732,6 +827,7 @@ export default function CalendarApp() {
           notifications={notifications} setNotifications={setNotifications}
           appSettings={appSettings}
           setEventSavedTick={setEventSavedTick}
+          onNotificationClick={handleNotificationClick}
         />
       </main>
 
@@ -772,9 +868,10 @@ export default function CalendarApp() {
       <TrashModal
         isOpen={isTrashOpen}
         onClose={() => setIsTrashOpen(false)}
-        deletedItems={deletedItems}
-        onRestore={handleRestore}
-        onPermanentDelete={handlePermanentDelete}
+        items={deletedItems}
+        setDeletedItems={setDeletedItems}
+        onRestore={(item) => handleRestore(item)}
+        onPermanentDelete={(item) => handlePermanentDelete(item)}
         onClearAll={handleClearAllTrash}
       />
 

@@ -91,6 +91,7 @@ const DEFAULT_SETTINGS = {
     vietnamHolidays: true,
     worldHolidays: false,
     otherHolidays: false,
+    showFriendsCalendars: false,
     customHolidays: [],
     customCategories: ["Mặc định", "Công việc", "Gia đình", "Cá nhân"],
 };
@@ -332,6 +333,7 @@ function ViewSection({ s, set, lang }) {
         { key: "showCompletedTasks", label: t('view_options.show_completed', lang), desc: t('view_options.show_completed_desc', lang) },
         { key: "showWeekNumbers", label: t('view_options.show_week_num', lang), desc: t('view_options.show_week_num_desc', lang) },
         { key: "dimPastEvents", label: t('view_options.dim_past', lang), desc: t('view_options.dim_past_desc', lang) },
+        { key: "showFriendsCalendars", label: t('view_options.show_friends_calendars', lang), desc: t('view_options.show_friends_calendars_desc', lang) },
     ];
     return (
         <div id="section-view" className="space-y-6 scroll-mt-6">
@@ -582,16 +584,24 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
             const sectionElements = SECTIONS.map(s => document.getElementById(`section-${s.key}`));
             let current = activeSection;
 
-            for (const el of sectionElements) {
-                if (!el) continue;
-                const rect = el.getBoundingClientRect();
-                const containerRect = container.getBoundingClientRect();
-                
-                // If section top is near the top of container view
-                if (rect.top <= containerRect.top + 100) {
-                    current = el.id.replace('section-', '');
+            // Kiểm tra nếu đã cuộn xuống cuối cùng (cho mục cuối)
+            const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
+
+            if (isAtBottom) {
+                current = SECTIONS[SECTIONS.length - 1].key;
+            } else {
+                for (const el of sectionElements) {
+                    if (!el) continue;
+                    const rect = el.getBoundingClientRect();
+                    const containerRect = container.getBoundingClientRect();
+                    
+                    // Ngưỡng kích hoạt linh hoạt hơn
+                    if (rect.top <= containerRect.top + 80) {
+                        current = el.id.replace('section-', '');
+                    }
                 }
             }
+
             if (current !== activeSection) {
                 setActiveSection(current);
             }

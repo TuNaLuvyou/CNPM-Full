@@ -37,10 +37,13 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='trash')
     def trash(self, request, pk=None):
         task = self.get_object()
+        if task.user != request.user:
+            return Response({"error": "Chỉ người sở hữu mới có quyền xoá"}, status=status.HTTP_403_FORBIDDEN)
+        
         task.is_deleted = True
         task.deleted_at = timezone.now()
         task.save()
-        return Response({'status': 'moved to trash'})
+        return Response({'status': 'deleted'})
 
     @action(detail=True, methods=['post'], url_path='restore')
     def restore(self, request, pk=None):

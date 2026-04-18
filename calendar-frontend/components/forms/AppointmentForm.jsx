@@ -119,22 +119,29 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
 
     const isTitleEmpty = submitted && !form.title.trim();
     const canEdit = !initialData || initialData.is_owner || initialData.my_permission === 'edit';
+    const isOwner = !initialData || initialData.is_owner;
 
     return (
         <div className="space-y-4 py-2">
             <FieldRow icon={CalendarIcon}>
                 <div className="flex-1 min-w-0">
-                    <InputBase type="text" placeholder="Tiêu đề lịch hẹn"
+                    <InputBase type="text" placeholder={t('create_modal.title_placeholder', lang)}
                         value={form.title} onChange={set('title')}
                         className={`font-medium text-base ${isTitleEmpty ? 'border-red-300 ring-1 ring-red-50' : ''}`} />
                     {isTitleEmpty && (
-                        <p className="text-[10px] text-red-500 mt-1 ml-1 animate-pulse">Tiêu đề không được để trống</p>
+                        <p className="text-[10px] text-red-500 mt-1 ml-1 animate-pulse">{t('create_modal.title_required', lang)}</p>
                     )}
                 </div>
             </FieldRow>
 
             <FieldRow icon={Clock}>
-                <DateTimeSelector date={form.date} timeStart={form.timeStart} timeEnd={form.timeEnd}>
+                <DateTimeSelector 
+                    date={form.date} 
+                    timeStart={form.timeStart} 
+                    timeEnd={form.timeEnd}
+                    timeFormat={appSettings?.timeFormat}
+                    lang={lang}
+                >
                     <div className="flex flex-col gap-3">
                         <InputBase type="date" value={form.date} onChange={set('date')} />
                         <div className="flex items-center gap-2">
@@ -147,12 +154,12 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
             </FieldRow>
 
             <FieldRow icon={MapPin}>
-                <InputBase type="text" placeholder="Thêm vị trí"
+                <InputBase type="text" placeholder={t('create_modal.location_placeholder', lang)}
                     value={form.location} onChange={set('location')} />
             </FieldRow>
 
             <FieldRow icon={AlignLeft}>
-                <TextareaBase placeholder="Ghi chú thêm"
+                <TextareaBase placeholder={t('create_modal.note_placeholder', lang)}
                     value={form.note} onChange={set('note')} />
             </FieldRow>
 
@@ -160,8 +167,8 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
                 {!selectedFile ? (
                     <label className="flex items-center justify-between w-full px-3 py-2 text-sm border border-dashed border-slate-300 rounded-lg hover:border-blue-400 hover:bg-blue-50/30 transition-all cursor-pointer group">
                         <input type="file" className="hidden" onChange={handleFileChange} />
-                        <span className="text-slate-500 group-hover:text-blue-600 transition-colors">Đính kèm tệp</span>
-                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded group-hover:bg-blue-100 group-hover:text-blue-500 transition-all">Tải lên</span>
+                        <span className="text-slate-500 group-hover:text-blue-600 transition-colors">{t('create_modal.attach_file', lang)}</span>
+                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded group-hover:bg-blue-100 group-hover:text-blue-500 transition-all">{t('create_modal.upload', lang)}</span>
                     </label>
                 ) : (
                     <div className="flex items-center justify-between w-full px-3 py-2 text-sm border border-blue-200 bg-blue-50/50 rounded-lg group animate-in zoom-in-95 duration-200">
@@ -215,7 +222,7 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
                 <div className="flex flex-col w-full gap-2">
                     <div className="flex items-center justify-between px-1">
                         <span className="text-sm font-semibold text-slate-700">{t('contacts_panel.guests', lang)}</span>
-                        {canEdit && (
+                        {isOwner && (
                             <button 
                                 onClick={(e) => {
                                     e.preventDefault();
@@ -235,7 +242,7 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
                     
                     <div className="bg-slate-50/50 border border-slate-200/60 rounded-2xl p-1.5 min-h-[50px] flex flex-col gap-1.5 transition-all">
                         {/* Guest Picker (Dropdown) */}
-                        {showGuestPicker && canEdit && (
+                        {showGuestPicker && isOwner && (
                             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-10 mx-0.5 mt-0.5">
                                 <div className="p-2 border-b border-slate-100 bg-slate-50/50">
                                     <div className="relative">
@@ -281,7 +288,7 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
                                                         <div className="relative group/perm" onClick={(e) => e.stopPropagation()}>
                                                             <select 
                                                                 value={guestEntry.permission}
-                                                                disabled={!canEdit}
+                                                                disabled={!isOwner}
                                                                 onChange={(e) => {
                                                                     e.stopPropagation();
                                                                     togglePermission(f.id);
@@ -353,7 +360,7 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
                                                 <div className="relative group/perm" onClick={(e) => e.stopPropagation()}>
                                                     <select 
                                                         value={g.permission}
-                                                        disabled={!canEdit}
+                                                        disabled={!isOwner}
                                                         onChange={(e) => {
                                                             e.stopPropagation();
                                                             togglePermission(g.invitee_details?.id || g.invitee);
@@ -369,7 +376,7 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
                                                     <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
                                                 </div>
 
-                                                {canEdit && (
+                                                {isOwner && (
                                                     <button 
                                                         onClick={(e) => {
                                                             e.stopPropagation();

@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'events',
     'notes',
     'tasks',
+    'management',
 ]
 
 MIDDLEWARE = [
@@ -95,3 +96,6 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny', # Tạm thời AllowAny để test
     ]
 }
+
+# Cấu hình chuyển hướng đăng nhập quản trị tùy chỉnh
+LOGIN_URL = '/admin/login/'

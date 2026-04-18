@@ -39,6 +39,52 @@ export default function CreateModal({
   const [deleting, setDeleting] = useState(false);
   const modalRef = useRef(null);
   
+  // ── Drag state ──
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const startDragPos = useRef({ x: 0, y: 0 });
+  const initialOffset = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (!isOpen) {
+      setDragOffset({ x: 0, y: 0 });
+      return;
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e) => {
+      const dx = e.clientX - startDragPos.current.x;
+      const dy = e.clientY - startDragPos.current.y;
+      setDragOffset({
+        x: initialOffset.current.x + dx,
+        y: initialOffset.current.y + dy
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging]);
+
+  const handleHeaderMouseDown = (e) => {
+    // Only drag if left clicking the header itself (or the grip)
+    if (e.button !== 0) return;
+    
+    setIsDragging(true);
+    startDragPos.current = { x: e.clientX, y: e.clientY };
+    initialOffset.current = { ...dragOffset };
+  };
+  
   // Xác định xem có sự tương tác kéo thả đang diễn ra cho item này không
   const isInteracting = !!(interactionState && (
     (editingItem && interactionState.id === editingItem.id) || 
@@ -77,9 +123,7 @@ export default function CreateModal({
     }
   };
 
-  // ── Drag state ──
-  const [isDragging, setIsDragging] = useState(false);
-  const dragOrigin = useRef({ mouseX: 0, mouseY: 0, boxLeft: 0, boxTop: 0 });
+  // ── Drag state removed to fix lag ──
 
   useEffect(() => {
     if (isOpen) setActiveTab(initialTab);
@@ -132,7 +176,7 @@ export default function CreateModal({
       
       // Nếu không có columnRect nhưng có anchor (đang kéo hoặc preview), thử tìm column element
       const anchor = isSticky ? interactionState : previewEvent;
-      if (!avoidRect && anchor && ["Tuần", "Tuần làm việc", "Ngày"].includes(view)) {
+      if (!avoidRect && anchor && ["week", "work_week", "day"].includes(view)) {
         const targetDateStr = anchor.fullDate?.toDateString();
         const colEl = document.querySelector(`[data-column-date="${targetDateStr}"]`);
         if (colEl) avoidRect = colEl.getBoundingClientRect();
@@ -142,7 +186,7 @@ export default function CreateModal({
       if (pivotY !== undefined) {
         // Ưu tiên đặt modal căn giữa theo chiều dọc so với điểm click
         top = pivotY - modalHeight / 3;
-      } else if (anchor && avoidRect && ["Tuần", "Tuần làm việc", "Ngày"].includes(view)) {
+      } else if (anchor && avoidRect && ["week", "work_week", "day"].includes(view)) {
         // Fallback dùng tọa độ lưới nếu không có pivotY
         // Nếu avoidRect là day-column (cao), ta dùng anchor.top để định vị
         const isTallColumn = avoidRect.height > 500;
@@ -151,7 +195,7 @@ export default function CreateModal({
       }
 
       // 4. Calculate Horizontal Position (Left)
-      if (view === "Ngày" && avoidRect) {
+      if (view === "day" && avoidRect) {
         // Trong chế độ Ngày, căn giữa modal theo cột ngày
         left = avoidRect.left + (avoidRect.width / 2) - (modalWidth / 2);
       } else if (avoidRect) {
@@ -180,11 +224,11 @@ export default function CreateModal({
       }
 
       // 5. Screen boundary constraints (Safety)
-      const finalTop = Math.max(20, Math.min(top, window.innerHeight - modalHeight - 20));
-      const finalLeft = Math.max(10, Math.min(left, window.innerWidth - modalWidth - 10));
+      const finalTop = Math.max(20, Math.min(top + dragOffset.y, window.innerHeight - modalHeight - 20));
+      const finalLeft = Math.max(10, Math.min(left + dragOffset.x, window.innerWidth - modalWidth - 10));
 
       // 6. Apply styles
-      const useTransition = isSticky || isPositioned;
+      const useTransition = (isSticky || isPositioned) && !isDragging;
 
       setModalStyle({ 
         top: finalTop, 
@@ -198,40 +242,11 @@ export default function CreateModal({
     const raf = requestAnimationFrame(calculatePosition);
     window.addEventListener("resize", () => { setIsPositioned(false); });
     return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", () => { setIsPositioned(false); }); };
-  }, [isOpen, isPositioned, activeTab, position?.ts, view, interactionState, previewEvent]);
+  }, [isOpen, isPositioned, activeTab, position?.ts, view, interactionState, previewEvent, dragOffset, isDragging]);
 
-  const handleMouseMove = useCallback((e) => {
-    if (!isDragging) return;
-    const dx = e.clientX - dragOrigin.current.mouseX;
-    const dy = e.clientY - dragOrigin.current.mouseY;
-    let newLeft = dragOrigin.current.boxLeft + dx;
-    let newTop = dragOrigin.current.boxTop + dy;
-    const w = modalRef.current?.offsetWidth || 500;
-    const h = modalRef.current?.offsetHeight || 400;
-    newLeft = Math.max(8, Math.min(newLeft, window.innerWidth - w - 8));
-    newTop = Math.max(8, Math.min(newTop, window.innerHeight - h - 8));
-    setModalStyle((prev) => ({ ...prev, left: newLeft, top: newTop }));
-  }, [isDragging]);
-
-  const handleMouseUp = useCallback(() => setIsDragging(false), []);
-
-  useEffect(() => {
-    if (!isDragging) return;
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
-
-  const handleDragStart = (e) => {
-    if (e.target.closest("button")) return;
-    if (e.button !== 0) return;
-    e.preventDefault();
-    dragOrigin.current = { mouseX: e.clientX, mouseY: e.clientY, boxLeft: modalStyle.left, boxTop: modalStyle.top };
-    setIsDragging(true);
-  };
+  const visibleTabs = editingItem 
+    ? TABS.filter(t => t.key === (editingItem.event_type || 'event'))
+    : TABS;
 
   if (!isOpen) return null;
 
@@ -286,12 +301,12 @@ export default function CreateModal({
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
         className="create-modal-root fixed w-full max-w-lg bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] flex flex-col max-h-[90vh] border border-slate-200 pointer-events-auto transition-opacity duration-200"
-        style={{ ...modalStyle, cursor: isDragging ? "grabbing" : "default", userSelect: isDragging ? "none" : "auto" }}
+        style={{ ...modalStyle }}
       >
         {/* Header / Drag handle */}
         <div
-          onMouseDown={handleDragStart}
-          className={`relative pt-3 pb-4 px-6 flex-shrink-0 rounded-t-2xl select-none ${isDragging ? "cursor-grabbing" : "cursor-grab"}`}
+          onMouseDown={handleHeaderMouseDown}
+          className="relative pt-3 pb-4 px-6 flex-shrink-0 rounded-t-2xl select-none cursor-move"
         >
           <div className="flex justify-center mb-1 pointer-events-none">
             <GripHorizontal className="w-5 h-5 text-slate-300" />
@@ -299,23 +314,23 @@ export default function CreateModal({
           <button
             onMouseDown={(e) => e.stopPropagation()}
             onClick={onClose}
-            className="absolute right-4 top-3 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all cursor-pointer"
+            className="absolute right-1 top-1 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all cursor-pointer z-10"
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-3">
-            {TABS.map(({ key, i18nKey, Icon }) => {
+          <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-2xl">
+            {visibleTabs.map(({ key, i18nKey, Icon }) => {
               const active = activeTab === key;
               return (
                 <button
                   key={key}
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={() => setActiveTab(key)}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full transition-all duration-200 cursor-pointer
-                    ${active ? "bg-blue-600 text-white shadow-md shadow-blue-200 scale-105" : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"}`}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-xl transition-all duration-200 cursor-pointer
+                    ${active ? "bg-white text-blue-600 shadow-sm scale-[1.02]" : "text-slate-500 hover:text-slate-700 hover:bg-white/50"}`}
                 >
-                  <Icon className={`w-4 h-4 ${active ? "text-white" : "text-slate-400"}`} />
-                  {t(i18nKey, lang)}
+                  <Icon className={`w-4 h-4 ${active ? "text-blue-600" : "text-slate-400"}`} />
+                  <span className="truncate">{t(i18nKey, lang)}</span>
                 </button>
               );
             })}
@@ -342,13 +357,15 @@ export default function CreateModal({
                   {deleting ? t('deleting', lang) : t('delete', lang)}
                 </button>
               ) : (
-                <button
-                  onClick={handleLeave}
-                  disabled={deleting}
-                  className="px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 border border-red-100 rounded-lg transition cursor-pointer disabled:opacity-50"
-                >
-                  {deleting ? '...' : t('contacts_panel.leave_event', lang)}
-                </button>
+                editingItem.is_invitee && (
+                  <button
+                    onClick={handleLeave}
+                    disabled={deleting}
+                    className="px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 border border-red-100 rounded-lg transition cursor-pointer disabled:opacity-50"
+                  >
+                    {deleting ? '...' : t('contacts_panel.leave_event', lang)}
+                  </button>
+                )
               )
             )}
             

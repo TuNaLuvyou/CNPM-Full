@@ -5,7 +5,7 @@ export default function Event({
     title, time, color = 'blue', type, top, height, location, description,
     event_type, is_completed, onToggleComplete, is_clamped, isPast,
     onClick, onMouseDown, onResizeMouseDown, lang = 'vi',
-    my_permission = 'edit'
+    my_permission = 'edit', owner_name, owner_email, is_owner = true
 }) {
     const canEdit = my_permission === 'edit';
 
@@ -14,6 +14,9 @@ export default function Event({
         blue: { bg: 'bg-blue-100', border: 'border-blue-500', title: 'text-blue-700', text: 'text-blue-600', handle: 'bg-blue-400' },
         purple: { bg: 'bg-purple-100', border: 'border-purple-500', title: 'text-purple-700', text: 'text-purple-600', handle: 'bg-purple-400' },
         emerald: { bg: 'bg-emerald-100', border: 'border-emerald-500', title: 'text-emerald-700', text: 'text-emerald-600', handle: 'bg-emerald-400' },
+        red: { bg: 'bg-red-100', border: 'border-red-500', title: 'text-red-700', text: 'text-red-600', handle: 'bg-red-400' },
+        yellow: { bg: 'bg-yellow-100', border: 'border-yellow-500', title: 'text-yellow-700', text: 'text-yellow-600', handle: 'bg-yellow-400' },
+        pink: { bg: 'bg-pink-100', border: 'border-pink-500', title: 'text-pink-700', text: 'text-pink-600', handle: 'bg-pink-400' },
     };
     
     // Nếu hoàn thành thì dùng tone xám mờ
@@ -27,44 +30,63 @@ export default function Event({
     // Quyết định xem có hiện thêm thông tin không
     const showDetails = height > 60;
     const showDescription = height > 90 && description;
+    const showTime = height > 35;
+    const showTitle = height > 22;
 
     return (
     <div
         onMouseDown={(e) => { 
-            if (!canEdit) return;
             e.stopPropagation(); 
             onMouseDown?.(e); 
         }}
-        onClick={(e) => { e.stopPropagation(); onClick?.(e); }}
-        className={`absolute left-1 right-1 border-l-4 rounded-md p-1.5 shadow-sm z-40 pointer-events-auto flex flex-col ${finalTheme.bg} ${finalTheme.border} group
-            ${is_clamped ? 'z-50' : ''} ${isPast ? 'opacity-50 grayscale-[0.3]' : ''}
-            ${canEdit ? 'cursor-pointer hover:shadow-md' : 'cursor-default'}`}
+        onClick={(e) => { 
+            e.stopPropagation(); 
+            // onClick?.(e); // Handled in TimeGrid's handleMouseUp for better stability in Edit mode
+        }}
+        className={`absolute left-1 right-1 border-l-4 rounded-md p-1.5 shadow-sm z-40 pointer-events-auto flex flex-col ${finalTheme.bg} ${finalTheme.border} group cursor-pointer hover:shadow-md
+            ${is_clamped ? 'z-50' : ''} ${isPast ? 'opacity-50 grayscale-[0.3]' : ''} ${!showTime ? 'justify-center' : ''}`}
         style={{ top: `${top}px`, height: `${height}px`, overflow: 'hidden' }}
     >
         <div className="flex items-start gap-1.5 min-w-0">
             {/* ICON / COMPLETION TOGGLE */}
-            {isTask ? (
-                <button 
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => { 
-                        if (!canEdit) return;
-                        e.stopPropagation(); 
-                        onToggleComplete?.(); 
-                    }}
-                    className={`flex-shrink-0 mt-0.5 transition-transform ${canEdit ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-default'} ${is_completed ? 'text-emerald-500' : 'text-slate-400'}`}
-                >
-                    {is_completed ? <CheckCircle className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
-                </button>
-            ) : isAppointment ? (
-                <CalendarIcon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${finalTheme.text}`} />
-            ) : (
-                <Clock className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${finalTheme.text}`} />
+            {showTime && (
+                isTask ? (
+                    <button 
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => { 
+                            if (!canEdit) return;
+                            e.stopPropagation(); 
+                            onToggleComplete?.(); 
+                        }}
+                        className={`flex-shrink-0 mt-0.5 transition-transform ${canEdit ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-default'} ${is_completed ? 'text-emerald-500' : 'text-slate-400'}`}
+                    >
+                        {is_completed ? <CheckCircle className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
+                    </button>
+                ) : isAppointment ? (
+                    <CalendarIcon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${finalTheme.text}`} />
+                ) : (
+                    <CalendarIcon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${finalTheme.text}`} />
+                )
             )}
 
             <div className="flex-1 min-w-0">
-                <p className={`text-[11px] font-bold ${finalTheme.title} truncate leading-tight`}>{title}</p>
-                <p className={`text-[9px] font-medium ${finalTheme.text} leading-none mt-0.5`}>{time}</p>
+                {showTitle && (
+                    <p className={`text-[11px] font-bold ${finalTheme.title} truncate leading-tight`}>
+                        {title}
+                    </p>
+                )}
+                {showTime && (
+                    <p className={`text-[9px] font-medium ${finalTheme.text} leading-none mt-0.5`}>{time}</p>
+                )}
             </div>
+
+            {!is_owner && owner_name && (
+                <div className="absolute bottom-1 right-2">
+                    <span className={`text-[8px] font-bold opacity-60 ${finalTheme.text} truncate max-w-[80px]`}>
+                        @{owner_name}
+                    </span>
+                </div>
+            )}
         </div>
 
         {showDetails && (

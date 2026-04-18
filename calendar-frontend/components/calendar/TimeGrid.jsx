@@ -114,16 +114,11 @@ export default function TimeGrid({
 
   const handleInteractionStart = (e, type, existingEvent = null) => {
     e.stopPropagation();
-    e.preventDefault();
+    // e.preventDefault(); // Removed to allow standard click events to fire for popups
 
-    // Check permission
-    if (existingEvent && existingEvent.my_permission === 'view') {
-        return;
-    }
-
-    if (!existingEvent && !previewEvent) return;
+    // Always start interaction for click detection
     isInteractingRef.current = true;
-    didMoveRef.current = false; // Reset khi bắt đầu
+    didMoveRef.current = false;
     const rect = e.currentTarget.getBoundingClientRect();
     const grabOffsetY = e.clientY - rect.top;
     
@@ -162,6 +157,7 @@ export default function TimeGrid({
       type,
       existingEvent: freshEvent,
       startY: e.clientY,
+      startX: e.clientX,
       startTop,
       startHeight,
       currentTop: startTop,
@@ -186,15 +182,18 @@ export default function TimeGrid({
         if (!interaction || !interaction.containerRect) return;
 
         const { containerRect, sortedEvents } = interaction;
-        const contentTop = containerRect.top + 64;
+        const contentTop = containerRect.top;
         const SNAP = 64 / 60;
 
         if (interaction.type === 'move') {
+          // Block movement if no permission
+          if (interaction.existingEvent && interaction.existingEvent.my_permission === 'view') return;
+
           const mouseRelY = e.clientY - contentTop;
           const newTopUnsnapped = mouseRelY - interaction.grabOffsetY;
           let newTop = Math.max(0, Math.round(newTopUnsnapped / SNAP) * SNAP);
 
-          if (Math.abs(e.clientY - interaction.startY) > 3) didMoveRef.current = true;
+          if (Math.abs(e.clientY - interaction.startY) > 10 || Math.abs(e.clientX - interaction.startX) > 10) didMoveRef.current = true;
 
           const columnWidth = (containerRect.width - 64) / (mode === 'day' ? 1 : 7);
           const relativeX = e.clientX - (containerRect.left + 64);
@@ -269,7 +268,7 @@ export default function TimeGrid({
             
             newTop = Math.max(0, snappedTop);
 
-            const MAX_GRID_Y = 1535; 
+            const MAX_GRID_Y = 1536; 
             
             // ✅ Enforce Time Clamping for Tasks (MOVE)
             let isClamped = false;
@@ -299,10 +298,6 @@ export default function TimeGrid({
               newTop = MAX_GRID_Y - interaction.currentHeight;
             }
 
-            // Nếu kéo vào vùng sau 11h đêm (1472px), tự động hít về đúng 11h
-            if (newTop >= 1472) {
-              newTop = 1472;
-            }
 
             const totalMinutes = Math.round((newTop / 64) * 60);
             const updatedDate = new Date(targetDate);
@@ -330,11 +325,14 @@ export default function TimeGrid({
             }
           }
         } else if (interaction.type === 'resize') {
+          // Block resize if no permission
+          if (interaction.existingEvent && interaction.existingEvent.my_permission === 'view') return;
+
           const deltaY = e.clientY - interaction.startY;
           let newHeight = Math.round(Math.max(SNAP, interaction.startHeight + deltaY) / SNAP) * SNAP;
           
           const startTop = interaction.existingEvent ? interaction.startTop : latestPreviewRef.current?.top;
-          const MAX_GRID_Y = 1535;
+          const MAX_GRID_Y = 1536;
           
           let isClamped = false;
           if (interaction.existingEvent?.event_type === 'task' && interaction.existingEvent.deadline) {
@@ -406,8 +404,8 @@ export default function TimeGrid({
           let newDurationMin = Math.round((latest.height / 64) * 60);
           const start = latest.fullDate;
           
-          if (start.getHours() >= 23 && newDurationMin >= 60) {
-            newDurationMin = 59;
+          if (start.getHours() === 23 && start.getMinutes() + newDurationMin > 60) {
+            newDurationMin = 60 - start.getMinutes();
           }
 
           // ✅ Lưu optimistic ngay lập tức — giữ vị trí mới trong khi đợi API
@@ -419,7 +417,17 @@ export default function TimeGrid({
             }
           }));
 
-          callbacksRef.current.onEventUpdate?.(existingEvent, start, newDurationMin);
+          if (!hasMoved) {
+            // Đây là một cú Click thực sự (không di chuyển)
+            callbacksRef.current.onEventClick?.(existingEvent, {
+                clientX: e.clientX,
+                clientY: e.clientY,
+                columnRect: interaction.containerRect
+            });
+          } else {
+            // Chỉ update nếu thực sự có di chuyển
+            callbacksRef.current.onEventUpdate?.(existingEvent, start, newDurationMin);
+          }
           callbacksRef.current.onInteractionEnd?.({ fullDate: latest.fullDate, isUpdate: true, hasMoved }); 
         } else {
           const targetCol = e.target.closest('.day-column');
@@ -470,15 +478,15 @@ export default function TimeGrid({
     if (didMoveRef.current || isInteractingRef.current || !onGridClick) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
-    const clickedHour = Math.floor((offsetY - 64) / HOUR_HEIGHT);
     const SNAP_1MIN = 64 / 60;
-    let topOffset = Math.max(0, Math.round((offsetY - 64) / SNAP_1MIN) * SNAP_1MIN);
+    let topOffset = Math.max(0, Math.round(offsetY / SNAP_1MIN) * SNAP_1MIN);
     
-    // Nếu click vào khung giờ sau 11h đêm (giờ thứ 23), tự động hít về đúng 11h
-    if (clickedHour >= 23) {
-      topOffset = 23 * 64; // 1472px
+    // Đảm bảo không vượt quá 24h
+    if (topOffset > 1536 - 30) { // Tối thiểu 30p cho click tạo mới
+      topOffset = 1536 - 30;
     }
 
+    const clickedHour = Math.floor(topOffset / 64);
     onGridClick({ x: e.clientX, y: e.clientY, fullDate: day.fullDate, hour: clickedHour, topOffset, columnRect: rect });
   };
 
@@ -517,11 +525,6 @@ export default function TimeGrid({
           {/* Múi giờ phụ (nếu bật) */}
           {showSecondary && (
             <div className="w-14 flex flex-col border-r border-slate-100 bg-slate-50/30">
-              <div className="h-16 flex items-start justify-end pr-2 pt-2">
-                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-                   {formatTimezoneOffset(secondaryTz)}
-                </span>
-              </div>
               {displayHours.map((hour) => {
                 const primaryOffset = getTimezoneOffsetMinutes(primaryTz);
                 const secondaryOffset = getTimezoneOffsetMinutes(secondaryTz);
@@ -532,9 +535,12 @@ export default function TimeGrid({
                 return (
                   <div key={hour} className="h-16 flex items-start justify-end pr-2">
                     <span className="text-[10px] font-medium text-slate-300 -mt-2">
-                      {timeFormat === "24h" 
-                        ? `${String(Math.floor(secondaryHour)).padStart(2, '0')}:00` 
-                        : (secondaryHour === 0 ? "12 AM" : secondaryHour === 12 ? "12 PM" : secondaryHour > 12 ? `${Math.floor(secondaryHour - 12)} PM` : `${Math.floor(secondaryHour)} AM`)
+                      {hour === 0 
+                        ? formatTimezoneOffset(secondaryTz)
+                        : (timeFormat === "24h" 
+                            ? `${String(Math.floor(secondaryHour)).padStart(2, '0')}:00` 
+                            : (secondaryHour === 0 ? "" : secondaryHour === 12 ? "12 PM" : secondaryHour > 12 ? `${Math.floor(secondaryHour - 12)} PM` : `${Math.floor(secondaryHour)} AM`)
+                          )
                       }
                     </span>
                   </div>
@@ -545,17 +551,15 @@ export default function TimeGrid({
 
           {/* Múi giờ chính */}
           <div className="w-16 flex flex-col">
-            <div className="h-16 flex items-start justify-end pr-3 pt-2">
-              <span className="text-[10px] font-bold text-slate-500 uppercase">
-                 {formatTimezoneOffset(primaryTz)}
-              </span>
-            </div>
             {displayHours.map((hour) => (
               <div key={hour} className="h-16 flex items-start justify-end pr-3">
-                <span className="text-[11px] font-semibold text-slate-400 -mt-2">
-                  {timeFormat === "24h" 
-                    ? `${String(hour).padStart(2, '0')}:00` 
-                    : (hour === 0 ? "12 AM" : hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`)
+                <span className="text-[11px] font-semibold text-slate-400 -mt-2 leading-none text-right">
+                  {hour === 0 
+                    ? ""
+                    : (timeFormat === "24h" 
+                        ? `${String(hour).padStart(2, '0')}:00` 
+                        : (hour === 0 ? "" : hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`)
+                      )
                   }
                 </span>
               </div>
@@ -583,7 +587,7 @@ export default function TimeGrid({
               >
                 {/* Spacer để đảm bảo cột đủ 24 giờ và kéo dài xuống hết */}
                 <div className="h-[1536px]" />
-                <div className="absolute inset-0 top-16 pointer-events-none">
+                <div className="absolute inset-0 top-0 pointer-events-none">
                   {/* Events từ API */}
                   {dayEvents.map((ev) => {
                     const isDragging = interaction?.existingEvent?.id === ev.id;
@@ -608,7 +612,9 @@ export default function TimeGrid({
                       <EventBlock
                         key={ev.id}
                         {...ev}
-                        my_permission={ev.my_permission}
+                        owner_name={ev.owner_name}
+                        owner_email={ev.owner_email}
+                        is_owner={ev.is_owner}
                         isPast={isPast}
                         time={timeLabel}
                         top={top}
@@ -640,38 +646,40 @@ export default function TimeGrid({
                   {/* Preview khi đang tạo */}
                   {previewEvent?.fullDate &&
                     previewEvent.fullDate.toDateString() === day.fullDate?.toDateString() && (
-                    <div
-                      onMouseDown={(e) => handleInteractionStart(e, 'move')}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onGridClick?.({
-                          x: e.clientX,
-                          y: e.clientY,
-                          fullDate: previewEvent.fullDate,
-                          topOffset: previewEvent.top,
-                          columnRect: e.currentTarget.parentElement.getBoundingClientRect()
-                        });
-                      }}
-                      className={`preview-tab absolute left-1 right-1 z-30 bg-blue-50 border-l-4 border-blue-500 rounded-md p-2 shadow-md flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing
-                        ${interaction ? 'shadow-lg ring-2 ring-blue-500/20 scale-[1.01]' : 'transition-all duration-200'}`}
-                      style={{
-                        top: `${previewEvent.type === "now" ? nowOffset : previewEvent.top}px`,
-                        height: `${(interaction && !interaction.existingEvent) ? interaction.currentHeight : (previewEvent.height || 64)}px`,
-                      }}
-                    >
-                      <div className="flex justify-between items-start mb-0.5">
-                        <span className="text-[11px] font-bold text-blue-700 truncate uppercase tracking-tight">
-                          ({t('creating', appSettings.language)})
-                        </span>
-                      </div>
                       <div
-                        onMouseDown={(e) => handleInteractionStart(e, 'resize')}
-                        className="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize group"
+                        onMouseDown={(e) => handleInteractionStart(e, 'move')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onGridClick?.({
+                            x: e.clientX,
+                            y: e.clientY,
+                            fullDate: previewEvent.fullDate,
+                            topOffset: previewEvent.top,
+                            columnRect: e.currentTarget.parentElement.getBoundingClientRect()
+                          });
+                        }}
+                        className={`preview-tab absolute left-1 right-1 z-30 bg-blue-50 border-l-4 border-blue-500 rounded-md p-2 shadow-md flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing
+                          ${interaction ? 'shadow-lg ring-2 ring-blue-500/20 scale-[1.01]' : 'transition-all duration-200'} ${((interaction && !interaction.existingEvent) ? interaction.currentHeight : (previewEvent.height || 64)) < 35 ? 'justify-center' : ''}`}
+                        style={{
+                          top: `${previewEvent.type === "now" ? nowOffset : previewEvent.top}px`,
+                          height: `${(interaction && !interaction.existingEvent) ? interaction.currentHeight : (previewEvent.height || 64)}px`,
+                        }}
                       >
-                        <div className="mx-auto w-8 h-1 bg-blue-200 rounded-full mt-1.5 group-hover:bg-blue-400 transition-colors" />
+                        {((interaction && !interaction.existingEvent) ? interaction.currentHeight : (previewEvent.height || 64)) > 22 && (
+                          <div className="flex justify-between items-start mb-0.5">
+                            <span className="text-[11px] font-bold text-blue-700 truncate uppercase tracking-tight">
+                              ({t('creating', appSettings.language)})
+                            </span>
+                          </div>
+                        )}
+                        <div
+                          onMouseDown={(e) => handleInteractionStart(e, 'resize')}
+                          className="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize group"
+                        >
+                          <div className="mx-auto w-8 h-1 bg-blue-200 rounded-full mt-1.5 group-hover:bg-blue-400 transition-colors" />
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {/* Vạch thời gian hiện tại */}
                   {day.isToday && (

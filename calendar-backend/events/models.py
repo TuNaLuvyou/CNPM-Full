@@ -57,8 +57,11 @@ class Notification(models.Model):
         ('invite', 'Event Invitation'),
         ('accepted', 'Invitation Accepted'),
         ('declined', 'Invitation Declined'),
+        ('canceled', 'Event Canceled'),
         ('friend_request', 'Friend Request'),
         ('friend_accepted', 'Friend Request Accepted'),
+        ('security', 'Security Alert'),
+        ('system', 'System Announcement'),
     ]
     
     user = models.ForeignKey(User, related_name='notifications', on_delete=models.CASCADE)

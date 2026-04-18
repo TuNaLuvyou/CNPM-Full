@@ -49,7 +49,7 @@ export default function Calendar({
   const now = getLocalizedTime(appSettings.primaryTimezone);
 
   // Chỉ giao diện Tuần mới dùng startDay động, các giao diện khác (Tháng, Mini, Năm) mặc định Thứ 2
-  const weekStartDay = view === "Tuần" ? appSettings.weekStartDay : "monday";
+  const weekStartDay = view === "week" ? appSettings.weekStartDay : "monday";
   
   const weekDays = buildWeekDays(viewDate, weekStartDay, appSettings.language);
   const monthCells = buildMonthCells(viewDate.getFullYear(), viewDate.getMonth(), "monday");
@@ -57,7 +57,7 @@ export default function Calendar({
   const handleDayClick = (fullDate) => {
     setSelectedDate(fullDate);
     setViewDate(fullDate);
-    setView("Ngày");
+    setView("day");
   };
 
   const selectedDayName = DAY_NAMES[appSettings.language || "vi"][selectedDate.getDay()];
@@ -100,10 +100,10 @@ export default function Calendar({
         setEventSavedTick={setEventSavedTick}
       >
         <div className="flex-1 flex flex-col overflow-hidden">
-          {view === "Năm" && (
+          {view === "year" && (
             <YearView viewDate={viewDate} onYearDayClick={onYearDayClick} events={events} appSettings={appSettings} />
           )}
-          {view === "Tháng" && (
+          {view === "month" && (
             <MonthView 
               monthCells={monthCells} 
               handleDayClick={handleDayClick} 
@@ -114,7 +114,7 @@ export default function Calendar({
               appSettings={appSettings}
             />
           )}
-          {view === "Tuần" && (
+          {view === "week" && (
             <WeekView
               weekDays={weekDays}
               onGridClick={onGridClick}
@@ -132,7 +132,7 @@ export default function Calendar({
               appSettings={appSettings}
             />
           )}
-          {view === "Ngày" && (
+          {view === "day" && (
             <DayView
               selectedDate={selectedDate}
               selectedDayName={selectedDayName}

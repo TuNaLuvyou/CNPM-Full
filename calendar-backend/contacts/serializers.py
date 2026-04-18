@@ -13,13 +13,16 @@ class ConnectionSerializer(serializers.ModelSerializer):
     receiver_email = serializers.ReadOnlyField(source='receiver.email')
     sender_email = serializers.ReadOnlyField(source='sender.email')
     unread_count = serializers.SerializerMethodField()
+    friend_id = serializers.SerializerMethodField()
+    friend_name = serializers.SerializerMethodField()
+    friend_email = serializers.SerializerMethodField()
 
     class Meta:
         model = Connection
         fields = [
             'id', 'sender', 'receiver', 'status', 'is_pinned',
             'sender_name', 'receiver_name', 'sender_email', 'receiver_email',
-            'unread_count', 'created_at', 'updated_at'
+            'unread_count', 'friend_id', 'friend_name', 'friend_email', 'created_at', 'updated_at'
         ]
         read_only_fields = ['sender', 'status', 'is_pinned', 'created_at', 'updated_at']
 
@@ -28,6 +31,21 @@ class ConnectionSerializer(serializers.ModelSerializer):
         if request and request.user:
             return obj.messages.filter(is_read=False).exclude(sender=request.user).count()
         return 0
+
+    def get_friend_id(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user: return None
+        return obj.receiver_id if obj.sender_id == request.user.id else obj.sender_id
+
+    def get_friend_name(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user: return None
+        return obj.receiver.username if obj.sender_id == request.user.id else obj.sender.username
+
+    def get_friend_email(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user: return None
+        return obj.receiver.email if obj.sender_id == request.user.id else obj.sender.email
 
 class ContactSerializer(serializers.ModelSerializer):
     class Meta:

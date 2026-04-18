@@ -14,13 +14,17 @@ class EventViewSet(viewsets.ModelViewSet):
         user = self.request.user
         # Mặc định lấy các sự kiện chưa xóa, trừ khi action là restore/permanent_delete hoặc có param trash=true
         is_deleted_qs = self.request.query_params.get('trash', 'false') == 'true'
-        if self.action in ['restore', 'permanent_delete']:
-            is_deleted_qs = True
+        
+        # Các action này cần tìm được item bất kể trạng thái chấp nhận lời mời
+        if self.action in ['trash', 'restore', 'permanent_delete', 'leave']:
+             return Event.objects.filter(
+                (Q(user=user) | Q(invitations__invitee=user, invitations__status__in=['accepted', 'pending']))
+             ).distinct().order_by('start_time')
 
-        qs = Event.objects.filter(
-            (Q(user=user) | Q(invitations__invitee=user, invitations__status__in=['accepted', 'pending'])) &
-            Q(is_deleted=is_deleted_qs)
-        ).distinct()
+        # Xây dựng filter cơ bản: sự kiện của mình hoặc mình được mời
+        base_filter = (Q(user=user) | Q(invitations__invitee=user, invitations__status='accepted'))
+        
+        qs = Event.objects.filter(base_filter & Q(is_deleted=is_deleted_qs)).distinct()
         
         # Filter theo thời gian nếu có
         date_from = self.request.query_params.get('date_from')
@@ -44,10 +48,32 @@ class EventViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def trash(self, request, pk=None):
         event = self.get_object()
+        if event.user != request.user:
+            return Response({"error": "Chỉ người tạo mới có quyền xoá"}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Notify participants before deleting
+        from django.utils import timezone
+        local_start = timezone.localtime(event.start_time)
+        st_str = local_start.strftime('%H:%M')
+        dt_str = local_start.strftime('%d/%m/%Y')
+
+        # Dọn dẹp tất cả thông báo cũ liên quan đến sự kiện này (invite, accepted, v.v.)
+        Notification.objects.filter(event=event).delete()
+
+        invitations = event.invitations.all()
+        for inv in invitations:
+            Notification.objects.create(
+                user=inv.invitee,
+                ntype='canceled',
+                event=event,
+                content=f"Sự kiện '{event.title}' (vào lúc {st_str} ngày {dt_str}) đã bị hủy bởi người tạo."
+            )
+            
+        # Perform soft delete
         event.is_deleted = True
         event.deleted_at = timezone.now()
         event.save()
-        return Response({"status": "trashed"})
+        return Response({"status": "deleted"})
 
     @action(detail=True, methods=['post'])
     def restore(self, request, pk=None):
@@ -60,6 +86,8 @@ class EventViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='permanent_delete')
     def permanent_delete(self, request, pk=None):
         event = self.get_object()
+        if event.user != request.user:
+            return Response({"error": "Chỉ người tạo mới có quyền xoá"}, status=status.HTTP_403_FORBIDDEN)
         event.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -101,26 +129,31 @@ class InvitationViewSet(viewsets.ViewSet):
             invite = EventInvitation.objects.get(event_id=pk, invitee=request.user)
             print(f"Found invitation! ID={invite.id}")
             
-            # Check collision
-            overlaps = Event.objects.filter(
+            conflicts = Event.objects.filter(
                 (Q(user=request.user) | Q(invitations__invitee=request.user, invitations__status='accepted')),
                 start_time__lt=invite.event.end_time,
                 end_time__gt=invite.event.start_time,
                 is_deleted=False
-            ).exclude(id=invite.event.id).distinct().exists()
+            ).exclude(id=invite.event.id).distinct()
 
-            if overlaps and request.data.get('force') != True:
+            if conflicts.exists():
+                from django.utils import timezone
+                conflict_details = []
+                for c in conflicts[:3]: # Trả về tối đa 3 vụ trùng
+                    st = timezone.localtime(c.start_time).strftime('%H:%M')
+                    et = timezone.localtime(c.end_time).strftime('%H:%M')
+                    day = timezone.localtime(c.start_time).strftime('%d/%m')
+                    conflict_details.append(f"{c.title} ({st}-{et} {day})")
+                
                 return Response({
                     "error": "collision", 
-                    "message": "Sự kiện này trùng lịch với các mục khác của bạn."
+                    "detail": "Lịch bị trùng với: " + ", ".join(conflict_details),
+                    "conflicts": conflict_details
                 }, status=409)
 
             invite.status = 'accepted'
             invite.save()
             
-            # Xóa thông báo mời khi đã chấp nhận
-            Notification.objects.filter(user=request.user, event=invite.event, ntype='invite').delete()
-
             # Thông báo cho chủ nhà
             Notification.objects.create(
                 user=invite.event.user,
@@ -139,9 +172,6 @@ class InvitationViewSet(viewsets.ViewSet):
             invite = EventInvitation.objects.get(event_id=pk, invitee=request.user)
             invite.status = 'declined'
             invite.save()
-
-            # Xóa thông báo mời khi từ chối
-            Notification.objects.filter(user=request.user, event=invite.event, ntype='invite').delete()
 
             return Response({"status": "declined"})
         except EventInvitation.DoesNotExist:

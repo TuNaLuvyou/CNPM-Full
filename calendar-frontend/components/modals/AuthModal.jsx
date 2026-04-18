@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
-import { login, register } from '@/lib/api';
+import { login, register, forgotPassword } from '@/lib/api';
 
 export default function AuthModal({ isOpen, type, onClose, onSwitchType, onLoginSuccess }) {
     if (!isOpen) return null;
@@ -159,17 +159,56 @@ function RegisterForm({ onSuccess, onSwitchType }) {
 
 function ForgotForm({ onSwitchType }) {
     const [email, setEmail] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
+    const [error, setError] = useState('');
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!email) return;
+        
+        setLoading(true);
+        setError('');
+        setMessage('');
+        
+        try {
+            const data = await forgotPassword(email);
+            setMessage(data.status);
+        } catch (err) {
+            setError(err.message || 'Gửi yêu cầu thất bại');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (message) {
+        return (
+            <div className="space-y-6 text-center py-4">
+                <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <p className="text-slate-600 font-medium px-2">{message}</p>
+                <button onClick={() => onSwitchType('login')}
+                    className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                    Quay lại đăng nhập
+                </button>
+            </div>
+        );
+    }
+
     return (
-        <form className="space-y-4" onSubmit={e => e.preventDefault()}>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+            {error && <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
             <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                     placeholder="name@example.com"
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
             </div>
-            <button type="submit"
-                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors mt-2">
-                Gửi yêu cầu
+            <button type="submit" disabled={loading}
+                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors mt-2 flex items-center justify-center gap-2 disabled:opacity-60">
+                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {loading ? 'Đang gửi...' : 'Gửi yêu cầu'}
             </button>
             <div className="mt-4 text-center text-sm">
                 <span onClick={() => onSwitchType('login')} className="text-blue-600 font-medium hover:underline cursor-pointer">

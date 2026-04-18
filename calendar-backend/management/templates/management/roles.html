@@ -1,0 +1,78 @@
+{% extends "management/base.html" %}
+
+{% block title %}Phân quyền & Nhóm - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex items-center justify-between">
+    <div>
+        <h2 class="text-2xl font-bold text-slate-800">Phân quyền & Nhóm</h2>
+        <p class="text-slate-500">Quản lý vai trò và các quyền hạn truy cập của người dùng.</p>
+    </div>
+</div>
+
+{% if messages %}
+<div class="mb-6 space-y-2 italic">
+    {% for message in messages %}
+    <div class="p-4 rounded-xl {% if message.tags == 'success' %}bg-emerald-50 text-emerald-700 border border-emerald-100{% else %}bg-red-50 text-red-700 border border-red-100{% endif %} flex items-center gap-3">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 italic">
+    {% for g in groups %}
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 hover:shadow-md transition-shadow relative group">
+        <!-- Nút xoá nhóm -->
+        <form action="{% url 'delete_group' g.id %}" method="POST" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            {% csrf_token %}
+            <button type="submit" onclick="return confirm('Bạn có chắc chắn muốn xoá nhóm này?')" class="p-1.5 text-slate-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </button>
+        </form>
+
+        <div class="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-4">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+        </div>
+        <h3 class="font-bold text-lg text-slate-800 mb-1">{{ g.name }}</h3>
+        <p class="text-slate-500 text-sm mb-6">{{ g.user_count }} thành viên</p>
+        
+        <div class="flex items-center justify-between pt-4 border-t border-slate-50">
+            <button class="text-xs font-bold text-blue-600 uppercase hover:underline">Chi tiết quyền</button>
+            <span class="text-[10px] text-slate-300 uppercase font-bold tracking-tighter">Mặc định hệ thống</span>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Nút thêm nhóm mới (Thực tế) -->
+    <button onclick="document.getElementById('add-group-modal').classList.remove('hidden')" class="bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 p-6 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-100 hover:border-slate-300 transition-all group">
+        <div class="w-10 h-10 rounded-full border-2 border-slate-200 flex items-center justify-center mb-2 group-hover:border-slate-300">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+        </div>
+        <span class="text-sm font-bold uppercase tracking-tight">Thêm nhóm mới</span>
+    </button>
+</div>
+
+<!-- Modal Thêm Nhóm -->
+<div id="add-group-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm hidden">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-8 animate-in fade-in zoom-in duration-200">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-slate-800">Tạo nhóm quyền mới</h3>
+            <button onclick="document.getElementById('add-group-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <form action="{% url 'add_group' %}" method="POST">
+            {% csrf_token %}
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tên nhóm / Vai trò</label>
+                <input type="text" name="name" required placeholder="VD: Biên tập viên, Quản lý..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+            </div>
+            <div class="flex gap-3">
+                <button type="button" onclick="document.getElementById('add-group-modal').classList.add('hidden')" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors">Huỷ</button>
+                <button type="submit" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all">Tạo nhóm</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

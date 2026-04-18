@@ -30,13 +30,15 @@ class EventSerializer(serializers.ModelSerializer):
     
     invitations = EventInvitationSerializer(many=True, read_only=True)
     owner_name = serializers.CharField(source='user.username', read_only=True)
+    owner_email = serializers.EmailField(source='user.email', read_only=True)
     is_owner = serializers.SerializerMethodField()
+    is_invitee = serializers.SerializerMethodField()
     my_permission = serializers.SerializerMethodField()
 
     class Meta:
         model = Event
         fields = [
-            'id', 'event_type', 'user', 'owner_name', 'is_owner', 'my_permission',
+            'id', 'event_type', 'user', 'owner_name', 'owner_email', 'is_owner', 'is_invitee', 'my_permission',
             'title', 'description', 'location', 'link', 'color', 
             'is_all_day', 'is_deleted', 'deleted_at',
             'start_time', 'end_time', 'created_at', 'updated_at',
@@ -55,6 +57,11 @@ class EventSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not request: return False
         return obj.user == request.user
+
+    def get_is_invitee(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user: return False
+        return obj.invitations.filter(invitee=request.user).exists()
 
     def get_my_permission(self, obj):
         request = self.context.get('request')
@@ -110,15 +117,23 @@ class EventSerializer(serializers.ModelSerializer):
                 EventInvitation.objects.create(event=event, invitee_id=uid, permission=perm)
                 # Chỉ tạo thông báo khi có bản ghi invitation thực sự
                 if request:
+                    from django.utils import timezone
+                    local_start = timezone.localtime(event.start_time)
+                    st_str = local_start.strftime('%H:%M')
+                    dt_str = local_start.strftime('%d/%m/%Y')
+                    
                     Notification.objects.create(
                         user_id=uid,
                         ntype='invite',
                         event=event,
-                        content=f"{request.user.username} đã mời bạn tham gia sự kiện: {event.title}"
+                        content=f"{request.user.username} đã mời bạn tham gia sự kiện: {event.title} vào lúc {st_str} ngày {dt_str}"
                     )
         
-        # Xóa những lời mời không còn trong danh sách (uninvite)
-        event.invitations.exclude(invitee_id__in=new_guest_ids).delete()
+        # Xóa những lời mời không còn trong danh sách (uninvite) và dọn dẹp thông báo tương ứng
+        removed_invites = event.invitations.exclude(invitee_id__in=new_guest_ids)
+        removed_user_ids = list(removed_invites.values_list('invitee_id', flat=True))
+        Notification.objects.filter(event=event, user_id__in=removed_user_ids).delete()
+        removed_invites.delete()
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -162,7 +177,43 @@ class EventSerializer(serializers.ModelSerializer):
 
 class NotificationSerializer(serializers.ModelSerializer):
     event_title = serializers.CharField(source='event.title', read_only=True)
+    # Mapping for frontend
+    type = serializers.SerializerMethodField()
+    desc = serializers.SerializerMethodField()
+    time = serializers.DateTimeField(source='created_at', read_only=True)
+
+    def get_type(self, obj):
+        if obj.event:
+            return obj.event.event_type
+        if 'friend' in obj.ntype:
+            return 'friend'
+        return 'event'
+
+    def get_desc(self, obj):
+        if obj.ntype in ['invite', 'canceled'] and obj.event:
+            from django.utils import timezone
+            local_start = timezone.localtime(obj.event.start_time)
+            local_end = timezone.localtime(obj.event.end_time)
+            st_str = local_start.strftime('%H:%M')
+            et_str = local_end.strftime('%H:%M')
+            dt_str = local_start.strftime('%d/%m/%Y')
+            
+            # Làm nổi bật tên sự kiện bằng cách bọc trong ngoặc kép
+            title = f'"{obj.event.title}"'
+            
+            if obj.ntype == 'invite':
+                owner = obj.event.user.username
+                return f"{owner} đã mời bạn tham gia sự kiện: {title} ({st_str} - {et_str}) ngày {dt_str}"
+            elif obj.ntype == 'canceled':
+                return f"Sự kiện {title} ({st_str} - {et_str} ngày {dt_str}) đã bị hủy bởi người tạo."
+        
+        return obj.content
+
     class Meta:
         model = Notification
-        fields = ['id', 'user', 'ntype', 'event', 'event_title', 'content', 'is_read', 'created_at']
+        fields = [
+            'id', 'user', 'ntype', 'event', 'event_title', 
+            'content', 'is_read', 'created_at',
+            'type', 'desc', 'time'
+        ]
         read_only_fields = ['created_at']

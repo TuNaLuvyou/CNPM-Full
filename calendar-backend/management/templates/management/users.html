@@ -1,0 +1,188 @@
+{% extends "management/base.html" %}
+
+{% block title %}Quản lý Tài khoản - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-8">
+    <div>
+        <h2 class="text-2xl font-bold text-slate-800">Quản lý Tài khoản</h2>
+        <p class="text-slate-500">Danh sách toàn bộ người dùng trong hệ thống.</p>
+    </div>
+</div>
+
+<div class="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <!-- Thanh tìm kiếm -->
+    <form method="GET" class="flex gap-2">
+        <div class="relative flex-1">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </span>
+            <input type="text" name="q" value="{{ current_query }}" placeholder="Tìm tên, email..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm italic">
+        </div>
+        
+        <!-- Dropdown lọc vai trò -->
+        <select name="role" onchange="this.form.submit()" class="px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm italic font-medium text-slate-600">
+            <option value="">Tất cả</option>
+            {% for g in all_groups %}
+            <option value="{{ g.id }}" {% if current_role == g.id|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-100 transition-all text-sm uppercase tracking-wider">
+            Lọc
+        </button>
+        
+        {% if current_query or current_role %}
+        <a href="{% url 'admin_users' %}" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold rounded-xl transition-all text-sm flex items-center">
+            Xoá
+        </a>
+        {% endif %}
+    </form>
+</div>
+
+{% if messages %}
+<div class="mb-6 space-y-2">
+    {% for message in messages %}
+    <div class="p-4 rounded-xl {% if message.tags == 'success' %}bg-emerald-50 text-emerald-700 border border-emerald-100{% else %}bg-red-50 text-red-700 border border-red-100{% endif %} flex items-center gap-3 italic">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <table class="w-full text-left">
+        <thead class="bg-slate-50 text-slate-400 text-xs uppercase font-bold">
+            <tr>
+                <th class="px-6 py-4">ID</th>
+                <th class="px-6 py-4">Tài khoản / Email</th>
+                <th class="px-6 py-4">Vai trò & Phân quyền</th>
+                <th class="px-6 py-4">Trạng thái</th>
+                <th class="px-6 py-4 text-right">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 italic">
+            {% for u in users %}
+            <tr class="hover:bg-slate-50/50 transition-colors">
+                <td class="px-6 py-4 text-sm text-slate-400">#{{ u.id }}</td>
+                <td class="px-6 py-4">
+                    <div class="font-bold text-slate-700">{{ u.username }}</div>
+                    <div class="text-xs text-slate-400">{{ u.email }}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="flex flex-wrap gap-2">
+                        {% if u.is_staff %}
+                        <span class="flex items-center gap-1.5 text-blue-600 font-bold text-[10px] uppercase bg-blue-50 px-2 py-1 rounded-lg border border-blue-100 w-fit">
+                            <svg class="w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                            Quản trị viên
+                        </span>
+                        {% endif %}
+                        
+                        {% for group in u.groups.all %}
+                            {% if group.name != 'Quản trị viên' %}
+                            <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded-lg font-bold uppercase border border-slate-200">{{ group.name }}</span>
+                            {% endif %}
+                        {% empty %}
+                            {% if not u.is_staff %}
+                            <span class="text-[10px] text-slate-300 italic">Chưa phân nhóm</span>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </td>
+                <td class="px-6 py-4">
+                    {% if u.is_active %}
+                    <span class="bg-emerald-100 text-emerald-600 text-[10px] uppercase font-bold px-2 py-0.5 rounded">Hoạt động</span>
+                    {% else %}
+                    <span class="bg-red-100 text-red-600 text-[10px] uppercase font-bold px-2 py-0.5 rounded">Bị khoá</span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <div class="flex justify-end gap-6 items-center">
+                        <button onclick="openAssignGroupsModal('{{ u.id }}', '{{ u.username|escapejs }}', [{% for g in u.groups.all %}'{{ g.id }}'{% if not forloop.last %},{% endif %}{% endfor %}])" class="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-800 uppercase tracking-wider transition-colors h-8 leading-none">
+                            <span class="w-5 h-5 flex items-center justify-center">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                            </span>
+                            <span>Phân quyền</span>
+                        </button>
+
+                        <form action="{% url 'toggle_user_status' u.id %}" method="POST" class="inline-flex items-center m-0 p-0">
+                            {% csrf_token %}
+                            <button type="submit" class="inline-flex items-center gap-2 text-xs font-bold {% if u.is_active %}text-red-500 hover:text-red-700{% else %}text-emerald-500 hover:text-emerald-700{% endif %} uppercase tracking-wider transition-colors h-8 leading-none">
+                                <span class="w-5 h-5 flex items-center justify-center">
+                                    {% if u.is_active %}
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                    {% else %}
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+                                    {% endif %}
+                                </span>
+                                <span>{% if u.is_active %}Khoá{% else %}Mở{% endif %}</span>
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Phân Nhóm -->
+<div id="assign-groups-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm hidden">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <form id="assign-groups-form" method="POST" action="">
+            {% csrf_token %}
+            <div class="p-8 border-b border-slate-100">
+                <h3 class="text-xl font-bold text-slate-800 mb-1">Phân Nhóm Người Dùng</h3>
+                <p class="text-slate-500 text-sm italic">Thiết lập các vai trò phụ cho <span id="modal-username" class="font-bold text-blue-600"></span></p>
+            </div>
+            
+            <div class="p-8 max-h-64 overflow-y-auto italic">
+                <div class="grid gap-3">
+                    {% for g in all_groups %}
+                    <label class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors has-[:checked]:bg-blue-50 has-[:checked]:border-blue-200">
+                        <input type="radio" name="groups" value="{{ g.id }}" required class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-slate-300">
+                        <span class="text-sm font-semibold text-slate-700">{{ g.name }}</span>
+                    </label>
+                    {% empty %}
+                    <p class="text-sm text-slate-400 text-center py-4">Chưa có nhóm nào trong hệ thống.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="p-8 bg-slate-50 flex gap-3">
+                <button type="button" onclick="document.getElementById('assign-groups-modal').classList.add('hidden')" class="flex-1 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl transition-colors">Huỷ</button>
+                <button type="submit" class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all">Lưu thay đổi</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openAssignGroupsModal(userId, username, userGroupIds) {
+    const modal = document.getElementById('assign-groups-modal');
+    const form = document.getElementById('assign-groups-form');
+    const usernameSpan = document.getElementById('modal-username');
+    
+    // Set form action base on userId
+    form.action = `/admin/users/${userId}/assign-groups/`;
+    usernameSpan.textContent = username;
+    
+    // Uncheck all radio buttons first
+    const radios = form.querySelectorAll('input[type="radio"]');
+    radios.forEach(r => {
+        r.checked = userGroupIds.includes(r.value);
+    });
+    
+    modal.classList.remove('hidden');
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('assign-groups-modal');
+    if (event.target == modal) {
+        modal.classList.add('hidden');
+    }
+}
+</script>
+{% endblock %}

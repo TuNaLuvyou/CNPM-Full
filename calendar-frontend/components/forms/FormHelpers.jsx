@@ -1,4 +1,5 @@
 import React from 'react';
+import { t } from '../../lib/i18n';
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const EVENT_COLORS = [
     { label: 'Xanh dương', value: 'blue',    cls: 'bg-blue-500'    },
@@ -32,10 +33,17 @@ export function toTimeInputVal(d) {
 }
 
 export const VI_FULL_DAY_NAMES = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+export const EN_FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export const EN_MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-export function formatVNDate(dateStr) {
+export function formatLocaleDate(dateStr, lang = 'vi') {
     if (!dateStr) return '';
     const d = new Date(dateStr);
+    if (lang === 'en') {
+        const dayName = EN_FULL_DAY_NAMES[d.getDay()];
+        const monthName = EN_MONTH_NAMES[d.getMonth()];
+        return `${dayName}, ${monthName} ${d.getDate()}`;
+    }
     const dayName = VI_FULL_DAY_NAMES[d.getDay()];
     return `${dayName}, ${d.getDate()} tháng ${d.getMonth() + 1}`;
 }
@@ -59,17 +67,22 @@ export function FieldRow({ icon: Icon, children }) {
     );
 }
 
-export function DateTimeSelector({ date, timeStart, timeEnd, children }) {
+export function DateTimeSelector({ date, timeStart, timeEnd, timeFormat = '24h', lang = 'vi', children }) {
     const [isExpanded, setIsExpanded] = React.useState(false);
 
     const summary = React.useMemo(() => {
-        let text = formatVNDate(date);
+        let text = formatLocaleDate(date, lang);
+        const format = (t) => {
+            if (!t) return '';
+            return timeFormat === '12h' ? formatAMPM(t) : t;
+        };
+
         if (timeStart) {
-            text += ` · ${formatAMPM(timeStart)}`;
-            if (timeEnd) text += ` – ${formatAMPM(timeEnd)}`;
+            text += ` · ${format(timeStart)}`;
+            if (timeEnd) text += ` – ${format(timeEnd)}`;
         }
         return text;
-    }, [date, timeStart, timeEnd]);
+    }, [date, timeStart, timeEnd, timeFormat]);
 
     return (
         <div className="space-y-2">
@@ -82,7 +95,7 @@ export function DateTimeSelector({ date, timeStart, timeEnd, children }) {
                     {summary}
                 </span>
                 <span className="text-[11px] text-slate-400 font-normal">
-                    {isExpanded ? 'Thu gọn' : 'Đổi ngày/giờ'}
+                    {isExpanded ? t('create_modal.collapse', lang) : t('create_modal.change_datetime', lang)}
                 </span>
             </button>
             

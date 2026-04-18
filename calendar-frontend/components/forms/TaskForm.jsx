@@ -73,17 +73,23 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
         <div className="space-y-4 py-2">
             <FieldRow icon={CheckSquare}>
                 <div className="flex-1 min-w-0">
-                    <InputBase type="text" placeholder="Tiêu đề công việc"
+                    <InputBase type="text" placeholder={t('create_modal.title_placeholder', lang)}
                         value={form.title} onChange={set('title')}
                         className={`font-medium text-base ${isTitleEmpty ? 'border-red-300 ring-1 ring-red-50' : ''}`} />
                     {isTitleEmpty && (
-                        <p className="text-[10px] text-red-500 mt-1 ml-1 animate-pulse">Tiêu đề không được để trống</p>
+                        <p className="text-[10px] text-red-500 mt-1 ml-1 animate-pulse">{t('create_modal.title_required', lang)}</p>
                     )}
                 </div>
             </FieldRow>
 
             <FieldRow icon={Clock}>
-                <DateTimeSelector date={form.date} timeStart={form.time} timeEnd={form.timeEnd}>
+                <DateTimeSelector 
+                    date={form.date} 
+                    timeStart={form.time} 
+                    timeEnd={form.timeEnd}
+                    timeFormat={appSettings?.timeFormat}
+                    lang={lang}
+                >
                     <div className="flex flex-col gap-3">
                         <InputBase type="date" value={form.date} onChange={set('date')} />
                         <div className="flex items-center gap-2">
@@ -97,7 +103,7 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
 
             <FieldRow icon={CalendarIcon}>
                 <div className="flex flex-col gap-1 w-full">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase ml-1">Hạn chót</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase ml-1">{t('create_modal.deadline', lang)}</span>
                     <div className="flex gap-2">
                         <InputBase type="date" value={form.deadlineDate} onChange={set('deadlineDate')} className="flex-1" />
                         <InputBase type="time" value={form.deadlineTime} onChange={set('deadlineTime')} className="w-32" />
@@ -106,7 +112,7 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
             </FieldRow>
 
             <FieldRow icon={AlignLeft}>
-                <TextareaBase placeholder="Chi tiết công việc"
+                <TextareaBase placeholder={t('create_modal.task_details_placeholder', lang)}
                     value={form.description} onChange={set('description')} />
             </FieldRow>
 
@@ -114,8 +120,8 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
                 {!selectedFile ? (
                     <label className="flex items-center justify-between w-full px-3 py-2 text-sm border border-dashed border-slate-300 rounded-lg hover:border-blue-400 hover:bg-blue-50/30 transition-all cursor-pointer group">
                         <input type="file" className="hidden" onChange={handleFileChange} />
-                        <span className="text-slate-500 group-hover:text-blue-600 transition-colors">Đính kèm tệp</span>
-                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded group-hover:bg-blue-100 group-hover:text-blue-500 transition-all">Tải lên</span>
+                        <span className="text-slate-500 group-hover:text-blue-600 transition-colors">{t('create_modal.attach_file', lang)}</span>
+                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded group-hover:bg-blue-100 group-hover:text-blue-500 transition-all">{t('create_modal.upload', lang)}</span>
                     </label>
                 ) : (
                     <div className="flex items-center justify-between w-full px-3 py-2 text-sm border border-blue-200 bg-blue-50/50 rounded-lg group animate-in zoom-in-95 duration-200">

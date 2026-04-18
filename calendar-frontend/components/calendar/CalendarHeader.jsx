@@ -18,7 +18,11 @@ export default function CalendarHeader({
   });
   return (
     <div className="flex border-b border-slate-200 bg-white z-10 shadow-sm flex-shrink-0">
-      <div className="w-16 flex-shrink-0 border-r border-slate-200"></div>
+      <div className="w-16 flex-shrink-0 border-r border-slate-200 flex items-center justify-center">
+        <span className="text-[10px] font-bold text-slate-500 uppercase">
+          {appSettings.primaryTimezone ? (new Intl.DateTimeFormat('vi-VN', { timeZoneName: 'short', timeZone: appSettings.primaryTimezone }).formatToParts(new Date()).find(p => p.type === 'timeZoneName')?.value || 'GMT+7') : 'GMT+7'}
+        </span>
+      </div>
 
       {mode === "day" ? (
         <div className="flex-1 flex flex-col items-center justify-center py-3 border-l border-slate-200 bg-blue-50/20">

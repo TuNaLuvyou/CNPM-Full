@@ -78,6 +78,8 @@ export default function TasksPanel({ appSettings }) {
 
   // ── Xoá (đưa vào thùng rác) ──
   const handleDelete = async (id) => {
+    if (!confirm(t('create_modal.confirm_trash', lang))) return;
+    
     setTasks((prev) => prev.filter((t) => t.id !== id));
     try {
       await trashTask(id);

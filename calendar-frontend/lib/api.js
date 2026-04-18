@@ -58,6 +58,13 @@ export async function getMe() {
   return request('/accounts/me/');
 }
 
+export async function forgotPassword(email) {
+  return request('/accounts/forgot-password/', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
 // ─── EVENTS ────────────────────────────────────────────────────────────────
 export async function getEvents(params = {}) {
   let url = '/events/';
@@ -251,6 +258,14 @@ export async function markAllNotificationsRead() {
 
 export async function deleteAllNotifications() {
   return request('/events/notifications/delete_all/', { method: 'DELETE' });
+}
+
+// ─── SUPPORT ───────────────────────────────────────────────────────────────
+export async function submitSupportRequest(data) {
+    return request('/support/submit/', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
 }
 
 // ─── NOTES (Keep) ──────────────────────────────────────────────────────────
