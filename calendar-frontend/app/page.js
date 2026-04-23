@@ -166,15 +166,20 @@ export default function CalendarApp() {
       const formattedTasks = (Array.isArray(tasksResponse) 
         ? tasksResponse 
         : (tasksResponse.results || [])).map(t => {
-          const start = new Date(t.start_time);
-          const end = new Date(t.end_time || t.deadline_time || t.start_time);
+          const effectiveStart = t.start_time || t.deadline_time;
+          const start = new Date(effectiveStart);
+          const end = new Date(t.end_time || t.deadline_time || effectiveStart);
           const deadlineRaw = t.deadline_time || t.deadline_display;
           const duration = !isNaN(start) && !isNaN(end) ? Math.round((end - start) / 60000) : 60;
           return {
             ...t,
+            user: t.user || currentUser?.id,
+            is_owner: true,
+            my_permission: 'edit',
             event_type: 'task',
+            start_time: effectiveStart, // Đồng bộ start_time để hiển thị trên grid
             duration_minutes: duration,
-            end_time: t.end_time || t.deadline_time || t.start_time,
+            end_time: t.end_time || t.deadline_time || effectiveStart,
             deadline: deadlineRaw,
             id: `task-${t.id}` 
           };

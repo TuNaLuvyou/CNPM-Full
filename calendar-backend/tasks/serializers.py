@@ -26,8 +26,8 @@ class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = [
-            'id', 'title', 'description', 'is_completed',
-            'is_deleted', 'deleted_at',
+            'id', 'user', 'title', 'description', 'is_completed',
+            'deleted_at',
             'start_time', 'end_time', 'deadline_time', 'created_at', 'updated_at',
             # FE-friendly
             'date', 'time', 'timeEnd', 'deadlineDate', 'deadlineTime',

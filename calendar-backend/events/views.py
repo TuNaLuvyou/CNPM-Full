@@ -24,7 +24,7 @@ class EventViewSet(viewsets.ModelViewSet):
         # Xây dựng filter cơ bản: sự kiện của mình hoặc mình được mời
         base_filter = (Q(user=user) | Q(invitations__invitee=user, invitations__status='accepted'))
         
-        qs = Event.objects.filter(base_filter & Q(is_deleted=is_deleted_qs)).distinct()
+        qs = Event.objects.filter(base_filter & Q(deleted_at__isnull=not is_deleted_qs)).distinct()
         
         # Filter theo thời gian nếu có
         date_from = self.request.query_params.get('date_from')
@@ -42,7 +42,7 @@ class EventViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'], url_path='trashed')
     def list_trash(self, request):
-        qs = Event.objects.filter(user=request.user, is_deleted=True).order_by('-deleted_at')
+        qs = Event.objects.filter(user=request.user, deleted_at__isnull=False).order_by('-deleted_at')
         return Response(EventSerializer(qs, many=True, context={'request': request}).data)
 
     @action(detail=True, methods=['post'])
@@ -69,8 +69,6 @@ class EventViewSet(viewsets.ModelViewSet):
                 content=f"Sự kiện '{event.title}' (vào lúc {st_str} ngày {dt_str}) đã bị hủy bởi người tạo."
             )
             
-        # Perform soft delete
-        event.is_deleted = True
         event.deleted_at = timezone.now()
         event.save()
         return Response({"status": "deleted"})
@@ -78,7 +76,6 @@ class EventViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def restore(self, request, pk=None):
         event = self.get_object()
-        event.is_deleted = False
         event.deleted_at = None
         event.save()
         return Response({"status": "restored"})
@@ -133,7 +130,7 @@ class InvitationViewSet(viewsets.ViewSet):
                 (Q(user=request.user) | Q(invitations__invitee=request.user, invitations__status='accepted')),
                 start_time__lt=invite.event.end_time,
                 end_time__gt=invite.event.start_time,
-                is_deleted=False
+                deleted_at__isnull=True
             ).exclude(id=invite.event.id).distinct()
 
             if conflicts.exists():

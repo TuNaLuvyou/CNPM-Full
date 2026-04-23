@@ -12,6 +12,9 @@ class NoteViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Note.objects.filter(user=self.request.user).order_by('-is_pinned', '-updated_at')
 
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
     @action(detail=True, methods=['post'], url_path='toggle_pin')
     def toggle_pin(self, request, pk=None):
         """Toggle trạng thái ghim của note"""

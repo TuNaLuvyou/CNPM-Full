@@ -40,7 +40,7 @@ class EventSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'event_type', 'user', 'owner_name', 'owner_email', 'is_owner', 'is_invitee', 'my_permission',
             'title', 'description', 'location', 'link', 'color', 
-            'is_all_day', 'is_deleted', 'deleted_at',
+            'is_all_day', 'deleted_at',
             'start_time', 'end_time', 'created_at', 'updated_at',
             'date', 'timeStart', 'timeEnd',
             'date_display', 'time_start_display', 'time_end_display',

@@ -13,7 +13,6 @@ class Task(models.Model):
     is_completed = models.BooleanField(default=False)
 
     # Soft delete
-    is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)

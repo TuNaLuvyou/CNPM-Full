@@ -21,6 +21,8 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
         is_completed: initialData?.is_completed || false,
     });
 
+    const [hasDeadline, setHasDeadline] = useState(!!(initialData?.deadline_time || initialData?.deadline_display));
+
     const [submitted, setSubmitted] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
 
@@ -59,10 +61,19 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
         setSubmitted(true);
         if (!form.title.trim()) return;
         
+        const deadlinePayload = hasDeadline ? {
+            deadlineDate: form.deadlineDate,
+            deadlineTime: form.deadlineTime,
+        } : {
+            deadlineDate: null,
+            deadlineTime: null,
+        };
+
         // Merge date and time for backend
         onSave?.({
             type: 'task',
             ...form,
+            ...deadlinePayload,
             file: selectedFile
         });
     };
@@ -103,11 +114,39 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
 
             <FieldRow icon={CalendarIcon}>
                 <div className="flex flex-col gap-1 w-full">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase ml-1">{t('create_modal.deadline', lang)}</span>
-                    <div className="flex gap-2">
-                        <InputBase type="date" value={form.deadlineDate} onChange={set('deadlineDate')} className="flex-1" />
-                        <InputBase type="time" value={form.deadlineTime} onChange={set('deadlineTime')} className="w-32" />
+                    <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase ml-1">{t('create_modal.deadline', lang)}</span>
+                        <button 
+                            type="button"
+                            onClick={() => {
+                                if (!hasDeadline) {
+                                    // Khi bật deadline, mặc định là giờ kết thúc + 1 phút để tránh lỗi validation
+                                    const [h, m] = form.timeEnd.split(':').map(Number);
+                                    const d = new Date(form.date);
+                                    d.setHours(h, m + 1);
+                                    setForm(p => ({
+                                        ...p,
+                                        deadlineDate: toDateInputVal(d),
+                                        deadlineTime: toTimeInputVal(d)
+                                    }));
+                                }
+                                setHasDeadline(!hasDeadline);
+                            }}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${hasDeadline ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
+                        >
+                            {hasDeadline ? t('common.delete', lang) : t('common.add', lang)}
+                        </button>
                     </div>
+                    {hasDeadline ? (
+                        <div className="flex gap-2 animate-in slide-in-from-top-1 duration-200">
+                            <InputBase type="date" value={form.deadlineDate} onChange={set('deadlineDate')} className="flex-1" />
+                            <InputBase type="time" value={form.deadlineTime} onChange={set('deadlineTime')} className="w-32" />
+                        </div>
+                    ) : (
+                        <div className="px-3 py-2 bg-slate-50 border border-dashed border-slate-200 rounded-lg text-slate-400 text-xs italic">
+                            {t('create_modal.no_deadline', lang)}
+                        </div>
+                    )}
                 </div>
             </FieldRow>
 
