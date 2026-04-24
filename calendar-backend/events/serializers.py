@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Event, EventInvitation, Notification
+from .models import Event, EventInvitation, Notification, CalendarGroup, CalendarShare
 from django.contrib.auth.models import User
 
 class UserSimpleSerializer(serializers.ModelSerializer):
@@ -17,6 +17,21 @@ class EventInvitationSerializer(serializers.ModelSerializer):
     class Meta:
         model = EventInvitation
         fields = ['id', 'invitee', 'invitee_details', 'status', 'permission']
+
+class CalendarShareSerializer(serializers.ModelSerializer):
+    user_details = UserSimpleSerializer(source='user', read_only=True)
+    class Meta:
+        model = CalendarShare
+        fields = ['id', 'user', 'user_details', 'permission', 'created_at']
+
+class CalendarGroupSerializer(serializers.ModelSerializer):
+    shares = CalendarShareSerializer(many=True, read_only=True)
+    owner_name = serializers.CharField(source='owner.username', read_only=True)
+    
+    class Meta:
+        model = CalendarGroup
+        fields = ['id', 'name', 'description', 'color', 'is_default', 'owner', 'owner_name', 'shares', 'created_at', 'updated_at']
+        read_only_fields = ['owner', 'created_at', 'updated_at']
 
 class EventSerializer(serializers.ModelSerializer):
     link = serializers.URLField(required=False, allow_blank=True, allow_null=True)
@@ -39,6 +54,7 @@ class EventSerializer(serializers.ModelSerializer):
         model = Event
         fields = [
             'id', 'event_type', 'user', 'owner_name', 'owner_email', 'is_owner', 'is_invitee', 'my_permission',
+            'calendar_group', 'recurrence_rule',
             'title', 'description', 'location', 'link', 'color', 
             'is_all_day', 'deleted_at',
             'start_time', 'end_time', 'created_at', 'updated_at',

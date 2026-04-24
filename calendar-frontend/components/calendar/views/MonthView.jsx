@@ -168,7 +168,6 @@ export default function MonthView({
                     const startStr = new Date(ev.start_time).toLocaleTimeString(timeLocale, { hour: '2-digit', minute: '2-digit', hour12 });
                     const endTime = ev.end_time || ev.deadline_time || ev.start_time;
                     const endStr = new Date(endTime).toLocaleTimeString(timeLocale, { hour: '2-digit', minute: '2-digit', hour12 });
-                    const isPast = appSettings.dimPastEvents && new Date(endTime) < new Date();
 
                     return (
                         <div 
@@ -178,8 +177,7 @@ export default function MonthView({
                             onDragEnd={() => { setDraggingId(null); setHoverCellIdx(null); }}
                             onClick={(e) => { e.stopPropagation(); onEventClick?.(ev, e); }}
                             className={`text-[9px] px-1 py-0.5 rounded border truncate leading-tight cursor-pointer active:scale-95 transition-all flex items-center gap-1
-                                ${colorClass} ${draggingId === ev.id ? 'opacity-20 scale-95' : ''}
-                                ${isPast ? 'opacity-50 grayscale-[0.3]' : ''}`}
+                              ${colorClass} ${draggingId === ev.id ? 'opacity-20 scale-95' : ''}`}
                         >
                             <span className="flex-shrink-0 opacity-80">
                                 {ev.event_type === 'task' ? (

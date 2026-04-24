@@ -110,11 +110,22 @@ export default function CalendarApp() {
     }
   }, []);
 
-  const handleSaveSettings = (newSettings) => {
+  const handleSaveSettings = async (newSettings) => {
     setAppSettings(newSettings);
     localStorage.setItem("appSettings", JSON.stringify(newSettings));
     if (!newSettings.showFriendsCalendars) {
         setVisibleFriends([]);
+    }
+    
+    // Đồng bộ lên backend nếu đã login
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) {
+       try {
+           const { updateSettings } = await import('@/lib/api');
+           await updateSettings(newSettings);
+       } catch(e) {
+           console.error("Lỗi đồng bộ cấu hình:", e);
+       }
     }
   };
 
@@ -200,7 +211,22 @@ export default function CalendarApp() {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (token) {
       getMe()
-        .then(user => setCurrentUser(user))
+        .then(async user => {
+          setCurrentUser(user);
+          try {
+            const { getSettings } = await import('@/lib/api');
+            const dbSettings = await getSettings();
+            if (dbSettings && Object.keys(dbSettings).length > 0) {
+              setAppSettings(prev => {
+                const merged = { ...prev, ...dbSettings };
+                localStorage.setItem("appSettings", JSON.stringify(merged));
+                return merged;
+              });
+            }
+          } catch(e) {
+            console.error("Lỗi lấy cấu hình:", e);
+          }
+        })
         .catch(() => {
           if (typeof window !== "undefined") localStorage.removeItem("token");
         });
@@ -841,6 +867,7 @@ export default function CalendarApp() {
         position={clickPosition} initialDate={selectedDate} onClose={handleCloseModal}
         onSaved={handleEventSaved} onDelete={handleDelete}
         view={view} previewEvent={previewEvent} interactionState={interactionState}
+        isPreviewDragging={isPreviewDragging}
         appSettings={appSettings}
         currentUser={currentUser}
       />
@@ -873,8 +900,7 @@ export default function CalendarApp() {
       <TrashModal
         isOpen={isTrashOpen}
         onClose={() => setIsTrashOpen(false)}
-        items={deletedItems}
-        setDeletedItems={setDeletedItems}
+        deletedItems={deletedItems}
         onRestore={(item) => handleRestore(item)}
         onPermanentDelete={(item) => handlePermanentDelete(item)}
         onClearAll={handleClearAllTrash}

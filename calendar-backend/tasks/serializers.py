@@ -16,29 +16,35 @@ class TaskSerializer(serializers.ModelSerializer):
     timeEnd = serializers.TimeField(write_only=True, required=False, allow_null=True)
     deadlineDate = serializers.DateField(write_only=True, required=False, allow_null=True)
     deadlineTime = serializers.TimeField(write_only=True, required=False, allow_null=True)
+    reminderDate = serializers.DateField(write_only=True, required=False, allow_null=True)
+    reminderTime = serializers.TimeField(write_only=True, required=False, allow_null=True)
 
     # Read-only display fields
     date_display = serializers.SerializerMethodField()
     time_display = serializers.SerializerMethodField()
     end_time_display = serializers.SerializerMethodField()
     deadline_display = serializers.SerializerMethodField()
+    reminder_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Task
         fields = [
             'id', 'user', 'title', 'description', 'is_completed',
+            'color', 'reminder_time',
             'deleted_at',
             'start_time', 'end_time', 'deadline_time', 'created_at', 'updated_at',
             # FE-friendly
             'date', 'time', 'timeEnd', 'deadlineDate', 'deadlineTime',
-            'date_display', 'time_display', 'end_time_display', 'deadline_display',
+            'reminderDate', 'reminderTime',
+            'date_display', 'time_display', 'end_time_display', 'deadline_display', 'reminder_display',
         ]
         read_only_fields = ['created_at', 'updated_at', 'deleted_at',
-                           'date_display', 'time_display', 'deadline_display']
+                           'date_display', 'time_display', 'deadline_display', 'reminder_display']
         extra_kwargs = {
             'start_time': {'required': False, 'allow_null': True},
             'end_time': {'required': False, 'allow_null': True},
             'deadline_time': {'required': False, 'allow_null': True},
+            'reminder_time': {'required': False, 'allow_null': True},
         }
 
     def get_date_display(self, obj):
@@ -61,6 +67,11 @@ class TaskSerializer(serializers.ModelSerializer):
             return timezone.localtime(obj.deadline_time).strftime('%Y-%m-%d %H:%M')
         return None
 
+    def get_reminder_display(self, obj):
+        if obj.reminder_time:
+            return timezone.localtime(obj.reminder_time).strftime('%Y-%m-%d %H:%M')
+        return None
+
     def validate(self, data):
         from datetime import datetime
 
@@ -70,6 +81,9 @@ class TaskSerializer(serializers.ModelSerializer):
         has_deadline_field = 'deadlineDate' in data
         deadline_date = data.pop('deadlineDate', None)
         deadline_time = data.pop('deadlineTime', None)
+        has_reminder_field = 'reminderDate' in data
+        reminder_date = data.pop('reminderDate', None)
+        reminder_time = data.pop('reminderTime', None)
 
         if date and time:
             naive = datetime.combine(date, time)
@@ -92,6 +106,16 @@ class TaskSerializer(serializers.ModelSerializer):
             data['deadline_time'] = timezone.make_aware(naive)
         elif has_deadline_field and deadline_date is None:
             data['deadline_time'] = None
+
+        if reminder_date and reminder_time:
+            naive = datetime.combine(reminder_date, reminder_time)
+            data['reminder_time'] = timezone.make_aware(naive)
+        elif reminder_date:
+            from datetime import time as dtime
+            naive = datetime.combine(reminder_date, dtime(8, 0)) # Default 8:00 AM
+            data['reminder_time'] = timezone.make_aware(naive)
+        elif has_reminder_field and reminder_date is None:
+            data['reminder_time'] = None
 
         # Enforce logic constraint: end_time <= deadline_time
         end = data.get('end_time') or (self.instance.end_time if self.instance else None)

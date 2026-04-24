@@ -3,8 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
 from django.utils import timezone
-from .models import Event, EventInvitation, Notification
-from .serializers import EventSerializer, NotificationSerializer, EventInvitationSerializer
+from .models import Event, EventInvitation, Notification, CalendarGroup
+from .serializers import EventSerializer, NotificationSerializer, EventInvitationSerializer, CalendarGroupSerializer
 
 class EventViewSet(viewsets.ModelViewSet):
     serializer_class = EventSerializer
@@ -196,4 +196,18 @@ class NotificationViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['delete'])
     def delete_all(self, request):
         Notification.objects.filter(user=request.user).delete()
-        return Response({"status": "success"}, status=status.HTTP_204_NO_CONTENT)
+        return Response({"status": "success"}, status=status.HTTP_204_NO_CONTENT)
+
+class CalendarGroupViewSet(viewsets.ModelViewSet):
+    serializer_class = CalendarGroupSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        # Own calendars and calendars shared with user
+        return CalendarGroup.objects.filter(
+            Q(owner=user) | Q(shares__user=user)
+        ).distinct()
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)

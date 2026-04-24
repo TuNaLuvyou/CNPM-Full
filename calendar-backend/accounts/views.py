@@ -17,7 +17,6 @@ class RegisterView(APIView):
     Body: { email, password, full_name? }
     """
     def post(self, request):
-        # Nếu FE gửi email làm username
         data = request.data.copy()
         if 'email' in data and 'username' not in data:
             data['username'] = data['email'].split('@')[0]
@@ -53,32 +52,22 @@ class LoginView(APIView):
 class LogoutView(APIView):
     """
     POST /api/accounts/logout/
-    Xử lý đăng xuất cho cả API (Token) và Web (Session)
     """
     def post(self, request):
-        # 1. Xoá Token nếu có (Dành cho App/Mobile)
         if hasattr(request.user, 'auth_token'):
             request.user.auth_token.delete()
-        
-        # 2. Đăng xuất Session (Dành cho Trình duyệt)
         auth.logout(request)
-        
-        # 3. Phản hồi dựa trên loại yêu cầu
         if request.accepted_renderer.format == 'html' or 'text/html' in request.META.get('HTTP_ACCEPT', ''):
-            # Nếu là web, quay về trang login quản trị
             return redirect('/admin/login/')
-            
         return Response({'status': 'logged out'}, status=status.HTTP_200_OK)
 
     def get(self, request):
-        """ Hỗ trợ thêm GET logout để tránh lỗi 405 khi người dùng gõ URL trực tiếp """
         return self.post(request)
 
 
 class MeView(APIView):
     """
-    GET /api/accounts/me/  → thông tin user hiện tại
-    Header: Authorization: Token <token>
+    GET /api/accounts/me/
     """
     permission_classes = [IsAuthenticated]
 
@@ -90,7 +79,6 @@ class ForgotPasswordView(APIView):
     """
     POST /api/accounts/forgot-password/
     Body: { email }
-    Tiếp nhận yêu cầu khôi phục mật khẩu và tạo SupportRequest
     """
     permission_classes = [AllowAny]
 
@@ -98,10 +86,9 @@ class ForgotPasswordView(APIView):
         email = request.data.get('email')
         if not email:
             return Response({'error': 'Vui lòng nhập Email'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
             user = User.objects.get(email=email)
-            # Tạo yêu cầu hỗ trợ
             SupportRequest.objects.create(
                 user=user,
                 request_type='password_reset',
@@ -109,7 +96,6 @@ class ForgotPasswordView(APIView):
                 message=f"Người dùng yêu cầu khôi phục mật khẩu cho email: {email}",
                 status='pending'
             )
-            # 4. Gửi thông báo bảo mật cho người dùng
             Notification.objects.create(
                 user=user,
                 ntype='security',
@@ -117,5 +103,115 @@ class ForgotPasswordView(APIView):
             )
             return Response({'status': 'Đã gửi yêu cầu khôi phục mật khẩu. Admin sẽ liên hệ với bạn sớm nhất.'})
         except User.DoesNotExist:
-            # Vì lý do bảo mật, chúng ta vẫn trả về thành công để tránh lộ thông tin email nào đã đăng ký
             return Response({'status': 'Nếu email tồn tại trong hệ thống, yêu cầu đã được gửi đi.'})
+
+
+from .models import UserSettings, UserFavoriteCalendar
+from .serializers import UserSettingsSerializer, ProfileUpdateSerializer, UserFavoriteCalendarSerializer
+
+
+class ProfileUpdateView(APIView):
+    """
+    POST /api/accounts/profile/update/
+    Body: { email, full_name, phone_number, current_password, new_password? }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ProfileUpdateSerializer(
+            instance=request.user,
+            data=request.data,
+            context={'request': request}
+        )
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response(UserSerializer(user).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserSettingsView(APIView):
+    """
+    GET  /api/accounts/settings/  → trả về flat settings object
+    PATCH/PUT /api/accounts/settings/  → update một phần hoặc toàn bộ
+    
+    Frontend gửi camelCase, backend nhận snake_case.
+    Mapping thực hiện ở frontend (api.js).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        settings_obj, _ = UserSettings.objects.get_or_create(user=request.user)
+        return Response(UserSettingsSerializer(settings_obj).data)
+
+    def patch(self, request):
+        settings_obj, _ = UserSettings.objects.get_or_create(user=request.user)
+        serializer = UserSettingsSerializer(settings_obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request):
+        return self.patch(request)
+
+
+class FavoriteCalendarsView(APIView):
+    """
+    GET  /api/accounts/favorite-calendars/     → danh sách lịch yêu thích
+    POST /api/accounts/favorite-calendars/     → thêm lịch yêu thích
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = UserFavoriteCalendar.objects.filter(user=request.user)
+        return Response(UserFavoriteCalendarSerializer(qs, many=True).data)
+
+    def post(self, request):
+        # Check duplicate calendar_key nếu là preset
+        cal_key = request.data.get('calendar_key', '')
+        if cal_key:
+            existing = UserFavoriteCalendar.objects.filter(
+                user=request.user, calendar_key=cal_key
+            ).first()
+            if existing:
+                # Toggle is_active thay vì tạo mới
+                existing.is_active = not existing.is_active
+                existing.save()
+                return Response(UserFavoriteCalendarSerializer(existing).data)
+
+        serializer = UserFavoriteCalendarSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class FavoriteCalendarDetailView(APIView):
+    """
+    DELETE /api/accounts/favorite-calendars/<id>/  → xóa lịch yêu thích
+    PATCH  /api/accounts/favorite-calendars/<id>/  → cập nhật (toggle is_active, đổi màu...)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def _get_object(self, request, pk):
+        try:
+            return UserFavoriteCalendar.objects.get(pk=pk, user=request.user)
+        except UserFavoriteCalendar.DoesNotExist:
+            return None
+
+    def patch(self, request, pk):
+        obj = self._get_object(request, pk)
+        if not obj:
+            return Response({'error': 'Không tìm thấy.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = UserFavoriteCalendarSerializer(obj, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        obj = self._get_object(request, pk)
+        if not obj:
+            return Response({'error': 'Không tìm thấy.'}, status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

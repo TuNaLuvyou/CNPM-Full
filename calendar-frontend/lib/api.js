@@ -65,6 +65,13 @@ export async function forgotPassword(email) {
   });
 }
 
+export async function updateProfile(data) {
+  return request('/accounts/profile/update/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // ─── EVENTS ────────────────────────────────────────────────────────────────
 export async function getEvents(params = {}) {
   let url = '/events/';
@@ -294,3 +301,104 @@ export async function deleteNote(id) {
 export async function togglePinNote(id) {
   return request(`/notes/${id}/toggle_pin/`, { method: 'POST' });
 }
+
+// ─── SETTINGS ──────────────────────────────────────────────────────────────
+// ─── SETTINGS ──────────────────────────────────────────────────────────────
+/**
+ * GET /api/accounts/settings/
+ * Backend trả về flat snake_case → map sang camelCase cho Frontend
+ */
+export async function getSettings() {
+  const data = await request('/accounts/settings/');
+  if (!data) return {};
+  // Map snake_case → camelCase (flat)
+  return {
+    theme:                  data.theme               ?? 'light',
+    language:               data.language            ?? 'vi',
+    region:                 data.region              ?? 'VN',
+    dateFormat:             data.date_format         ?? 'DD/MM/YYYY',
+    timeFormat:             data.time_format         ?? '24h',
+    firstDayOfWeek:         data.first_day_of_week   ?? 1,
+    primaryTimezone:        data.primary_timezone    ?? 'Asia/Ho_Chi_Minh',
+    secondaryTimezone:      data.secondary_timezone  ?? null,
+    showSecondaryTimezone:  data.show_secondary_timezone ?? false,
+    defaultLocation:        data.default_location    ?? '',
+    defaultMeetLink:        data.default_meet_link   ?? '',
+    notificationType:       data.notification_type   ?? 'screen',
+    notificationMinutes:    data.notification_minutes ?? 10,
+    showWeekends:           data.show_weekends        ?? true,
+    showCompletedTasks:     data.show_completed_tasks ?? true,
+    showWeekNumbers:        data.show_week_numbers    ?? false,
+    showDeclinedEvents:     data.show_declined_events ?? false,
+    dimPastEvents:          data.dim_past_events      ?? true,
+    weekStartDay:           data.week_start_day       ?? 'monday',
+    phoneNumber:            data.phone_number         ?? '',
+  };
+}
+
+/**
+ * PATCH /api/accounts/settings/
+ * Frontend gửi camelCase → map sang snake_case cho Backend
+ */
+export async function updateSettings(flatData) {
+  const snakeData = {
+    theme:                   flatData.theme,
+    language:                flatData.language,
+    region:                  flatData.region,
+    date_format:             flatData.dateFormat,
+    time_format:             flatData.timeFormat,
+    first_day_of_week:       flatData.firstDayOfWeek,
+    primary_timezone:        flatData.primaryTimezone,
+    secondary_timezone:      flatData.secondaryTimezone,
+    show_secondary_timezone: flatData.showSecondaryTimezone,
+    default_location:        flatData.defaultLocation,
+    default_meet_link:       flatData.defaultMeetLink,
+    notification_type:       flatData.notificationType,
+    notification_minutes:    flatData.notificationMinutes,
+    show_weekends:           flatData.showWeekends,
+    show_completed_tasks:    flatData.showCompletedTasks,
+    show_week_numbers:       flatData.showWeekNumbers,
+    show_declined_events:    flatData.showDeclinedEvents,
+    dim_past_events:         flatData.dimPastEvents,
+    week_start_day:          flatData.weekStartDay,
+  };
+  // Lọc bỏ các key undefined
+  Object.keys(snakeData).forEach(k => snakeData[k] === undefined && delete snakeData[k]);
+
+  return request('/accounts/settings/', {
+    method: 'PATCH',
+    body: JSON.stringify(snakeData),
+  });
+}
+
+// ─── FAVORITE CALENDARS ─────────────────────────────────────────────────────
+/** GET  /api/accounts/favorite-calendars/ */
+export async function getFavoriteCalendars() {
+  return request('/accounts/favorite-calendars/');
+}
+
+/**
+ * POST /api/accounts/favorite-calendars/
+ * Thêm lịch yêu thích. Nếu calendar_key đã tồn tại → toggle is_active.
+ * @param {object} payload { calendar_key?, calendar_group?, name?, color?, is_active? }
+ */
+export async function addFavoriteCalendar(payload) {
+  return request('/accounts/favorite-calendars/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** PATCH /api/accounts/favorite-calendars/<id>/ */
+export async function updateFavoriteCalendar(id, payload) {
+  return request(`/accounts/favorite-calendars/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** DELETE /api/accounts/favorite-calendars/<id>/ */
+export async function removeFavoriteCalendar(id) {
+  return request(`/accounts/favorite-calendars/${id}/`, { method: 'DELETE' });
+}
+

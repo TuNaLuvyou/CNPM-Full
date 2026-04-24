@@ -15,6 +15,8 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
         timeEnd:      initialData?.end_time_display || toTimeInputVal(oneHourLater),
         deadlineDate: initialData?.deadline_display?.split(' ')[0] || toDateInputVal(now),
         deadlineTime: initialData?.deadline_display?.split(' ')[1] || toTimeInputVal(now),
+        reminderDate: initialData?.reminder_display?.split(' ')[0] || toDateInputVal(now),
+        reminderTime: initialData?.reminder_display?.split(' ')[1] || '08:00',
         description:  initialData?.description || '',
         color:        initialData?.color || 'emerald',
         category:     initialData?.category || 'Mặc định',
@@ -22,6 +24,7 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
     });
 
     const [hasDeadline, setHasDeadline] = useState(!!(initialData?.deadline_time || initialData?.deadline_display));
+    const [hasReminder, setHasReminder] = useState(!!(initialData?.reminder_time || initialData?.reminder_display));
 
     const [submitted, setSubmitted] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
@@ -36,6 +39,8 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
             timeEnd: toTimeInputVal(end),
             deadlineDate: toDateInputVal(now),
             deadlineTime: toTimeInputVal(now),
+            reminderDate: toDateInputVal(now),
+            reminderTime: '08:00',
         }));
     }, [now, duration, initialData, isInteracting]);
 
@@ -69,11 +74,20 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
             deadlineTime: null,
         };
 
+        const reminderPayload = hasReminder ? {
+            reminderDate: form.reminderDate,
+            reminderTime: form.reminderTime,
+        } : {
+            reminderDate: null,
+            reminderTime: null,
+        };
+
         // Merge date and time for backend
         onSave?.({
             type: 'task',
             ...form,
             ...deadlinePayload,
+            ...reminderPayload,
             file: selectedFile
         });
     };
@@ -153,6 +167,32 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
             <FieldRow icon={AlignLeft}>
                 <TextareaBase placeholder={t('create_modal.task_details_placeholder', lang)}
                     value={form.description} onChange={set('description')} />
+            </FieldRow>
+
+            {/* ── Reminder ── */}
+            <FieldRow icon={Clock}>
+                <div className="flex flex-col gap-1 w-full">
+                    <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase ml-1">Nhắc nhở</span>
+                        <button
+                            type="button"
+                            onClick={() => setHasReminder(!hasReminder)}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${hasReminder ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
+                        >
+                            {hasReminder ? 'Xóa' : 'Thêm'}
+                        </button>
+                    </div>
+                    {hasReminder ? (
+                        <div className="flex gap-2 animate-in slide-in-from-top-1 duration-200">
+                            <InputBase type="date" value={form.reminderDate} onChange={set('reminderDate')} className="flex-1" />
+                            <InputBase type="time" value={form.reminderTime} onChange={set('reminderTime')} className="w-32" />
+                        </div>
+                    ) : (
+                        <div className="px-3 py-2 bg-slate-50 border border-dashed border-slate-200 rounded-lg text-slate-400 text-xs italic">
+                            Chưa có nhắc nhở
+                        </div>
+                    )}
+                </div>
             </FieldRow>
 
             <FieldRow icon={Paperclip}>

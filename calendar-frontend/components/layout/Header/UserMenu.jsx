@@ -2,7 +2,7 @@ import React from "react";
 import { LogOut } from "lucide-react";
 import { t } from "@/lib/i18n";
 
-export default function UserMenu({ currentUser, setCurrentUser, setAuthModal, appSettings }) {
+export default function UserMenu({ currentUser, setCurrentUser, setAuthModal, appSettings, setIsProfileModalOpen }) {
   const lang = appSettings?.language || "vi";
 
   if (currentUser) {
@@ -12,9 +12,13 @@ export default function UserMenu({ currentUser, setCurrentUser, setAuthModal, ap
         <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">
           {displayName.charAt(0).toUpperCase()}
         </div>
-        <span className="text-sm text-slate-600">
+        <span 
+          className="text-sm text-slate-600 cursor-pointer hover:bg-slate-50 px-1 rounded transition-colors"
+          onClick={() => setIsProfileModalOpen(true)}
+          title={t('user.edit_profile', lang) || "Chỉnh sửa thông tin cá nhân"}
+        >
           {t('user.welcome', lang)},{" "}
-          <span className="font-bold text-blue-600">{displayName}</span>
+          <span className="font-bold text-blue-600 underline decoration-blue-600/30 underline-offset-4 decoration-2 hover:decoration-blue-600 transition-all">{displayName}</span>
         </span>
         <div className="w-px h-4 bg-slate-200 mx-1"></div>
         <button
