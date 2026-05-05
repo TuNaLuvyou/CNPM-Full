@@ -1,5 +1,0 @@
-Migrations applied successfully.
-tasks color: True
-tasks reminder: True
-notes deleted_at: True
-calendar_group: True

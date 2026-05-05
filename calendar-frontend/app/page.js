@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   Plus,
   Calendar as CalendarIcon,
@@ -97,6 +97,17 @@ export default function CalendarApp() {
   const [notifications, setNotifications] = useState([]);
   const notifiedEventsRef = React.useRef(new Set());
 
+  // ── Modals & Editing state ──
+  const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
+  const [createModal, setCreateModal] = useState({ isOpen: false, tab: "event" });
+  const [editingItem, setEditingItem] = useState(null);
+  const [clickPosition, setClickPosition] = useState(null);
+  const [previewEvent, setPreviewEvent] = useState(null);
+  const [isPreviewDragging, setIsPreviewDragging] = useState(false);
+  const [interactionState, setInteractionState] = useState(null);
+  const [yearDayPopup, setYearDayPopup] = useState({ isOpen: false, date: null, position: null });
+  const [lastMiniClick, setLastMiniClick] = useState(null);
+
   // Persistence for settings
   useEffect(() => {
     const saved = localStorage.getItem("appSettings");
@@ -109,6 +120,13 @@ export default function CalendarApp() {
       }
     }
   }, []);
+  
+  const selectedDateRef = useRef(selectedDate);
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+  }, [selectedDate]);
+
+  const lastUpdateRef = useRef(0);
 
   const handleSaveSettings = async (newSettings) => {
     setAppSettings(newSettings);
@@ -136,7 +154,7 @@ export default function CalendarApp() {
     try {
       let params = {};
       if (view === "Ngày") {
-        const d = formatDateLocal(selectedDate);
+        const d = formatDateLocal(selectedDateRef.current);
         params = { date_from: d, date_to: d };
       } else if (view === "Tuần" || view === "Tuần làm việc") {
         const days = buildWeekDays(viewDate);
@@ -200,11 +218,19 @@ export default function CalendarApp() {
     } catch (e) {
       console.error("Không thể tải events:", e);
     }
-  }, [view, viewDate, selectedDate]);
+  }, [view, viewDate]); // Decouple from selectedDate
 
   React.useEffect(() => {
     fetchEvents();
   }, [fetchEvents, eventSavedTick, appSettings.showFriendsCalendars]);
+
+  // Separate effect to handle selectedDate changes only in "Ngày" view
+  React.useEffect(() => {
+    // Nếu vừa mới cập nhật (kéo thả) xong thì bỏ qua lần fetch này để tránh snap-back
+    if (view === "Ngày" && (Date.now() - lastUpdateRef.current > 2000)) {
+      fetchEvents();
+    }
+  }, [selectedDate, view, fetchEvents]);
 
   // ── Khôi phục session & Trash logic (Lifted from Calendar.jsx) ──
   useEffect(() => {
@@ -373,10 +399,22 @@ export default function CalendarApp() {
     const finalDurationMin = newDurationMin || item.duration_minutes || 60;
     const durationMs = finalDurationMin * 60 * 1000;
             
-    const newEndTime = new Date(newStartTime.getTime() + durationMs);
+    let newEndTime = new Date(newStartTime.getTime() + durationMs);
+    const isTask = itemType === 'task';
+
+    // Đảm bảo không vi phạm validation của backend: end_time <= deadline
+    if (isTask && item.deadline) {
+        const deadlineDate = new Date(item.deadline);
+        if (newEndTime > deadlineDate) {
+            newEndTime = deadlineDate;
+            if (newStartTime > newEndTime) {
+                newStartTime = newEndTime;
+            }
+        }
+    }
 
     setEvents(prev => prev.map(ev => {
-        if (ev.id === item.id) {
+        if (String(ev.id) === String(item.id)) {
             const isTask = itemType === 'task';
             return {
                 ...ev,
@@ -397,7 +435,7 @@ export default function CalendarApp() {
     }));
 
     // Đồng bộ hóa bảng chỉnh sửa nếu đang mở cho chính item này
-    if (editingItem && editingItem.id === item.id) {
+    if (editingItem && String(editingItem.id) === String(item.id)) {
       setEditingItem(prev => ({
         ...prev,
         start_time: newStartTime.toISOString(),
@@ -426,15 +464,24 @@ export default function CalendarApp() {
         payload.end_time = newEndTime.toISOString(); // Cập nhật block thời gian cho Task (giống Sự kiện)
         await updateTask(itemId, payload);
       }
-      // KHÔNG gọi handleEventSaved() ở đây để tránh re-fetch ghi đè optimistic update.
+      
+      lastUpdateRef.current = Date.now();
+      
+      // KHÔNG gọi handleEventSaved() ở đây để tránh re-fetch ghi đè optimistic update ngay lập tức.
       // Dữ liệu đã được cập nhật trên UI optimistically ở trên.
+      
+      // Sau khi API thành công, có thể fetch lại sau 1 khoảng trễ ngắn để đồng bộ triệt để với Server 
+      // mà không gây snap-back ngay lập tức.
+      setTimeout(() => {
+        handleEventSaved();
+      }, 1000);
     } catch (e) {
       console.error("Lỗi cập nhật:", e);
-      // Chỉ re-fetch khi có lỗi để khôi phục trạng thái đúng từ server
+      // Chỉ re-fetch ngay khi có lỗi để khôi phục trạng thái đúng từ server
       handleEventSaved();
       alert("Không thể cập nhật sự kiện. Đang đồng bộ lại...");
     }
-  }, [handleEventSaved]);
+  }, [handleEventSaved, editingItem]);
 
   // ── Notification Reminder Engine ──
   useEffect(() => {
@@ -503,10 +550,6 @@ export default function CalendarApp() {
     });
   }, [events, visibleCategories, visibleFriends, currentUser?.id, appSettings.showFriendsCalendars]);
 
-  const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
-  const [createModal, setCreateModal] = useState({ isOpen: false, tab: "event" });
-  const [editingItem, setEditingItem] = useState(null);
-
   // Giữ editingItem luôn tươi mới nếu data background thay đổi (Move to after initialization)
   useEffect(() => {
     if (editingItem) {
@@ -516,17 +559,15 @@ export default function CalendarApp() {
       }
     }
   }, [events, editingItem]);
-  const [clickPosition, setClickPosition] = useState(null);
-  const [previewEvent, setPreviewEvent] = useState(null);
-  const [isPreviewDragging, setIsPreviewDragging] = useState(false);
-  const [interactionState, setInteractionState] = useState(null);
+
+  const isModalOpenRef = React.useRef(createModal.isOpen);
+  useEffect(() => { isModalOpenRef.current = createModal.isOpen; }, [createModal.isOpen]);
 
   const handleInteractionUpdate = useCallback((data) => {
-    setInteractionState(data);
+    if (isModalOpenRef.current) {
+        setInteractionState(data);
+    }
   }, []);
-
-  const [yearDayPopup, setYearDayPopup] = useState({ isOpen: false, date: null, position: null });
-  const [lastMiniClick, setLastMiniClick] = useState(null);
 
   if (!mounted) {
     return (

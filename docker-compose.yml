@@ -1,20 +1,19 @@
 version: '3.8'
 
 services:
-  mysql-db:
+  db:
     image: mysql:8.0
-    container_name: mysql-server
+    container_name: cnpm_mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: calendar_db
-      MYSQL_USER: calendar_user
-      MYSQL_PASSWORD: userpassword
+      MYSQL_DATABASE: cnpm_db
+      MYSQL_USER: calendar
+      MYSQL_PASSWORD: 123
+      MYSQL_ROOT_PASSWORD: root_password
     ports:
       - "3306:3306"
     volumes:
-      - mysql-data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
 
 volumes:
-  mysql-data:
-    driver: local
+  mysql_data:

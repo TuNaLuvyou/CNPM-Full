@@ -82,10 +82,24 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
             reminderTime: null,
         };
 
+        let finalTimeEnd = form.timeEnd;
+        let finalDateEnd = form.date; // task generally same day
+
+        if (hasDeadline) {
+            const endDateTime = new Date(`${form.date}T${form.timeEnd}`);
+            const deadlineDateTime = new Date(`${form.deadlineDate}T${form.deadlineTime}`);
+            if (endDateTime > deadlineDateTime) {
+                // Tự động điều chỉnh timeEnd bằng deadlineTime nếu người dùng vô tình đặt sai
+                finalTimeEnd = form.deadlineTime;
+                finalDateEnd = form.deadlineDate;
+            }
+        }
+
         // Merge date and time for backend
         onSave?.({
             type: 'task',
             ...form,
+            timeEnd: finalTimeEnd,
             ...deadlinePayload,
             ...reminderPayload,
             file: selectedFile

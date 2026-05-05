@@ -3,9 +3,10 @@ import { t } from '@/lib/i18n';
 
 export default function Event({ 
     title, time, color = 'blue', type, top, height, location, description,
-    event_type, is_completed, onToggleComplete, is_clamped,
+    event_type, is_completed, onToggleComplete, is_clamped, is_ghost,
     onClick, onMouseDown, onResizeMouseDown, lang = 'vi',
-    my_permission = 'edit', owner_name, owner_email, is_owner = true
+    my_permission = 'edit', owner_name, owner_email, is_owner = true,
+    className = ""
 }) {
     const canEdit = my_permission === 'edit';
 
@@ -43,8 +44,8 @@ export default function Event({
             e.stopPropagation(); 
             // onClick?.(e); // Handled in TimeGrid's handleMouseUp for better stability in Edit mode
         }}
-        className={`absolute left-1 right-1 border-l-4 rounded-md p-1.5 shadow-sm z-40 pointer-events-auto flex flex-col ${finalTheme.bg} ${finalTheme.border} group cursor-pointer hover:shadow-md
-            ${is_clamped ? 'z-50' : ''} ${!showTime ? 'justify-center' : ''}`}
+        className={`absolute left-1 right-1 border-l-4 rounded-md p-1.5 shadow-sm z-40 pointer-events-auto flex flex-col ${finalTheme.bg} ${finalTheme.border} group cursor-pointer hover:shadow-md select-none
+            ${is_clamped ? 'z-50' : ''} ${!showTime ? 'justify-center' : ''} ${is_ghost ? 'opacity-40 border-dashed border-2 z-0 scale-[0.98] grayscale-[0.5]' : ''} ${className}`}
         style={{ top: `${top}px`, height: `${height}px`, overflow: 'hidden' }}
     >
         <div className="flex items-start gap-1.5 min-w-0">

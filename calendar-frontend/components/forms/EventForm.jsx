@@ -65,9 +65,21 @@ export default function EventForm({ now, duration, isInteracting, onSave, initia
     const handleSave = () => {
         setSubmitted(true);
         if (!form.title.trim()) return;
+
+        let finalTimeEnd = form.timeEnd;
+        const startDateTime = new Date(`${form.date}T${form.timeStart}`);
+        const endDateTime = new Date(`${form.date}T${form.timeEnd}`);
+        
+        if (startDateTime >= endDateTime) {
+            // Tự động điều chỉnh timeEnd = timeStart + 1 giờ (hoặc ít nhất lớn hơn timeStart)
+            const correctedEnd = new Date(startDateTime.getTime() + 60 * 60 * 1000);
+            finalTimeEnd = toTimeInputVal(correctedEnd);
+        }
+
         onSave?.({
             type: 'event',
             ...form,
+            timeEnd: finalTimeEnd,
             recurrence_rule: form.recurrence_rule || null,
             calendar_group: form.calendar_group || null,
             file: selectedFile,

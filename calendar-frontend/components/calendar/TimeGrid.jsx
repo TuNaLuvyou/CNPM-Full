@@ -79,25 +79,17 @@ export default function TimeGrid({
   });
 
   function getEventsForDay(fullDate) {
-    if (!fullDate || !events.length) {
-        if (interaction?.existingEvent && interaction.currentDate?.toDateString() === fullDate?.toDateString()) {
-            return [interaction.existingEvent];
-        }
-        return [];
-    }
+    if (!fullDate || !events.length) return [];
 
     const dateStr = formatDateLocal(fullDate);
-    let dayEvents = events.filter(ev => {
-      if (interaction?.existingEvent?.id === ev.id) return false; 
-      const evDate = formatDateLocal(new Date(ev.start_time));
-      return evDate === dateStr;
+    return events.filter(ev => {
+      // If this event has an optimistic update (after drop), use that date
+      const optimistic = optimisticUpdates[String(ev.id)];
+      const effectiveDateStr = optimistic?.date
+        ? formatDateLocal(optimistic.date)
+        : formatDateLocal(new Date(ev.start_time));
+      return effectiveDateStr === dateStr;
     });
-
-    if (interaction?.existingEvent && interaction.currentDate?.toDateString() === fullDate?.toDateString()) {
-        dayEvents.push(interaction.existingEvent);
-    }
-
-    return dayEvents;
   }
 
   return (
@@ -161,25 +153,27 @@ export default function TimeGrid({
 
           {displayWeekDays.map((day, idx) => {
             const dayEvents = getEventsForDay(day.fullDate);
+            const isTargetDay = interaction?.currentDate && formatDateLocal(interaction.currentDate) === formatDateLocal(day.fullDate);
+
             return (
               <div
                 key={idx}
                 data-column-date={day.fullDate?.toDateString()}
                 className="border-l border-slate-200 relative min-h-full hover:bg-slate-50/50 transition-colors cursor-pointer day-column"
-                onMouseDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => handleInteractionStart(e, 'create')}
                 onClick={(e) => handleColumnClick(e, day)}
               >
                 <div className="h-[1536px]" />
                 <div className="absolute inset-0 top-0 pointer-events-none">
                   {dayEvents.map((ev) => {
-                    const isDragging = interaction?.existingEvent?.id === ev.id;
+                    const isCurrentlyDragging = interaction?.existingEvent && String(interaction.existingEvent.id) === String(ev.id);
                     const { top: originalTop, height: originalHeight } = getEventStyle(ev);
                     
                     const optimistic = optimisticUpdates[String(ev.id)];
-                    const top = isDragging ? interaction.currentTop : (optimistic?.top ?? originalTop);
-                    const height = isDragging ? interaction.currentHeight : (optimistic?.height ?? originalHeight);
+                    const top = isCurrentlyDragging ? originalTop : (optimistic?.top ?? originalTop);
+                    const height = isCurrentlyDragging ? originalHeight : (optimistic?.height ?? originalHeight);
 
-                    const timeOptions = timeFormat === "24h" 
+                    const timeOptions = appSettings.timeFormat === "24h" 
                         ? { hour: "2-digit", minute: "2-digit", hour12: false }
                         : { hour: "numeric", minute: "2-digit", hour12: true };
                     
@@ -198,6 +192,7 @@ export default function TimeGrid({
                         time={timeLabel}
                         top={top}
                         height={height}
+                        className={isCurrentlyDragging ? "opacity-40 pointer-events-none grayscale-[0.3]" : "transition-all duration-200"}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (didMoveRef.current) return; 
@@ -214,13 +209,28 @@ export default function TimeGrid({
                         description={ev.description}
                         event_type={ev.event_type}
                         is_completed={ev.is_completed}
-                        is_clamped={isDragging && interaction.isClamped}
                         lang={appSettings.language}
                         onToggleComplete={() => callbacksRef.current.onToggleTask?.(ev.id)}
-                        className={isDragging ? "shadow-2xl ring-2 ring-blue-500/50 z-50 opacity-90 scale-[1.01]" : "transition-all duration-200"}
                       />
                     );
                   })}
+
+                  {/* Render GHOST (Tab ảo) di chuyển theo chuột */}
+                  {isTargetDay && interaction?.existingEvent && (
+                    <EventBlock
+                      key={`ghost-${interaction.existingEvent.id}`}
+                      {...interaction.existingEvent}
+                      time={new Date(interaction.currentDate).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: appSettings.timeFormat !== "24h" })}
+                      top={interaction.currentTop}
+                      height={interaction.currentHeight}
+                      is_ghost={true}
+                      className="shadow-2xl ring-2 ring-blue-500/30 z-50 scale-[1.02]"
+                      is_clamped={interaction.isClamped}
+                      lang={appSettings.language}
+                      onMouseDown={(e) => handleInteractionStart(e, 'move', interaction.existingEvent)}
+                      onResizeMouseDown={(e) => handleInteractionStart(e, 'resize', interaction.existingEvent)}
+                    />
+                  )}
 
                   {previewEvent?.fullDate &&
                     previewEvent.fullDate.toDateString() === day.fullDate?.toDateString() && (
@@ -237,10 +247,10 @@ export default function TimeGrid({
                             columnRect: e.currentTarget.parentElement.getBoundingClientRect()
                           });
                         }}
-                        className={`preview-tab absolute left-1 right-1 z-30 bg-blue-50 border-l-4 border-blue-500 rounded-md p-2 shadow-md flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing
+                        className={`preview-tab absolute left-1 right-1 z-30 bg-blue-50 border-l-4 border-blue-500 rounded-md p-2 shadow-md flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing select-none
                           ${interaction ? 'shadow-lg ring-2 ring-blue-500/20 scale-[1.01]' : 'transition-all duration-200'} ${((interaction && !interaction.existingEvent) ? interaction.currentHeight : (previewEvent.height || 64)) < 35 ? 'justify-center' : ''}`}
                         style={{
-                          top: `${previewEvent.type === "now" ? nowOffset : previewEvent.top}px`,
+                          top: `${(interaction && !interaction.existingEvent) ? interaction.currentTop : (previewEvent.type === "now" ? nowOffset : previewEvent.top)}px`,
                           height: `${(interaction && !interaction.existingEvent) ? interaction.currentHeight : (previewEvent.height || 64)}px`,
                         }}
                       >

@@ -119,7 +119,7 @@ export default function CreateModal({
     ? TABS.filter(t => t.key === (editingItem.event_type || 'event'))
     : TABS;
 
-  const hideWhileDraggingPreview = isPreviewDragging && !editingItem && !interactionState?.id;
+  const hideWhileDraggingPreview = isPreviewDragging;
 
   if (!isOpen) return null;
 
