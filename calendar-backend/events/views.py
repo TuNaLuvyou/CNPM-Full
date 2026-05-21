@@ -3,8 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
 from django.utils import timezone
-from .models import Event, EventInvitation, Notification, CalendarGroup
-from .serializers import EventSerializer, NotificationSerializer, EventInvitationSerializer, CalendarGroupSerializer
+from .models import Event, EventInvitation, Notification, CalendarGroup, ReminderPreference
+from .serializers import EventSerializer, NotificationSerializer, EventInvitationSerializer, CalendarGroupSerializer, ReminderPreferenceSerializer
 
 class EventViewSet(viewsets.ModelViewSet):
     serializer_class = EventSerializer
@@ -210,4 +210,32 @@ class CalendarGroupViewSet(viewsets.ModelViewSet):
         ).distinct()
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        serializer.save(owner=self.request.user)
+class ReminderPreferenceViewSet(viewsets.ViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @action(detail=False, methods=['get', 'put'], url_path='my-preference')
+    def my_preference(self, request):
+        """Get or update current user's reminder preference"""
+        user = request.user
+        
+        if request.method == 'GET':
+            try:
+                pref = ReminderPreference.objects.get(user=user)
+            except ReminderPreference.DoesNotExist:
+                pref = ReminderPreference.objects.create(user=user, preference='both')
+            
+            serializer = ReminderPreferenceSerializer(pref)
+            return Response(serializer.data)
+        
+        elif request.method == 'PUT':
+            try:
+                pref = ReminderPreference.objects.get(user=user)
+            except ReminderPreference.DoesNotExist:
+                pref = ReminderPreference.objects.create(user=user)
+            
+            serializer = ReminderPreferenceSerializer(pref, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

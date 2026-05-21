@@ -327,6 +327,14 @@ export async function togglePinNote(id) {
 export async function getSettings() {
   const data = await request('/accounts/settings/');
   if (!data) return {};
+
+  const normalizeNotificationType = (value) => {
+    if (value === 'screen') return 'app';
+    if (value === 'push') return 'email';
+    if (value === 'email' || value === 'app' || value === 'both' || value === 'off') return value;
+    return 'both';
+  };
+
   // Map snake_case → camelCase (flat)
   return {
     theme:                  data.theme               ?? 'light',
@@ -340,7 +348,7 @@ export async function getSettings() {
     showSecondaryTimezone:  data.show_secondary_timezone ?? false,
     defaultLocation:        data.default_location    ?? '',
     defaultMeetLink:        data.default_meet_link   ?? '',
-    notificationType:       data.notification_type   ?? 'screen',
+    notificationType:       normalizeNotificationType(data.notification_type),
     notificationMinutes:    data.notification_minutes ?? 10,
     showWeekends:           data.show_weekends        ?? true,
     showCompletedTasks:     data.show_completed_tasks ?? true,

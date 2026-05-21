@@ -5,8 +5,9 @@ import { SectionLabel, Card, Row } from "./SharedUI";
 export default function Notification({ s, set, lang }) {
     const NOTIF_OPTS = [
         { value: "off", label: t('notif_settings.off', lang), desc: t('notif_settings.off_desc', lang) },
-        { value: "screen", label: t('notif_settings.screen', lang), desc: t('notif_settings.screen_desc', lang) },
-        { value: "push", label: t('notif_settings.push', lang), desc: t('notif_settings.push_desc', lang) },
+        { value: "app", label: t('notif_settings.app', lang), desc: t('notif_settings.app_desc', lang) },
+        { value: "email", label: t('notif_settings.email', lang), desc: t('notif_settings.email_desc', lang) },
+        { value: "both", label: t('notif_settings.both', lang), desc: t('notif_settings.both_desc', lang) },
     ];
     return (
         <div id="section-notifications" className="space-y-6 scroll-mt-6">

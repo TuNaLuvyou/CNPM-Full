@@ -13,7 +13,7 @@ import YearDayPopup from "@/components/widgets/YearDayPopup";
 import { getLocalizedTime, getVNTime, formatDateLocal, buildWeekDays, buildMonthCells, DAY_NAMES, MONTH_NAMES } from "@/lib/CalendarHelper";
 import { getEvents, getTasks, updateEvent, updateTask, toggleTask, trashEvent, trashTask,
   getMe, getTrashedEvents, getTrashedTasks, restoreEvent, permanentDeleteEvent, restoreTask, permanentDeleteTask,
-  getNotifications
+  getNotifications, getFavoriteCalendars
 } from "@/lib/api";
 import { CALENDAR_CATEGORIES } from "@/components/forms/FormHelpers";
 import AuthModal from "@/components/modals/AuthModal";
@@ -52,7 +52,7 @@ export default function CalendarApp() {
     showSecondaryTimezone: false,
     primaryTimezone: "Asia/Ho_Chi_Minh",
     secondaryTimezone: "America/New_York",
-    notificationType: "screen",
+    notificationType: "both",
     notificationMinutes: 10,
     showWeekends: true,
     showCompletedTasks: true,
@@ -258,6 +258,42 @@ export default function CalendarApp() {
         });
     }
   }, []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const syncFavoriteCalendarState = async () => {
+      try {
+        const favorites = await getFavoriteCalendars();
+        const favoriteList = Array.isArray(favorites) ? favorites : [];
+        const presetKeys = new Set(["vn_holidays", "world_holidays", "other_holidays"]);
+
+        const customHolidayItems = favoriteList
+          .filter(item => !presetKeys.has(item.calendar_key))
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+        setAppSettings(prev => {
+          const hasVietnamPreset = favoriteList.some(item => item.calendar_key === "vn_holidays");
+          const hasWorldPreset = favoriteList.some(item => item.calendar_key === "world_holidays");
+          const hasOtherPreset = favoriteList.some(item => item.calendar_key === "other_holidays");
+
+          const nextSettings = {
+            ...prev,
+            vietnamHolidays: hasVietnamPreset ? favoriteList.some(item => item.calendar_key === "vn_holidays" && item.is_active) : prev.vietnamHolidays,
+            worldHolidays: hasWorldPreset ? favoriteList.some(item => item.calendar_key === "world_holidays" && item.is_active) : prev.worldHolidays,
+            otherHolidays: hasOtherPreset ? favoriteList.some(item => item.calendar_key === "other_holidays" && item.is_active) : prev.otherHolidays,
+            customHolidays: customHolidayItems,
+          };
+          localStorage.setItem("appSettings", JSON.stringify(nextSettings));
+          return nextSettings;
+        });
+      } catch (e) {
+        console.error("Lỗi đồng bộ lịch yêu thích:", e);
+      }
+    };
+
+    syncFavoriteCalendarState();
+  }, [currentUser]);
 
   const fetchFriends = useCallback(async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;

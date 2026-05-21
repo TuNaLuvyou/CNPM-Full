@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     X, Globe, Clock, Calendar, Bell, Eye, Heart,
     Plus, Video, MapPin, Check, Settings, Tag,
@@ -82,8 +82,12 @@ const DEFAULT_SETTINGS = {
     secondaryTimezone: null,
     defaultMeetLink: "",
     defaultLocation: "",
-    notificationType: "screen",
+    notificationType: "both",
     notificationMinutes: 10,
+    vietnamHolidays: true,
+    worldHolidays: false,
+    otherHolidays: false,
+    customHolidays: [],
     theme: "light",
     showWeekends: true,
     showCompletedTasks: true,
@@ -104,14 +108,13 @@ import ViewOptions from "./setting/ViewOptions";
 import FavoriteCalendars from "./setting/FavoriteCalendars";
 import CategoryManagement from "./setting/CategoryManagement";
 
-import { useRef } from "react";
-
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function SettingsModal({ isOpen, onClose, onSave, settings: initialSettings }) {
     const [activeSection, setActiveSection] = useState("language");
     const [settings, setSettings] = useState(initialSettings || DEFAULT_SETTINGS);
     const [saveState, setSaveState] = useState("idle"); // "idle" | "saved"
     const scrollContainerRef = useRef(null);
+    const wasOpenRef = useRef(false);
 
     // Scroll Spy mechanism
     useEffect(() => {
@@ -150,20 +153,41 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
     }, [isOpen, activeSection]);
 
     useEffect(() => {
-        if (isOpen && initialSettings) {
-            setSettings(initialSettings);
-            // Reset scroll to top when opening
-            if (scrollContainerRef.current) {
-                scrollContainerRef.current.scrollTop = 0;
-                setActiveSection("language");
-            }
+        if (!isOpen) {
+            wasOpenRef.current = false;
+            return;
         }
+
+        setSettings(initialSettings || DEFAULT_SETTINGS);
+
+        if (!wasOpenRef.current && scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = 0;
+            setActiveSection("language");
+        }
+
+        wasOpenRef.current = true;
     }, [isOpen, initialSettings]);
 
     if (!isOpen) return null;
 
     const set = (key, value) =>
         setSettings((prev) => ({ ...prev, [key]: value }));
+
+    const handleFavoriteCalendarsChange = (customHolidays) => {
+        setSettings((prev) => ({
+            ...prev,
+            customHolidays,
+        }));
+    };
+
+    const handleFavoritePresetChange = ({ vietnamHolidays, worldHolidays, otherHolidays }) => {
+        setSettings((prev) => ({
+            ...prev,
+            vietnamHolidays,
+            worldHolidays,
+            otherHolidays,
+        }));
+    };
 
     const handleSave = () => {
         onSave?.(settings);
@@ -208,10 +232,10 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
                 </div>
 
                 {/* ── Body: sidebar + content ── */}
-                <div className="flex flex-1 overflow-hidden">
+                <div className="flex flex-1 min-h-0 overflow-hidden">
 
                     {/* Sidebar nav */}
-                    <nav className="w-52 bg-white border-r border-slate-200 py-3 flex-shrink-0 overflow-y-auto">
+                    <nav className="w-52 bg-white border-r border-slate-200 py-3 flex-shrink-0 overflow-y-auto min-h-0">
                         {SECTIONS.map(({ key, labelKey }) => {
                             const active = activeSection === key;
                             return (
@@ -234,7 +258,7 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
                     {/* Content area - Multi-section scrollable list */}
                     <div 
                         ref={scrollContainerRef}
-                        className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-12"
+                        className="flex-1 min-h-0 overflow-y-auto p-8 custom-scrollbar space-y-12"
                     >
                         <LanguageRegion s={settings} set={set} lang={settings.language} />
                         <hr className="border-slate-200/60" />
@@ -246,7 +270,11 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
                         <hr className="border-slate-200/60" />
                         <ViewOptions s={settings} set={set} lang={settings.language} />
                         <hr className="border-slate-200/60" />
-                        <FavoriteCalendars lang={settings.language} />
+                        <FavoriteCalendars
+                            lang={settings.language}
+                            onChange={handleFavoriteCalendarsChange}
+                            onPresetChange={handleFavoritePresetChange}
+                        />
                         <hr className="border-slate-200/60" />
                         <CategoryManagement s={settings} set={set} lang={settings.language} />
                     </div>

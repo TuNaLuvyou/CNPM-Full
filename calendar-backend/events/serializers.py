@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Event, EventInvitation, Notification, CalendarGroup, CalendarShare
+from .models import Event, EventInvitation, Notification, CalendarGroup, CalendarShare, ReminderPreference
 from django.contrib.auth.models import User
 
 class UserSimpleSerializer(serializers.ModelSerializer):
@@ -229,7 +229,15 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = [
             'id', 'user', 'ntype', 'event', 'event_title', 
-            'content', 'is_read', 'created_at',
+            'content', 'is_read', 'email_sent', 'created_at',
             'type', 'desc', 'time'
         ]
-        read_only_fields = ['created_at']
+        read_only_fields = ['created_at', 'email_sent']
+
+class ReminderPreferenceSerializer(serializers.ModelSerializer):
+    preference_display = serializers.CharField(source='get_preference_display', read_only=True)
+    
+    class Meta:
+        model = ReminderPreference
+        fields = ['id', 'user', 'preference', 'preference_display', 'created_at', 'updated_at']
+        read_only_fields = ['user', 'created_at', 'updated_at']

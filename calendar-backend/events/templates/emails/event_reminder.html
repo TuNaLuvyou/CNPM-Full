@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            border-bottom: 3px solid #007bff;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            color: #007bff;
+            margin: 0;
+            font-size: 24px;
+        }
+        .event-details {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-left: 4px solid #007bff;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .detail-item {
+            margin: 15px 0;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #555;
+            display: inline-block;
+            width: 120px;
+        }
+        .detail-value {
+            color: #333;
+            display: inline-block;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📅 Nhắc nhở sự kiện</h1>
+        </div>
+        
+        <p>Xin chào <strong>{{ username }}</strong>,</p>
+        
+        <p>Sự kiện của bạn sắp bắt đầu! Đây là thông báo nhắc nhở:</p>
+        
+        <div class="event-details">
+            <div class="detail-item">
+                <span class="detail-label">Sự kiện:</span>
+                <span class="detail-value"><strong>{{ event_title }}</strong></span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Thời gian:</span>
+                <span class="detail-value">{{ event_time }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Địa điểm:</span>
+                <span class="detail-value">{{ event_location }}</span>
+            </div>
+            {% if event_description %}
+            <div class="detail-item">
+                <span class="detail-label">Mô tả:</span>
+                <span class="detail-value">{{ event_description|truncatewords:20 }}</span>
+            </div>
+            {% endif %}
+            <div class="detail-item">
+                <span class="detail-label">Nhắc nhở:</span>
+                <span class="detail-value">{{ reminder_minutes }} phút trước khi bắt đầu</span>
+            </div>
+        </div>
+        
+        <div class="warning">
+            ⏰ Sự kiện sẽ bắt đầu trong {{ reminder_minutes }} phút. Hãy chuẩn bị sẵn sàng!
+        </div>
+        
+        <p>Nếu bạn không lên kế hoạch tham dự sự kiện này, bạn có thể vô hiệu hóa thông báo nhắc nhở.</p>
+        
+        <div style="text-align: center;">
+            <a href="#" class="btn">Xem sự kiện</a>
+        </div>
+        
+        <div class="footer">
+            <p>Đây là thông báo tự động từ hệ thống lịch của bạn. Vui lòng không trả lời email này.</p>
+            <p>&copy; 2024 Calendar App. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

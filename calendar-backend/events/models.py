@@ -49,6 +49,10 @@ class Event(models.Model):
     end_time = models.DateTimeField()
     is_all_day = models.BooleanField(default=False)
     recurrence_rule = models.CharField(max_length=255, blank=True, null=True)
+    
+    # Reminder settings (in minutes before event)
+    reminder_minutes = models.IntegerField(default=15, help_text="Minutes before event to send reminder")
+    reminder_sent = models.BooleanField(default=False)
 
     deleted_at = models.DateTimeField(null=True, blank=True)
     
@@ -91,6 +95,7 @@ class Notification(models.Model):
         ('friend_accepted', 'Friend Request Accepted'),
         ('security', 'Security Alert'),
         ('system', 'System Announcement'),
+        ('reminder', 'Event Reminder'),
     ]
     
     user = models.ForeignKey(User, related_name='notifications', on_delete=models.CASCADE)
@@ -98,7 +103,25 @@ class Notification(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, blank=True)
     content = models.TextField()
     is_read = models.BooleanField(default=False)
+    email_sent = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Notification for {self.user.username}: {self.content[:30]}"
+
+class ReminderPreference(models.Model):
+    """User's reminder notification preferences"""
+    PREFERENCE_CHOICES = [
+        ('off', 'Tắt'),
+        ('app', 'Thông báo trong ứng dụng'),
+        ('email', 'Thông báo qua email'),
+        ('both', 'Cả hai'),
+    ]
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='reminder_preference')
+    preference = models.CharField(max_length=10, choices=PREFERENCE_CHOICES, default='both')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.get_preference_display()}"

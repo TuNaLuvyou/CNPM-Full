@@ -17,7 +17,7 @@ const PRESET_CALENDARS = [
     { key: "other_holidays", labelKey: "fav_calendars.other_holidays", descKey: "fav_calendars.other_holidays_desc" },
 ];
 
-export default function FavoriteCalendars({ lang }) {
+export default function FavoriteCalendars({ lang, onChange, onPresetChange }) {
     const [favorites, setFavorites] = useState([]);
     const [loading, setLoading]     = useState(true);
     const [newHoliday, setNewHoliday] = useState("");
@@ -37,6 +37,19 @@ export default function FavoriteCalendars({ lang }) {
             .catch(() => setFavorites([]))
             .finally(() => setLoading(false));
     }, []);
+
+    useEffect(() => {
+        const customCalendars = favorites
+            .filter(f => !PRESET_CALENDARS.find(p => p.key === f.calendar_key))
+            .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+        onChange?.(customCalendars);
+        onPresetChange?.({
+            vietnamHolidays: isPresetActive("vn_holidays"),
+            worldHolidays: isPresetActive("world_holidays"),
+            otherHolidays: isPresetActive("other_holidays"),
+        });
+    }, [favorites, onChange, onPresetChange]);
 
     useEffect(() => {
         const cleanupDrag = () => {
@@ -61,6 +74,29 @@ export default function FavoriteCalendars({ lang }) {
     const isPresetActive = (key) =>
         !!favorites.find(f => f.calendar_key === key && f.is_active);
 
+    const getCustomCalendars = (source = favorites) =>
+        source
+            .filter(f => !PRESET_CALENDARS.find(p => p.key === f.calendar_key))
+            .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+    const applyCustomOrder = (fromIndex, toIndex) => {
+        if (fromIndex === null || toIndex === null || fromIndex === toIndex) return;
+
+        setFavorites(prev => {
+            const presets = prev.filter(f => PRESET_CALENDARS.find(p => p.key === f.calendar_key));
+            const customs = getCustomCalendars(prev);
+            const next = [...customs];
+            const [moved] = next.splice(fromIndex, 1);
+            if (!moved) return prev;
+            next.splice(toIndex, 0, moved);
+
+            const updated = next.map((item, i) => ({ ...item, sort_order: i }));
+            dragIdx.current = toIndex;
+            dragOverIdx.current = toIndex;
+            return [...presets, ...updated];
+        });
+    };
+
     const togglePreset = async (key, label) => {
         try {
             const result = await addFavoriteCalendar({
@@ -68,14 +104,26 @@ export default function FavoriteCalendars({ lang }) {
                 calendar_key: key,
                 name: label,
             });
+            let nextFavorites = [];
             setFavorites(prev => {
                 const idx = prev.findIndex(f => f.calendar_key === key);
                 if (idx >= 0) {
                     const updated = [...prev];
                     updated[idx] = result;
+                    nextFavorites = updated;
                     return updated;
                 }
-                return [...prev, result];
+                nextFavorites = [...prev, result];
+                return nextFavorites;
+            });
+
+            const getPresetValue = (presetKey) =>
+                nextFavorites.find(f => f.calendar_key === presetKey)?.is_active ?? false;
+
+            onPresetChange?.({
+                vietnamHolidays: key === "vn_holidays" ? result.is_active : getPresetValue("vn_holidays"),
+                worldHolidays: key === "world_holidays" ? result.is_active : getPresetValue("world_holidays"),
+                otherHolidays: key === "other_holidays" ? result.is_active : getPresetValue("other_holidays"),
             });
         } catch (e) {
             console.error("Toggle preset error:", e);
@@ -126,7 +174,11 @@ export default function FavoriteCalendars({ lang }) {
         e.dataTransfer.effectAllowed = "move";
         e.dataTransfer.setData("text/plain", String(id));
     };
-    const onDragEnter = (idx) => { dragOverIdx.current = idx; };
+    const onDragEnter = (idx) => {
+        const from = dragIdx.current;
+        dragOverIdx.current = idx;
+        applyCustomOrder(from, idx);
+    };
     const onDragEnd   = async () => {
         const from = dragIdx.current;
         const to   = dragOverIdx.current;
@@ -139,11 +191,11 @@ export default function FavoriteCalendars({ lang }) {
 
         if (from === null || to === null || from === to) return;
 
-        const reordered = [...customFavorites];
-        const [moved]   = reordered.splice(from, 1);
+        const reordered = getCustomCalendars();
+        const [moved] = reordered.splice(from, 1);
+        if (!moved) return;
         reordered.splice(to, 0, moved);
 
-        // Assign new sort_order values
         const updated = reordered.map((item, i) => ({ ...item, sort_order: i }));
         setFavorites(prev => {
             const presets = prev.filter(f => PRESET_CALENDARS.find(p => p.key === f.calendar_key));
@@ -157,9 +209,7 @@ export default function FavoriteCalendars({ lang }) {
     };
 
     // ── Derived data ──────────────────────────────────────────────────────────
-    const customFavorites = favorites
-        .filter(f => !PRESET_CALENDARS.find(p => p.key === f.calendar_key))
-        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    const customFavorites = getCustomCalendars();
 
     const activePresets = PRESET_CALENDARS.filter(p => isPresetActive(p.key));
 
@@ -221,29 +271,28 @@ export default function FavoriteCalendars({ lang }) {
                         {t('fav_calendars.custom_desc', lang)}
                     </p>
 
-                    {!isDragging && (
-                        <div className="flex gap-2 mb-4">
-                            <input
-                                type="text"
-                                value={newHoliday}
-                                onChange={(e) => setNewHoliday(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && addCustom()}
-                                placeholder={t('fav_calendars.custom_placeholder', lang)}
-                                className="flex-1 text-sm border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700
-                                    placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
-                            />
-                            <button
-                                type="button"
-                                onClick={addCustom}
-                                disabled={!newHoliday.trim() || adding}
-                                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400
-                                    text-white text-sm font-semibold rounded-xl transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-                            >
-                                {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                                {t('fav_calendars.add', lang)}
-                            </button>
-                        </div>
-                    )}
+                    <div className={`flex gap-2 mb-4 transition ${isDragging ? "opacity-60" : ""}`}>
+                        <input
+                            type="text"
+                            value={newHoliday}
+                            onChange={(e) => setNewHoliday(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && addCustom()}
+                            placeholder={t('fav_calendars.custom_placeholder', lang)}
+                            disabled={isDragging}
+                            className="flex-1 text-sm border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700
+                                placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition disabled:bg-slate-50 disabled:text-slate-400"
+                        />
+                        <button
+                            type="button"
+                            onClick={addCustom}
+                            disabled={!newHoliday.trim() || adding || isDragging}
+                            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400
+                                text-white text-sm font-semibold rounded-xl transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+                        >
+                            {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                            {t('fav_calendars.add', lang)}
+                        </button>
+                    </div>
 
                     {customFavorites.length > 0 ? (
                         <div className="space-y-1.5">
@@ -255,9 +304,15 @@ export default function FavoriteCalendars({ lang }) {
                                 <div
                                     key={h.id}
                                     draggable
-                                    onMouseDown={() => setIsDragging(true)}
                                     onDragStart={(e) => onDragStart(e, idx, h.id)}
                                     onDragEnter={() => onDragEnter(idx)}
+                                    onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.dataTransfer.dropEffect = "move";
+                                        if (dragIdx.current !== idx) {
+                                            onDragEnter(idx);
+                                        }
+                                    }}
                                     onDrop={(e) => {
                                         e.preventDefault();
                                         onDragEnd();
@@ -270,7 +325,7 @@ export default function FavoriteCalendars({ lang }) {
                                     className="flex items-center justify-between px-3 py-2.5 bg-slate-50 hover:bg-slate-100
                                         rounded-xl transition group cursor-grab active:cursor-grabbing border border-transparent
                                         hover:border-slate-200"
-                                    style={{ opacity: draggingId === h.id ? 0.6 : 1 }}
+                                    style={{ opacity: draggingId === h.id ? 0.6 : 1, minHeight: 52 }}
                                 >
                                     <div className="flex items-center gap-2.5">
                                         <GripVertical className="w-4 h-4 text-slate-300 group-hover:text-slate-400 flex-shrink-0" />
