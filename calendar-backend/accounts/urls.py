@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     RegisterView, LoginView, LogoutView, MeView,
-    ForgotPasswordView, UserSettingsView, ProfileUpdateView,
+    ForgotPasswordView, ResetPasswordView, ValidateResetTokenView, UserSettingsView, ProfileUpdateView,
     FavoriteCalendarsView, FavoriteCalendarDetailView,
 )
 
@@ -11,6 +11,8 @@ urlpatterns = [
     path('logout/',             LogoutView.as_view(),               name='logout'),
     path('me/',                 MeView.as_view(),                   name='me'),
     path('forgot-password/',    ForgotPasswordView.as_view(),       name='forgot-password'),
+    path('reset-password/',     ResetPasswordView.as_view(),        name='reset-password'),
+    path('reset-password/validate/', ValidateResetTokenView.as_view(), name='reset-password-validate'),
     path('settings/',           UserSettingsView.as_view(),         name='settings'),
     path('profile/update/',     ProfileUpdateView.as_view(),        name='profile-update'),
     # Nhóm 6 — Lịch yêu thích

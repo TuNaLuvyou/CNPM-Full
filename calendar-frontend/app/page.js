@@ -683,6 +683,25 @@ export default function CalendarApp() {
     }
   };
 
+  const handleSearchItemClick = (item) => {
+    const targetDate = new Date(item.start_time || item.deadline_time || item.created_at);
+    if (!isNaN(targetDate)) {
+      setSelectedDate(targetDate);
+      setViewDate(targetDate);
+      setView("day");
+    }
+    
+    // Trích xuất ID nguyên bản để truyền vào modal chỉnh sửa
+    const cleanId = item.id.toString().replace('event-', '').replace('task-', '');
+    const cleanItem = {
+      ...item,
+      id: cleanId
+    };
+    
+    openCreate(item.event_type || 'event', cleanItem, null);
+  };
+
+
   const handleYearDayClick = (date, event) => {
     const rect = event.target.getBoundingClientRect();
     setYearDayPopup({ isOpen: true, date, position: { x: rect.left + rect.width / 2, y: rect.top } });
@@ -731,7 +750,20 @@ export default function CalendarApp() {
   });
 
   return (
-    <div className="flex h-screen bg-white text-slate-800 font-sans overflow-hidden">
+    <div className="flex h-screen bg-white text-slate-800 font-sans overflow-hidden relative">
+      {!currentUser && (
+        <div 
+          onClick={() => {
+            setAuthModal({ isOpen: true, type: "login" });
+          }}
+          className="absolute inset-0 z-40 bg-slate-900/[0.02] backdrop-blur-[0.5px] cursor-pointer flex flex-col items-center justify-center transition-all duration-300"
+        >
+          <div className="bg-white/95 px-6 py-4 rounded-2xl shadow-xl border border-slate-100 flex flex-col items-center gap-2 animate-bounce pointer-events-none select-none">
+            <span className="text-sm font-semibold text-slate-700">Vui lòng đăng nhập để sử dụng ứng dụng</span>
+            <span className="text-xs text-slate-400">Nhấp vào bất kỳ đâu để đăng nhập</span>
+          </div>
+        </div>
+      )}
       <aside className="w-80 flex-shrink-0 bg-slate-50 border-r border-slate-200 flex flex-col relative shadow-sm">
         <div className="h-16 flex items-center px-6 border-b border-slate-200">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 shadow-sm">
@@ -900,6 +932,7 @@ export default function CalendarApp() {
           appSettings={appSettings}
           setEventSavedTick={setEventSavedTick}
           onNotificationClick={handleNotificationClick}
+          onSearchItemClick={handleSearchItemClick}
         />
       </main>
 

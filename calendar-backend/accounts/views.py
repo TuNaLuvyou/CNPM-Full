@@ -9,6 +9,11 @@ from django.contrib import auth
 from django.shortcuts import redirect
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
 from events.models import Notification
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.core.mail import send_mail
+
 
 
 class RegisterView(APIView):
@@ -89,21 +94,123 @@ class ForgotPasswordView(APIView):
 
         try:
             user = User.objects.get(email=email)
-            SupportRequest.objects.create(
-                user=user,
-                request_type='password_reset',
-                subject='Yêu cầu khôi phục mật khẩu',
-                message=f"Người dùng yêu cầu khôi phục mật khẩu cho email: {email}",
-                status='pending'
+            
+            # Tạo uid và token
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            
+            # Đường dẫn đổi mật khẩu ở Frontend
+            reset_url = f"http://localhost:3000/reset-password?uid={uid}&token={token}"
+            
+            # Gửi Email
+            subject = "Yêu cầu khôi phục mật khẩu - Lịch Cá Nhân"
+            html_message = f"""
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px;">
+                <h2 style="color: #2563eb; margin-bottom: 20px;">Khôi phục mật khẩu</h2>
+                <p>Xin chào <strong>{user.username}</strong>,</p>
+                <p>Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn trên hệ thống Lịch Cá Nhân.</p>
+                <p>Vui lòng click vào nút bên dưới để tiến hành đổi mật khẩu mới. <strong>Liên kết này chỉ có hiệu lực trong vòng 5 phút và chỉ sử dụng được 1 lần duy nhất:</strong></p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{reset_url}" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Đổi mật khẩu mới</a>
+                </div>
+                <p style="color: #64748b; font-size: 13px;">Nếu nút trên không hoạt động, bạn có thể copy link sau và dán trực tiếp vào thanh địa chỉ của trình duyệt:</p>
+                <p style="word-break: break-all; font-size: 13px; color: #2563eb;"><a href="{reset_url}">{reset_url}</a></p>
+                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+                <p style="font-size: 12px; color: #64748b;">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này. Tài khoản của bạn vẫn được an toàn.</p>
+            </div>
+            """
+            
+            send_mail(
+                subject=subject,
+                message=f"Vui lòng truy cập đường dẫn sau để khôi phục mật khẩu: {reset_url}",
+                from_email=None,  # sử dụng DEFAULT_FROM_EMAIL
+                recipient_list=[email],
+                html_message=html_message,
+                fail_silently=False,
             )
+
+            # Cảnh báo bảo mật trong app
             Notification.objects.create(
                 user=user,
                 ntype='security',
-                content="Hệ thống vừa nhận được yêu cầu khôi phục mật khẩu cho tài khoản này. Nếu không phải bạn thực hiện, vui lòng liên hệ Admin ngay!"
+                content="Hệ thống đã gửi link khôi phục mật khẩu tới email đăng ký của bạn. Vui lòng kiểm tra hộp thư."
             )
-            return Response({'status': 'Đã gửi yêu cầu khôi phục mật khẩu. Admin sẽ liên hệ với bạn sớm nhất.'})
+            
+            return Response({'status': 'Đã gửi link khôi phục mật khẩu vào Email của bạn. Vui lòng kiểm tra hộp thư (bao gồm cả thư rác/spam).'})
         except User.DoesNotExist:
-            return Response({'status': 'Nếu email tồn tại trong hệ thống, yêu cầu đã được gửi đi.'})
+            # Vẫn trả về thành công giả để tránh lộ email tồn tại
+            return Response({'status': 'Đã gửi link khôi phục mật khẩu vào Email của bạn. Vui lòng kiểm tra hộp thư (bao gồm cả thư rác/spam).'})
+        except Exception as e:
+            return Response({'error': f'Lỗi khi gửi email: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ResetPasswordView(APIView):
+    """
+    POST /api/accounts/reset-password/
+    Body: { uid, token, new_password }
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        uidb64 = request.data.get('uid')
+        token = request.data.get('token')
+        new_password = request.data.get('new_password')
+
+        if not uidb64 or not token or not new_password:
+            return Response({'error': 'Thiếu tham số bắt buộc.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(new_password) < 6:
+            return Response({'error': 'Mật khẩu mới phải có tối thiểu 6 ký tự.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response({'error': 'Đường dẫn khôi phục mật khẩu không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not default_token_generator.check_token(user, token):
+            return Response({'error': 'Đường dẫn đã hết hạn hoặc không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+
+        # Thu hồi toàn bộ token cũ
+        Token.objects.filter(user=user).delete()
+
+        Notification.objects.create(
+            user=user,
+            ntype='security',
+            content="Mật khẩu của bạn đã được thay đổi thành công qua link khôi phục email."
+        )
+
+        return Response({'status': 'Mật khẩu đã được thay đổi thành công!'})
+
+
+class ValidateResetTokenView(APIView):
+    """
+    POST /api/accounts/reset-password/validate/
+    Body: { uid, token }
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        uidb64 = request.data.get('uid')
+        token = request.data.get('token')
+
+        if not uidb64 or not token:
+            return Response({'valid': False, 'error': 'Thiếu tham số bắt buộc.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response({'valid': False, 'error': 'Đường dẫn không hợp lệ.'})
+
+        if not default_token_generator.check_token(user, token):
+            return Response({'valid': False, 'error': 'Đường dẫn đã hết hạn hoặc không hợp lệ.'})
+
+        return Response({'valid': True})
+
 
 
 from .models import UserSettings, UserFavoriteCalendar

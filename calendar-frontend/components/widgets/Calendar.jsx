@@ -45,6 +45,7 @@ export default function Calendar({
   setNotifications,
   appSettings,
   setEventSavedTick,
+  onSearchItemClick,
 }) {
   const now = getLocalizedTime(appSettings.primaryTimezone);
 
@@ -98,6 +99,8 @@ export default function Calendar({
         setNotifications={setNotifications}
         appSettings={appSettings}
         setEventSavedTick={setEventSavedTick}
+        events={events}
+        onSearchItemClick={onSearchItemClick}
       >
         <div className="flex-1 flex flex-col overflow-hidden">
           {view === "year" && (

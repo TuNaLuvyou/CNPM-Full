@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { getEventStyle, formatDateLocal } from "@/lib/CalendarHelper";
+import { t } from "@/lib/i18n";
 
 export function useTimeGridInteraction({
   events,
@@ -11,7 +12,8 @@ export function useTimeGridInteraction({
   setIsPreviewDragging,
   callbacksRef,
   scrollRef,
-  gridContainerRef
+  gridContainerRef,
+  lang = 'vi'
 }) {
   const isInteractingRef = useRef(false);
   const didMoveRef = useRef(false);
@@ -80,8 +82,15 @@ export function useTimeGridInteraction({
     let freshEvent = existingEvent ? (eventsRef.current?.find(ev => String(ev.id) === String(existingEvent.id)) || existingEvent) : null;
     let baseItem = freshEvent || currentPreview || previewEvent;
 
-    let startTop = freshEvent ? getEventStyle(freshEvent).top : (baseItem.type === 'now' ? nowOffset : (baseItem.top || 0));
-    let startHeight = freshEvent ? getEventStyle(freshEvent).height : (baseItem.height || 64);
+    const SNAP_1MIN = 64 / 60;
+    const clickTop = Math.max(0, Math.round(grabOffsetY / SNAP_1MIN) * SNAP_1MIN);
+
+    let startTop = freshEvent 
+      ? getEventStyle(freshEvent).top 
+      : (baseItem 
+          ? (baseItem.type === 'now' ? nowOffset : (baseItem.top || 0)) 
+          : clickTop);
+    let startHeight = freshEvent ? getEventStyle(freshEvent).height : (baseItem?.height || 64);
     const targetCol = e.currentTarget.closest('.day-column');
     const colDateStr = targetCol?.dataset.columnDate;
     const colDate = colDateStr ? new Date(colDateStr) : (displayWeekDays[0]?.fullDate || new Date());

@@ -103,7 +103,7 @@ export default function CreateModal({
   useEffect(() => {
     if (!isOpen) return;
     const handleOutsideClick = (e) => {
-      if (e.target.closest('.grid-interaction-area') || e.target.closest('.preview-tab') || e.target.closest('.year-day-popup')) return;
+      if (e.target.closest('.preview-tab') || e.target.closest('.year-day-popup')) return;
       if (modalRef.current && !modalRef.current.contains(e.target)) onClose();
     };
     const handleEsc = (e) => { if (e.key === "Escape") onClose(); };

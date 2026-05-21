@@ -15,7 +15,8 @@ import ProfileModal from "../../modals/ProfileModal";
 export default function Header({
   view, setView, viewDate, setViewDate, selectedDate, setSelectedDate, weekDays,
   currentUser, setCurrentUser, setAuthModal, deletedItems, setIsSettingsModalOpen, setIsTrashOpen,
-  notifications, setNotifications, appSettings, setEventSavedTick, onNotificationClick
+  notifications, setNotifications, appSettings, setEventSavedTick, onNotificationClick,
+  events, onSearchItemClick
 }) {
   const lang = appSettings.language;
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -120,7 +121,12 @@ export default function Header({
       {/* Right */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-1 text-slate-500 relative z-50">
-          <SearchBar isSearchOpen={isSearchOpen} setIsSearchOpen={setIsSearchOpen} />
+          <SearchBar
+            isSearchOpen={isSearchOpen}
+            setIsSearchOpen={setIsSearchOpen}
+            events={events}
+            onSearchItemClick={onSearchItemClick}
+          />
 
           <NotificationsDropdown
             notifRef={notifRef}

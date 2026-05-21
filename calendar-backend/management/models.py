@@ -3,7 +3,6 @@ from django.contrib.auth.models import User
 
 class SupportRequest(models.Model):
     REQUEST_TYPES = [
-        ('password_reset', 'Quên mật khẩu'),
         ('bug_report', 'Báo lỗi hệ thống'),
         ('feedback', 'Góp ý / Phản hồi'),
         ('feature_request', 'Yêu cầu tính năng'),

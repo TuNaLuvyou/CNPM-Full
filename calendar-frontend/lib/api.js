@@ -65,6 +65,22 @@ export async function forgotPassword(email) {
   });
 }
 
+export async function resetPassword(uid, token, newPassword) {
+  return request('/accounts/reset-password/', {
+    method: 'POST',
+    body: JSON.stringify({ uid, token, new_password: newPassword }),
+  });
+}
+
+export async function validateResetToken(uid, token) {
+  return request('/accounts/reset-password/validate/', {
+    method: 'POST',
+    body: JSON.stringify({ uid, token }),
+  });
+}
+
+
+
 export async function updateProfile(data) {
   return request('/accounts/profile/update/', {
     method: 'POST',

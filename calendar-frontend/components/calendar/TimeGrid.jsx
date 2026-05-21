@@ -75,7 +75,8 @@ export default function TimeGrid({
     setIsPreviewDragging,
     callbacksRef,
     scrollRef,
-    gridContainerRef
+    gridContainerRef,
+    lang: appSettings.language
   });
 
   function getEventsForDay(fullDate) {

@@ -1,11 +1,17 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-thay-bang-key-cua-ban'
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+# Load environment variables from .env in the root workspace folder
+load_dotenv(BASE_DIR.parent / '.env')
+# Fallback to local .env in backend folder if present
+load_dotenv(BASE_DIR / '.env')
+
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-thay-bang-key-cua-ban')
+DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 't')
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', '*').split(',') if host.strip()]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -106,3 +112,13 @@ REST_FRAMEWORK = {
 
 # Cấu hình chuyển hướng đăng nhập quản trị tùy chỉnh
 LOGIN_URL = '/admin/login/'
+
+# Cấu hình gửi Email qua SMTP Gmail
+EMAIL_BACKEND = 'core.email_backend.UnverifiedSSLEmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '').replace(' ', '')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+PASSWORD_RESET_TIMEOUT = 300

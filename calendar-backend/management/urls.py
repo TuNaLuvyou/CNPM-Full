@@ -10,7 +10,6 @@ urlpatterns = [
     path('support/', views.support_list, name='admin_support'),
     path('support/<int:req_id>/resolve/', views.resolve_request, name='resolve_request'),
     path('support/<int:req_id>/delete/', views.delete_support_request, name='delete_support_request'),
-    path('support/<int:req_id>/reset-password/', views.reset_user_password, name='reset_user_password'),
     path('roles/', views.role_list, name='admin_roles'),
     path('roles/add/', views.add_group, name='add_group'),
     path('roles/<int:group_id>/delete/', views.delete_group, name='delete_group'),

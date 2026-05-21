@@ -21,6 +21,8 @@ export default function MainLayout({
   setNotifications,
   appSettings,
   setEventSavedTick,
+  events,
+  onSearchItemClick,
 }) {
   return (
     <div className="flex flex-col h-full bg-white relative min-w-[700px]">
@@ -42,6 +44,8 @@ export default function MainLayout({
         setNotifications={setNotifications}
         appSettings={appSettings}
         setEventSavedTick={setEventSavedTick}
+        events={events}
+        onSearchItemClick={onSearchItemClick}
       />
       <div className="flex flex-1 overflow-hidden">
         <main className="flex-1 overflow-hidden flex flex-col bg-white border-r border-slate-200">

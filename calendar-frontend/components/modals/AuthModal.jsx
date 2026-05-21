@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { login, register, forgotPassword } from '@/lib/api';
 
-export default function AuthModal({ isOpen, type, onClose, onSwitchType, onLoginSuccess }) {
+export default function AuthModal({ isOpen, type, onClose, onSwitchType, onLoginSuccess, canClose = true }) {
     if (!isOpen) return null;
 
     const isLogin = type === 'login';
@@ -13,12 +13,14 @@ export default function AuthModal({ isOpen, type, onClose, onSwitchType, onLogin
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
             <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 animate-in fade-in zoom-in duration-200">
-                <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition"
-                >
-                    <X className="w-5 h-5" />
-                </button>
+                {canClose && (
+                    <button
+                        onClick={onClose}
+                        className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                )}
 
                 <div className="text-center mb-6">
                     <h2 className="text-2xl font-bold text-slate-800">

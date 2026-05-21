@@ -137,34 +137,6 @@ def delete_support_request(request, req_id):
     messages.success(request, f"Đã xoá vĩnh viễn yêu cầu #{req_id}")
     return redirect('admin_support')
 
-@staff_member_required(login_url='admin_login')
-def reset_user_password(request, req_id):
-    if request.method == 'POST':
-        sr = get_object_or_404(SupportRequest, id=req_id)
-        user = sr.user
-        
-        # 1. Tạo mật khẩu ngẫu nhiên (sử dụng secrets để an toàn hơn)
-        alphabet = string.ascii_letters + string.digits
-        new_password = ''.join(secrets.choice(alphabet) for i in range(10))
-        
-        # 2. Cập nhật cho User
-        user.set_password(new_password)
-        user.save()
-        
-        # 3. Cập nhật Support Request
-        sr.status = 'resolved'
-        sr.admin_note = f"Đã cấp lại mật khẩu mới: {new_password}"
-        sr.save()
-        
-        # 4. Gửi thông báo bảo mật cho người dùng
-        Notification.objects.create(
-            user=user,
-            ntype='security',
-            content="Mật khẩu của bạn đã được Quản trị viên thay đổi theo yêu cầu. Vui lòng kiểm tra và đăng nhập bằng mật khẩu mới."
-        )
-        
-        messages.success(request, f"Đã tạo mật khẩu mới cho {user.username}: {new_password}")
-    return redirect('admin_support')
 
 @staff_member_required(login_url='admin_login')
 def role_list(request):
