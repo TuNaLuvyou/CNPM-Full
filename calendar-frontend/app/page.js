@@ -717,6 +717,12 @@ export default function CalendarApp() {
   const handleCloseModal = () => {
     setCreateModal(prev => ({ ...prev, isOpen: false }));
     setEditingItem(null);
+  };
+
+  const handleCancelModal = () => {
+    // Cancel should remove the preview (stop creating) and close modal
+    setCreateModal(prev => ({ ...prev, isOpen: false }));
+    setEditingItem(null);
     setPreviewEvent(null);
   };
 
@@ -939,7 +945,7 @@ export default function CalendarApp() {
       <CreateModal
         isOpen={createModal.isOpen} initialTab={createModal.tab} editingItem={editingItem}
         position={clickPosition} initialDate={selectedDate} onClose={handleCloseModal}
-        onSaved={handleEventSaved} onDelete={handleDelete}
+        onSaved={handleEventSaved} onDelete={handleDelete} onCancel={handleCancelModal}
         view={view} previewEvent={previewEvent} interactionState={interactionState}
         isPreviewDragging={isPreviewDragging}
         appSettings={appSettings}

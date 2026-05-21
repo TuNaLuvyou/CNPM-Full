@@ -29,6 +29,7 @@ export default function CreateModal({
   initialTab = "event",
   initialDate,
   onClose,
+  onCancel,
   onSaved, // callback sau khi save thành công
   position,
   view,
@@ -201,6 +202,7 @@ export default function CreateModal({
           handleXoa={handleXoa}
           handleLeave={handleLeave}
           onClose={onClose}
+          onCancel={onCancel}
           handleLuu={handleLuu}
           lang={lang}
           activeTab={activeTab}
