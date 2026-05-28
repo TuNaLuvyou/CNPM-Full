@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Users, Search, ChevronLeft, MessageCircle, Phone, Mail, Loader2, UserPlus, Check, X, Inbox, MoreVertical, Trash2, Ban, Pin, PinOff } from "lucide-react";
-import ChatView from "./ChatView";
+
 import { 
   getFriends, 
   searchUserByEmail, 
@@ -45,7 +45,7 @@ export default function ContactsPanel({ appSettings, currentUser }) {
   const [requestSent, setRequestSent] = useState(false);
 
   // UI state
-  const [chatFriendId, setChatFriendId] = useState(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -116,15 +116,7 @@ export default function ContactsPanel({ appSettings, currentUser }) {
   useEffect(() => {
     if (activeTab === TABS.CONNECTED) fetchFriends();
     if (activeTab === TABS.INVITATIONS) fetchInvitations();
-
-    // Auto refresh friends list to update unread counts
-    const interval = setInterval(() => {
-      if (activeTab === TABS.CONNECTED && !chatFriendId) {
-        fetchFriends();
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [activeTab, fetchFriends, fetchInvitations, chatFriendId]);
+  }, [activeTab, fetchFriends, fetchInvitations]);
 
   // ── Actions ──
   const handleSearch = async (e) => {
@@ -179,20 +171,7 @@ export default function ContactsPanel({ appSettings, currentUser }) {
 
   // ── Render Views ──
   
-  if (chatFriendId) {
-    const conn = friends.find(f => f.id === chatFriendId);
-    if (conn) {
-      const isSender = conn.sender === currentUser?.id;
-      const friendName = isSender ? conn.receiver_name : conn.sender_name;
-      const friend = {
-        name: friendName, 
-        id: conn.id,
-        color: "bg-blue-500",
-        avatar: friendName?.[0]?.toUpperCase() || "F"
-      };
-      return <ChatView contact={friend} onBack={() => setChatFriendId(null)} currentUser={currentUser} />;
-    }
-  }
+
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -244,7 +223,6 @@ export default function ContactsPanel({ appSettings, currentUser }) {
           <FriendListTab
             friends={friends}
             currentUser={currentUser}
-            setChatFriendId={setChatFriendId}
             openMenuId={openMenuId}
             setOpenMenuId={setOpenMenuId}
             handleFriendAction={handleFriendAction}

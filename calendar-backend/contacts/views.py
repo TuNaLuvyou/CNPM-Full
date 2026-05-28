@@ -3,43 +3,13 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth.models import User
 from django.db.models import Q
-from .models import Contact, Connection, Message
-from .serializers import ContactSerializer, ConnectionSerializer, UserSearchSerializer, MessageSerializer
+from .models import Contact, Connection
+from .serializers import ContactSerializer, ConnectionSerializer, UserSearchSerializer
+from events.models import Notification
 
 ...
 
-class MessageViewSet(viewsets.ModelViewSet):
-    serializer_class = MessageSerializer
-    permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self):
-        connection_id = self.request.query_params.get('connection')
-        if not connection_id:
-            return Message.objects.none()
-        
-        # Chỉ được xem tin nhắn của kết nối mà mình tham gia
-        return Message.objects.filter(
-            Q(connection_id=connection_id) & 
-            (Q(connection__sender=self.request.user) | Q(connection__receiver=self.request.user))
-        ).order_by('created_at')
-
-    def perform_create(self, serializer):
-        serializer.save(sender=self.request.user)
-
-    @action(detail=False, methods=['post'])
-    def mark_read(self, request):
-        connection_id = request.query_params.get('connection')
-        if not connection_id:
-            return Response({"error": "Connection parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Mark all messages in this connection NOT from the current user as read
-        Message.objects.filter(
-            connection_id=connection_id,
-            is_read=False
-        ).exclude(sender=request.user).update(is_read=True)
-        
-        return Response({"message": "OK"})
-from events.models import Notification
 
 class ContactViewSet(viewsets.ModelViewSet):
     queryset = Contact.objects.all()

@@ -239,21 +239,7 @@ export async function togglePinConnection(id) {
   return request(`/contacts/connections/${id}/toggle_pin/`, { method: 'POST' });
 }
 
-// ─── MESSAGES (Chat) ───────────────────────────────────────────────────────
-export async function getMessages(connectionId) {
-  return request(`/contacts/messages/?connection=${connectionId}`);
-}
 
-export async function markMessagesRead(connectionId) {
-  return request(`/contacts/messages/mark_read/?connection=${connectionId}`, { method: 'POST' });
-}
-
-export async function sendMessage(connectionId, text) {
-  return request('/contacts/messages/', {
-    method: 'POST',
-    body: JSON.stringify({ connection: connectionId, text }),
-  });
-}
 
 // ─── NOTIFICATIONS ─────────────────────────────────────────────────────────
 export async function getNotifications() {

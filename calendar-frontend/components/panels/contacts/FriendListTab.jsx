@@ -1,11 +1,10 @@
 import React from "react";
-import { Users, MessageCircle, MoreVertical, Pin, PinOff, Trash2, Ban } from "lucide-react";
+import { Users, MoreVertical, Pin, PinOff, Trash2, Ban } from "lucide-react";
 import { t } from "@/lib/i18n";
 
 export default function FriendListTab({
   friends,
   currentUser,
-  setChatFriendId,
   openMenuId,
   setOpenMenuId,
   handleFriendAction,
@@ -40,17 +39,6 @@ export default function FriendListTab({
                 <p className="text-xs text-slate-400 truncate">{friendEmail}</p>
               </div>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setChatFriendId(conn.id)}
-                  className="relative p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition shadow-sm bg-white border border-slate-100"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  {conn.unread_count > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-pulse">
-                      {conn.unread_count > 99 ? '99+' : conn.unread_count}
-                    </span>
-                  )}
-                </button>
                 <div className="relative">
                   <button
                     onClick={() => setOpenMenuId(openMenuId === conn.id ? null : conn.id)}
