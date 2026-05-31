@@ -3,6 +3,7 @@ from .views import (
     RegisterView, LoginView, LogoutView, MeView,
     ForgotPasswordView, ResetPasswordView, ValidateResetTokenView, UserSettingsView, ProfileUpdateView,
     FavoriteCalendarsView, FavoriteCalendarDetailView,
+    VerifyEmailView, ResendVerificationView,
 )
 
 urlpatterns = [
@@ -13,6 +14,8 @@ urlpatterns = [
     path('forgot-password/',    ForgotPasswordView.as_view(),       name='forgot-password'),
     path('reset-password/',     ResetPasswordView.as_view(),        name='reset-password'),
     path('reset-password/validate/', ValidateResetTokenView.as_view(), name='reset-password-validate'),
+    path('verify-email/',       VerifyEmailView.as_view(),          name='verify-email'),
+    path('resend-verification/', ResendVerificationView.as_view(),  name='resend-verification'),
     path('settings/',           UserSettingsView.as_view(),         name='settings'),
     path('profile/update/',     ProfileUpdateView.as_view(),        name='profile-update'),
     # Nhóm 6 — Lịch yêu thích

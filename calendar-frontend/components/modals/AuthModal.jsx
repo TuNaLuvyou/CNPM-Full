@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
-import { X, Loader2 } from 'lucide-react';
-import { login, register, forgotPassword } from '@/lib/api';
+import { X, Loader2, Mail, RefreshCw, LogOut, CheckCircle } from 'lucide-react';
+import { login, register, forgotPassword, resendVerification } from '@/lib/api';
 
 export default function AuthModal({ isOpen, type, onClose, onSwitchType, onLoginSuccess, canClose = true }) {
     if (!isOpen) return null;
@@ -9,11 +9,12 @@ export default function AuthModal({ isOpen, type, onClose, onSwitchType, onLogin
     const isLogin = type === 'login';
     const isForgot = type === 'forgot';
     const isRegister = type === 'register';
+    const isVerifyPending = type === 'verify_pending';
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
             <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 animate-in fade-in zoom-in duration-200">
-                {canClose && (
+                {canClose && !isVerifyPending && (
                     <button
                         onClick={onClose}
                         className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition"
@@ -24,7 +25,10 @@ export default function AuthModal({ isOpen, type, onClose, onSwitchType, onLogin
 
                 <div className="text-center mb-6">
                     <h2 className="text-2xl font-bold text-slate-800">
-                        {isLogin ? 'Đăng nhập' : isForgot ? 'Khôi phục mật khẩu' : 'Tạo tài khoản mới'}
+                        {isLogin ? 'Đăng nhập'
+                            : isForgot ? 'Khôi phục mật khẩu'
+                            : isRegister ? 'Tạo tài khoản mới'
+                            : 'Xác thực email'}
                     </h2>
                     {isForgot && (
                         <p className="text-sm text-slate-500 mt-2 px-4">
@@ -42,16 +46,25 @@ export default function AuthModal({ isOpen, type, onClose, onSwitchType, onLogin
                 {isForgot && (
                     <ForgotForm onSwitchType={onSwitchType} />
                 )}
+                {isVerifyPending && (
+                    <VerifyPendingPanel
+                        email={type === 'verify_pending' ? undefined : undefined}
+                        onClose={onClose}
+                        onSwitchType={onSwitchType}
+                    />
+                )}
             </div>
         </div>
     );
 }
 
+// ─── LoginForm ──────────────────────────────────────────────────────────────
 function LoginForm({ onSuccess, onSwitchType }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [pendingEmail, setPendingEmail] = useState(null); // email chưa xác thực
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -61,11 +74,28 @@ function LoginForm({ onSuccess, onSwitchType }) {
             const data = await login(email, password);
             onSuccess?.(data.user);
         } catch (err) {
-            setError(err.message || 'Đăng nhập thất bại');
+            // Tài khoản tồn tại nhưng chưa xác thực email
+            if (err.message === 'email_not_verified') {
+                setPendingEmail(email);
+            } else {
+                setError(err.message || 'Đăng nhập thất bại');
+            }
         } finally {
             setLoading(false);
         }
     };
+
+    // Hiển thị panel yêu cầu xác thực khi phát hiện tài khoản chưa verify
+    if (pendingEmail) {
+        return (
+            <VerifyPendingPanel
+                email={pendingEmail}
+                onClose={() => setPendingEmail(null)}
+                onSwitchType={onSwitchType}
+                showBackToLogin
+            />
+        );
+    }
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -102,12 +132,14 @@ function LoginForm({ onSuccess, onSwitchType }) {
     );
 }
 
+// ─── RegisterForm ────────────────────────────────────────────────────────────
 function RegisterForm({ onSuccess, onSwitchType }) {
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [pendingEmail, setPendingEmail] = useState(null);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -115,13 +147,31 @@ function RegisterForm({ onSuccess, onSwitchType }) {
         setLoading(true);
         try {
             const data = await register(fullName, email, password);
-            onSuccess?.(data.user);
+            // Đăng ký thành công → chờ xác thực (status = 'pending_verification')
+            if (data.status === 'pending_verification') {
+                setPendingEmail(data.email || email);
+            } else if (data.token) {
+                // Trường hợp dự phòng (backward compat)
+                onSuccess?.(data.user);
+            }
         } catch (err) {
             setError(err.message || 'Đăng ký thất bại');
         } finally {
             setLoading(false);
         }
     };
+
+    // Sau đăng ký thành công, chuyển sang panel chờ xác thực
+    if (pendingEmail) {
+        return (
+            <VerifyPendingPanel
+                email={pendingEmail}
+                onClose={() => onSwitchType('login')}
+                onSwitchType={onSwitchType}
+                isAfterRegister
+            />
+        );
+    }
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -159,6 +209,117 @@ function RegisterForm({ onSuccess, onSwitchType }) {
     );
 }
 
+// ─── VerifyPendingPanel ──────────────────────────────────────────────────────
+/**
+ * Panel yêu cầu xác thực email.
+ * Hiển thị khi:
+ *  - Vừa đăng ký xong (isAfterRegister=true)
+ *  - Đăng nhập bằng tài khoản chưa xác thực (showBackToLogin=true)
+ */
+function VerifyPendingPanel({ email, onClose, onSwitchType, isAfterRegister = false, showBackToLogin = false }) {
+    const [resendLoading, setResendLoading] = useState(false);
+    const [resendMsg, setResendMsg] = useState('');
+    const [resendError, setResendError] = useState('');
+    const [resendCount, setResendCount] = useState(0);
+
+    const handleResend = async () => {
+        if (!email) return;
+        setResendLoading(true);
+        setResendMsg('');
+        setResendError('');
+        try {
+            await resendVerification(email);
+            setResendCount(c => c + 1);
+            setResendMsg('Email xác nhận đã được gửi lại! Vui lòng kiểm tra hộp thư (bao gồm cả Spam).');
+        } catch (err) {
+            setResendError(err.message || 'Gửi thất bại. Vui lòng thử lại sau.');
+        } finally {
+            setResendLoading(false);
+        }
+    };
+
+    return (
+        <div className="text-center space-y-5">
+            {/* Icon envelope */}
+            <div className="flex justify-center">
+                <div className="w-20 h-20 rounded-full bg-blue-50 border-2 border-blue-100 flex items-center justify-center">
+                    <Mail className="w-9 h-9 text-blue-500" />
+                </div>
+            </div>
+
+            {/* Title */}
+            <div>
+                <h3 className="text-lg font-bold text-slate-800 mb-1">
+                    {isAfterRegister ? 'Kiểm tra hộp thư của bạn!' : 'Tài khoản chưa được xác thực'}
+                </h3>
+                <p className="text-sm text-slate-500 leading-relaxed px-2">
+                    {isAfterRegister
+                        ? 'Chúng tôi đã gửi email xác nhận đến:'
+                        : 'Email của tài khoản này chưa được xác thực. Vui lòng kiểm tra:'}
+                </p>
+            </div>
+
+            {/* Email badge */}
+            {email && (
+                <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 text-sm font-semibold px-4 py-2 rounded-full">
+                    <Mail className="w-4 h-4" />
+                    {email}
+                </div>
+            )}
+
+            {/* Countdown notice */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-700 text-left">
+                <strong>⚠ Lưu ý:</strong> Link xác nhận chỉ có hiệu lực trong <strong>5 phút</strong>.
+                Nếu hết hạn, tài khoản sẽ bị xóa và bạn cần đăng ký lại.
+            </div>
+
+            {/* Resend feedback */}
+            {resendMsg && (
+                <div className="flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-sm text-emerald-700 text-left">
+                    <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>{resendMsg}</span>
+                </div>
+            )}
+            {resendError && (
+                <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{resendError}</p>
+            )}
+
+            {/* Resend button */}
+            <button
+                onClick={handleResend}
+                disabled={resendLoading}
+                className="w-full py-2.5 px-4 border-2 border-blue-500 text-blue-600 font-medium rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+                {resendLoading
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <RefreshCw className="w-4 h-4" />
+                }
+                {resendLoading ? 'Đang gửi...' : resendCount > 0 ? 'Gửi lại lần nữa' : 'Gửi lại email xác nhận'}
+            </button>
+
+            {/* Close / Back button */}
+            <button
+                onClick={onClose}
+                className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+                <LogOut className="w-4 h-4" />
+                {showBackToLogin ? 'Quay lại đăng nhập' : 'Đóng'}
+            </button>
+
+            <p className="text-xs text-slate-400">
+                Đã xác nhận email?{' '}
+                <span
+                    onClick={() => onSwitchType?.('login')}
+                    className="text-blue-500 hover:underline cursor-pointer font-medium"
+                >
+                    Đăng nhập
+                </span>
+            </p>
+        </div>
+    );
+}
+
+// ─── ForgotForm ──────────────────────────────────────────────────────────────
 function ForgotForm({ onSwitchType }) {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Users, Search, ChevronLeft, MessageCircle, Phone, Mail, Loader2, UserPlus, Check, X, Inbox, MoreVertical, Trash2, Ban, Pin, PinOff } from "lucide-react";
+import { Users } from "lucide-react";
 
 import { 
   getFriends, 

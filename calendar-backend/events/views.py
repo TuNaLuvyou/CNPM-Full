@@ -112,19 +112,8 @@ class InvitationViewSet(viewsets.ViewSet):
     @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
         try:
-            # COMPREHENSIVE DEBUG
-            print(f"--- START ACCEPT DEBUG ---")
-            print(f"Request User: ID={request.user.id}, Username={request.user.username}")
-            print(f"Incoming PK (Event ID): {pk}")
-            
-            all_invs = EventInvitation.objects.all()
-            print(f"Total invitations in DB: {all_invs.count()}")
-            for i in all_invs:
-                print(f"  - Invitation ID={i.id}, EventID={i.event_id}, InviteeID={i.invitee_id}, Status={i.status}")
-            
             # pk is event_id from frontend
             invite = EventInvitation.objects.get(event_id=pk, invitee=request.user)
-            print(f"Found invitation! ID={invite.id}")
             
             conflicts = Event.objects.filter(
                 (Q(user=request.user) | Q(invitations__invitee=request.user, invitations__status='accepted')),

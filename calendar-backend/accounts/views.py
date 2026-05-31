@@ -13,6 +13,8 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
+import threading
+from .models import EmailVerificationToken
 
 
 
@@ -20,29 +22,119 @@ class RegisterView(APIView):
     """
     POST /api/accounts/register/
     Body: { email, password, full_name? }
+    Tạo tài khoản ở trạng thái chờ xác thực (is_active=False),
+    gửi email xác nhận và tự động xóa tài khoản sau 5 phút nếu chưa xác thực.
     """
+    permission_classes = [AllowAny]
+
+    def _send_verification_email(self, user, verify_token):
+        """Gửi email HTML chứa link xác nhận."""
+        verify_url = f"http://localhost:3000/verify-email?token={verify_token.token}"
+        subject = "Xác nhận địa chỉ Email - Lịch Cá Nhân"
+        html_message = f"""
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px;">
+            <h2 style="color: #2563eb; margin-bottom: 20px;">Xác nhận địa chỉ Email</h2>
+            <p>Xin chào <strong>{user.username}</strong>,</p>
+            <p>Cảm ơn bạn đã đăng ký tài khoản trên hệ thống <strong>Lịch Cá Nhân</strong>.</p>
+            <p>Vui lòng click vào nút bên dưới để xác nhận địa chỉ email của bạn.
+            <strong>Liên kết này chỉ có hiệu lực trong vòng 5 phút.</strong></p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{verify_url}" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px;
+                   text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                   Xác nhận Email
+                </a>
+            </div>
+            <p style="color: #64748b; font-size: 13px;">Nếu nút trên không hoạt động, bạn có thể copy link sau và dán trực tiếp vào thanh địa chỉ trình duyệt:</p>
+            <p style="word-break: break-all; font-size: 13px; color: #2563eb;"><a href="{verify_url}">{verify_url}</a></p>
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+            <p style="font-size: 12px; color: #64748b;">
+                Nếu bạn không thực hiện yêu cầu này, tài khoản của bạn sẽ bị xóa tự động sau 5 phút.
+            </p>
+        </div>
+        """
+        send_mail(
+            subject=subject,
+            message=f"Xác nhận email của bạn bằng cách truy cập: {verify_url}",
+            from_email=None,
+            recipient_list=[user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+
+    def _schedule_cleanup(self, user_id):
+        """Lên lịch xóa tài khoản nếu chưa xác thực sau 5 phút."""
+        def cleanup():
+            try:
+                u = User.objects.get(pk=user_id, is_active=False)
+                # Kiểm tra lại lần nữa: chỉ xóa nếu vẫn chưa active và vẫn còn token
+                if hasattr(u, 'email_verification_token') and u.email_verification_token.is_expired():
+                    u.delete()
+            except User.DoesNotExist:
+                pass  # Đã được xác thực hoặc xóa thủ công
+
+        timer = threading.Timer(EmailVerificationToken.EXPIRE_SECONDS + 5, cleanup)
+        timer.daemon = True
+        timer.start()
+
     def post(self, request):
         data = request.data.copy()
         if 'email' in data and 'username' not in data:
             data['username'] = data['email'].split('@')[0]
 
         serializer = RegisterSerializer(data=data)
-        if serializer.is_valid():
-            user = serializer.save()
-            token, _ = Token.objects.get_or_create(user=user)
-            return Response({
-                'token': token.key,
-                'user': UserSerializer(user).data,
-            }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = serializer.save()
+        # Đăng ký xong: khóa tài khoản chờ xác thực
+        user.is_active = False
+        user.save()
+
+        # Tạo token xác thực
+        verify_token = EmailVerificationToken.objects.create(user=user)
+
+        # Gửi email
+        try:
+            self._send_verification_email(user, verify_token)
+        except Exception as e:
+            # Nếu gửi thất bại, xóa user luôn tránh rác
+            user.delete()
+            return Response(
+                {'error': f'Không thể gửi email xác nhận: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # Lên lịch tự động xóa sau 5 phút
+        self._schedule_cleanup(user.pk)
+
+        return Response({
+            'status': 'pending_verification',
+            'email': user.email,
+            'message': 'Đầng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản trong vòng 5 phút.'
+        }, status=status.HTTP_201_CREATED)
 
 
 class LoginView(APIView):
     """
     POST /api/accounts/login/
     Body: { email, password }
+    Trả về 403 + error='email_not_verified' nếu tài khoản chưa xác thực email.
     """
+    permission_classes = [AllowAny]
+
     def post(self, request):
+        email = request.data.get('email', '')
+        # Kiểm tra sớm: tài khoản tồn tại nhưng chưa xác thực?
+        try:
+            pending_user = User.objects.get(email=email, is_active=False)
+            if hasattr(pending_user, 'email_verification_token'):
+                return Response(
+                    {'error': 'email_not_verified', 'email': email},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        except User.DoesNotExist:
+            pass
+
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data['user']
@@ -210,6 +302,130 @@ class ValidateResetTokenView(APIView):
             return Response({'valid': False, 'error': 'Đường dẫn đã hết hạn hoặc không hợp lệ.'})
 
         return Response({'valid': True})
+
+
+class VerifyEmailView(APIView):
+    """
+    GET /api/accounts/verify-email/?token=<uuid>
+    Xác thực email từ link gửi về hộp thư.
+    Kích hoạt tài khoản (is_active=True) và xóa token.
+    Chỉ trả về JSON thông báo thành công — frontend tự redirect.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        token_str = request.query_params.get('token')
+        if not token_str:
+            return Response(
+                {'error': 'Thiếu token xác thực.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            verify_obj = EmailVerificationToken.objects.select_related('user').get(token=token_str)
+        except (EmailVerificationToken.DoesNotExist, ValueError):
+            return Response(
+                {'error': 'Link xác thực không hợp lệ hoặc tài khoản đã bị xóa do quá hạn.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if verify_obj.is_expired():
+            # Xóa user đã hết hạn
+            verify_obj.user.delete()
+            return Response(
+                {'error': 'Link xác thực đã hết hạn (5 phút). Tài khoản đã bị xóa, vui lòng đăng ký lại.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = verify_obj.user
+        user.is_active = True
+        user.save()
+        verify_obj.delete()
+
+        return Response({
+            'status': 'verified',
+            'email': user.email,
+            'username': user.username,
+            'message': f'Email {user.email} đã được xác nhận thành công! Bạn có thể đăng nhập vào ứng dụng.',
+        })
+
+
+class ResendVerificationView(APIView):
+    """
+    POST /api/accounts/resend-verification/
+    Body: { email }
+    Gửi lại email xác nhận cho tài khoản chưa xác thực.
+    Reset lại timer 5 phút.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        if not email:
+            return Response({'error': 'Vui lòng cung cấp email.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email=email, is_active=False)
+        except User.DoesNotExist:
+            # Trả success giả để tránh lộ thông tin
+            return Response({'status': 'Nếu email tồn tại và chưa xác thực, chúng tôi đã gửi lại email xác nhận.'})
+
+        # Xóa token cũ (nếu có) và tạo token mới
+        EmailVerificationToken.objects.filter(user=user).delete()
+        verify_token = EmailVerificationToken.objects.create(user=user)
+
+        # Gửi lại email
+        verify_url = f"http://localhost:3000/verify-email?token={verify_token.token}"
+        subject = "Xác nhận địa chỉ Email - Lịch Cá Nhân"
+        html_message = f"""
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px;">
+            <h2 style="color: #2563eb; margin-bottom: 20px;">Xác nhận địa chỉ Email (Gửi lại)</h2>
+            <p>Xin chào <strong>{user.username}</strong>,</p>
+            <p>Bạn đã yêu cầu gửi lại email xác nhận cho tài khoản <strong>Lịch Cá Nhân</strong>.</p>
+            <p>Vui lòng click vào nút bên dưới để xác nhận. <strong>Liên kết có hiệu lực trong 5 phút.</strong></p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{verify_url}" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px;
+                   text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                   Xác nhận Email
+                </a>
+            </div>
+            <p style="word-break: break-all; font-size: 13px; color: #2563eb;"><a href="{verify_url}">{verify_url}</a></p>
+            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+            <p style="font-size: 12px; color: #64748b;">
+                Nếu bạn không thực hiện yêu cầu này, tài khoản sẽ bị xóa tự động sau 5 phút.
+            </p>
+        </div>
+        """
+
+        try:
+            send_mail(
+                subject=subject,
+                message=f"Xác nhận email tại: {verify_url}",
+                from_email=None,
+                recipient_list=[user.email],
+                html_message=html_message,
+                fail_silently=False,
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Không thể gửi email: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # Reset timer cleanup
+        def cleanup():
+            try:
+                u = User.objects.get(pk=user.pk, is_active=False)
+                if hasattr(u, 'email_verification_token') and u.email_verification_token.is_expired():
+                    u.delete()
+            except User.DoesNotExist:
+                pass
+
+        timer = threading.Timer(EmailVerificationToken.EXPIRE_SECONDS + 5, cleanup)
+        timer.daemon = True
+        timer.start()
+
+        return Response({'status': 'Đã gửi lại email xác nhận. Vui lòng kiểm tra hộp thư (bao gồm cả Spam).'})
 
 
 

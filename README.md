@@ -60,7 +60,7 @@ Hệ thống quản lý lịch trình và công việc cao cấp, được thi�
 │   ├── core/               # Cấu hình hệ thống (Settings, Custom Email Backend, URLs)
 │   ├── accounts/           # Quản lý tài khoản, đổi mật khẩu tự động & Profile
 │   ├── events/             # Logic lịch, sự kiện, phân quyền & lời mời
-│   ├── contacts/           # Danh bạ & Tin nhắn
+│   ├── contacts/           # Quản lý liên kết & Danh bạ
 │   ├── notes/              # Quản lý ghi chú cá nhân
 │   ├── tasks/              # Quản lý công việc (To-do list)
 │   └── manage.py           # CLI quản trị Django

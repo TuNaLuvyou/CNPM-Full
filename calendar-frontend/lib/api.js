@@ -79,6 +79,17 @@ export async function validateResetToken(uid, token) {
   });
 }
 
+export async function verifyEmail(token) {
+  return request(`/accounts/verify-email/?token=${encodeURIComponent(token)}`);
+}
+
+export async function resendVerification(email) {
+  return request('/accounts/resend-verification/', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
 
 
 export async function updateProfile(data) {
@@ -112,6 +123,10 @@ export async function updateEvent(id, data) {
 
 export async function deleteEvent(id) {
   return request(`/events/${id}/`, { method: 'DELETE' });
+}
+
+export async function getEvent(id) {
+  return request(`/events/${id}/`);
 }
 
 export async function trashEvent(id) {
@@ -304,7 +319,6 @@ export async function togglePinNote(id) {
   return request(`/notes/${id}/toggle_pin/`, { method: 'POST' });
 }
 
-// ─── SETTINGS ──────────────────────────────────────────────────────────────
 // ─── SETTINGS ──────────────────────────────────────────────────────────────
 /**
  * GET /api/accounts/settings/

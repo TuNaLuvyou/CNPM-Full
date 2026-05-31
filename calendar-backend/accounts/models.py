@@ -1,5 +1,8 @@
+import uuid
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 
 
 class UserSettings(models.Model):
@@ -99,3 +102,26 @@ class UserFavoriteCalendar(models.Model):
     def __str__(self):
         label = self.calendar_key or (self.calendar_group.name if self.calendar_group else self.name)
         return f"{self.user.username} → {label}"
+
+
+class EmailVerificationToken(models.Model):
+    """
+    Token xác thực email khi đăng ký tài khoản mới.
+    Token hết hạn sau EMAIL_VERIFY_TIMEOUT giây (mặc định 300 = 5 phút).
+    """
+    user       = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='email_verification_token'
+    )
+    token      = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    EXPIRE_SECONDS = 300  # 5 phút
+
+    def is_expired(self):
+        """Trả về True nếu token đã hết hạn."""
+        return timezone.now() > self.created_at + timedelta(seconds=self.EXPIRE_SECONDS)
+
+    def __str__(self):
+        return f"VerifyToken({self.user.email}) – {'expired' if self.is_expired() else 'valid'}"

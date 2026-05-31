@@ -7,9 +7,6 @@ from .models import Contact, Connection
 from .serializers import ContactSerializer, ConnectionSerializer, UserSearchSerializer
 from events.models import Notification
 
-...
-
-
 
 class ContactViewSet(viewsets.ModelViewSet):
     queryset = Contact.objects.all()
