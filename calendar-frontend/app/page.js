@@ -184,9 +184,60 @@ export default function CalendarApp() {
         getTasks(params)
       ]);
 
-      const formattedEvents = (Array.isArray(eventsResponse) 
-        ? eventsResponse 
-        : (eventsResponse.results || [])).map(e => {
+      const viewStart = params.date_from ? new Date(params.date_from + 'T00:00:00') : new Date('2000-01-01');
+      const viewEnd = params.date_to ? new Date(params.date_to + 'T23:59:59') : new Date('2100-01-01');
+
+      const expandRecurringEvents = (eventList) => {
+        const expanded = [];
+        eventList.forEach(e => {
+          if (!e.recurrence_rule || e.recurrence_rule === '') {
+            expanded.push(e);
+            return;
+          }
+
+          const originalStart = new Date(e.start_time);
+          const originalEnd = new Date(e.end_time);
+          const durationMs = originalEnd.getTime() - originalStart.getTime();
+
+          let currentStart = new Date(originalStart);
+          let count = 0;
+          const MAX_INSTANCES = 730; 
+
+          while (currentStart <= viewEnd && count < MAX_INSTANCES) {
+            const currentEnd = new Date(currentStart.getTime() + durationMs);
+            
+            if (currentEnd >= viewStart && currentStart <= viewEnd) {
+              expanded.push({
+                ...e,
+                id: count === 0 ? e.id : `${e.id}_${count}`,
+                original_id: e.id,
+                original_start_time: e.start_time,
+                original_end_time: e.end_time,
+                start_time: currentStart.toISOString(),
+                end_time: currentEnd.toISOString()
+              });
+            }
+
+            if (e.recurrence_rule === 'DAILY') {
+              currentStart.setDate(currentStart.getDate() + 1);
+            } else if (e.recurrence_rule === 'WEEKLY') {
+              currentStart.setDate(currentStart.getDate() + 7);
+            } else if (e.recurrence_rule === 'MONTHLY') {
+              currentStart.setMonth(currentStart.getMonth() + 1);
+            } else if (e.recurrence_rule === 'YEARLY') {
+              currentStart.setFullYear(currentStart.getFullYear() + 1);
+            } else {
+              break; 
+            }
+            count++;
+          }
+        });
+        return expanded;
+      };
+
+      const rawEvents = (Array.isArray(eventsResponse) ? eventsResponse : (eventsResponse.results || []));
+      
+      const formattedEvents = expandRecurringEvents(rawEvents).map(e => {
           const start = new Date(e.start_time);
           const end = new Date(e.end_time);
           const duration = !isNaN(start) && !isNaN(end) ? Math.round((end - start) / 60000) : 60;
@@ -421,7 +472,8 @@ export default function CalendarApp() {
 
   const handleToggleTask = async (compositeId) => {
     try {
-      const cleanId = compositeId.toString().replace('task-', '');
+      let cleanId = compositeId.toString().replace('task-', '');
+      cleanId = cleanId.split('_')[0];
       await toggleTask(cleanId);
       handleEventSaved(); // Refresh UI
     } catch (e) {
@@ -490,12 +542,24 @@ export default function CalendarApp() {
     }
 
     try {
-      const itemId = item.id.toString().replace('event-', '').replace('task-', '');
-      let payload = { start_time: newStartTime.toISOString() };
+      let itemId = item.id.toString().replace('event-', '').replace('task-', '');
+      itemId = itemId.split('_')[0];
+      
+      let finalStartTimeForBackend = newStartTime;
+      let finalEndTimeForBackend = newEndTime;
+      
+      if (item.recurrence_rule && item.original_start_time) {
+          const instanceStart = new Date(item.start_time);
+          const delta = newStartTime.getTime() - instanceStart.getTime();
+          finalStartTimeForBackend = new Date(new Date(item.original_start_time).getTime() + delta);
+          finalEndTimeForBackend = new Date(finalStartTimeForBackend.getTime() + durationMs);
+      }
+
+      let payload = { start_time: finalStartTimeForBackend.toISOString() };
       const isEventRelated = itemType === 'event' || itemType === 'appointment';
 
       if (isEventRelated) {
-        payload.end_time = newEndTime.toISOString();
+        payload.end_time = finalEndTimeForBackend.toISOString();
         await updateEvent(itemId, payload);
       } else {
         payload.end_time = newEndTime.toISOString(); // Cập nhật block thời gian cho Task (giống Sự kiện)
@@ -761,6 +825,7 @@ export default function CalendarApp() {
   const handleCloseModal = () => {
     setCreateModal(prev => ({ ...prev, isOpen: false }));
     setEditingItem(null);
+    setPreviewEvent(null);
   };
 
   const handleCancelModal = () => {
@@ -774,7 +839,9 @@ export default function CalendarApp() {
     if (!editingItem) return;
     try {
       const isTask = editingItem.event_type === 'task';
-      const cleanId = editingItem.id.toString().replace('event-', '').replace('task-', '');
+      let cleanId = editingItem.id.toString().replace('event-', '').replace('task-', '');
+      // Remove recurrence suffix if exists (e.g. "123_1" -> "123")
+      cleanId = cleanId.split('_')[0];
       if (isTask) await trashTask(cleanId);
       else await trashEvent(cleanId);
       handleEventSaved();

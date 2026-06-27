@@ -86,7 +86,8 @@ export default function CreateModal({
     if (!confirm(t('contacts_panel.leave_event', lang) + "?")) return;
     setDeleting(true);
     try {
-      const cleanId = editingItem.id.toString().replace('task-', '').replace('event-', '');
+      let cleanId = editingItem.id.toString().replace('task-', '').replace('event-', '');
+      cleanId = cleanId.split('_')[0];
       await leaveEvent(cleanId);
       onSaved?.();
       onClose();
@@ -133,7 +134,32 @@ export default function CreateModal({
   const handleFormSave = async (formData) => {
     setSaving(true);
     try {
-      const cleanId = editingItem?.id?.toString().replace('task-', '').replace('event-', '');
+      let cleanId = editingItem?.id?.toString().replace('task-', '').replace('event-', '');
+      if (cleanId) cleanId = cleanId.split('_')[0];
+      
+      // Prevent shifting the recurrence origin by applying delta math
+      if (editingItem && editingItem.recurrence_rule && editingItem.original_start_time) {
+          const instanceStart = new Date(editingItem.start_time).getTime();
+          const newStart = new Date(`${formData.date}T${formData.timeStart}`).getTime();
+          const delta = newStart - instanceStart;
+
+          const originalStart = new Date(editingItem.original_start_time).getTime();
+          formData.start_time = new Date(originalStart + delta).toISOString();
+          
+          if (formData.timeEnd) {
+              const instanceEnd = new Date(editingItem.end_time || editingItem.start_time).getTime();
+              const newEnd = new Date(`${formData.date}T${formData.timeEnd}`).getTime();
+              const endDelta = newEnd - instanceEnd;
+              const originalEnd = new Date(editingItem.original_end_time || editingItem.original_start_time).getTime();
+              formData.end_time = new Date(originalEnd + endDelta).toISOString();
+          }
+
+          // Remove frontend helper fields so the backend uses the exact ISO strings we calculated
+          delete formData.date;
+          delete formData.timeStart;
+          delete formData.timeEnd;
+      }
+
       if (activeTab === "task") {
         if (editingItem) await updateTask(cleanId, formData);
         else await createTask(formData);
@@ -155,7 +181,8 @@ export default function CreateModal({
     if (!confirm(t('create_modal.confirm_trash', lang))) return;
     setDeleting(true);
     try {
-      const cleanId = editingItem.id.toString().replace('task-', '').replace('event-', '');
+      let cleanId = editingItem.id.toString().replace('task-', '').replace('event-', '');
+      cleanId = cleanId.split('_')[0];
       if (activeTab === "task") await trashTask(cleanId);
       else await trashEvent(cleanId);
       onSaved?.();

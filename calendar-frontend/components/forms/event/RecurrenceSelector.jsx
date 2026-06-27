@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState } from 'react';
 import { Repeat } from 'lucide-react';
 
@@ -6,10 +6,8 @@ export const RECURRENCE_OPTIONS = [
     { value: '',           label: 'Không lặp lại',     labelEn: 'Does not repeat'   },
     { value: 'DAILY',      label: 'Hàng ngày',          labelEn: 'Every day'         },
     { value: 'WEEKLY',     label: 'Hàng tuần',          labelEn: 'Every week'        },
-    { value: 'BIWEEKLY',   label: 'Hai tuần một lần',   labelEn: 'Every 2 weeks'     },
     { value: 'MONTHLY',    label: 'Hàng tháng',         labelEn: 'Every month'       },
     { value: 'YEARLY',     label: 'Hàng năm',           labelEn: 'Every year'        },
-    { value: 'WEEKDAYS',   label: 'Các ngày trong tuần',labelEn: 'Every weekday'     },
 ];
 
 export default function RecurrenceSelector({ value = '', onChange, lang = 'vi' }) {

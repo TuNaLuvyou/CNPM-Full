@@ -29,8 +29,10 @@ class EventViewSet(viewsets.ModelViewSet):
         # Filter theo thời gian nếu có
         date_from = self.request.query_params.get('date_from')
         date_to = self.request.query_params.get('date_to')
-        if date_from: qs = qs.filter(end_time__date__gte=date_from)
-        if date_to: qs = qs.filter(start_time__date__lte=date_to)
+        if date_from:
+            qs = qs.filter(Q(end_time__date__gte=date_from) | Q(recurrence_rule__in=['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']))
+        if date_to:
+            qs = qs.filter(Q(start_time__date__lte=date_to) | Q(recurrence_rule__in=['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']))
         
         return qs.order_by('start_time')
 

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState, useEffect, useRef } from "react";
 import { Plus, X, Loader2, GripVertical } from "lucide-react";
 import { t } from "@/lib/i18n";
@@ -218,9 +218,9 @@ export default function FavoriteCalendars({ lang, onChange, onPresetChange }) {
             <SectionLabel>{t('fav_calendars.title', lang)}</SectionLabel>
 
             {/* Active summary */}
-            <Card className="bg-blue-50/30 border-blue-100">
+            <Card className="bg-blue-50/30 dark:bg-transparent border-blue-100 dark:border-[#484848]">
                 <div className="px-5 py-4">
-                    <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-3">
+                    <p className="text-[10px] font-bold text-blue-500 dark:text-white uppercase tracking-widest mb-3">
                         {t('sections.active_calendars', lang)}
                     </p>
                     {loading ? (
@@ -234,12 +234,12 @@ export default function FavoriteCalendars({ lang, onChange, onPresetChange }) {
                     ) : (
                         <div className="flex flex-wrap gap-2">
                             {activePresets.map(p => (
-                                <span key={p.key} className="px-2.5 py-1.5 bg-white dark:bg-[#2d2d2d] border border-blue-100 rounded-lg text-xs font-semibold text-blue-700 shadow-sm">
+                                <span key={p.key} className="px-2.5 py-1.5 bg-white dark:bg-[#2d2d2d] border border-blue-100 dark:border-[#484848] rounded-lg text-xs font-semibold text-blue-700 dark:text-white shadow-sm">
                                     {t(p.labelKey, lang)}
                                 </span>
                             ))}
                             {customFavorites.filter(f => f.is_active).map(h => (
-                                <span key={h.id} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-[#2d2d2d] border border-blue-100 rounded-lg text-xs font-semibold text-blue-700 shadow-sm">
+                                <span key={h.id} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-[#2d2d2d] border border-blue-100 dark:border-[#484848] rounded-lg text-xs font-semibold text-blue-700 dark:text-white shadow-sm">
                                     <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
                                     {h.name}
                                 </span>
