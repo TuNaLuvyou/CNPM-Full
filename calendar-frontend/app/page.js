@@ -825,7 +825,7 @@ export default function CalendarApp() {
   const handleCloseModal = () => {
     setCreateModal(prev => ({ ...prev, isOpen: false }));
     setEditingItem(null);
-    setPreviewEvent(null);
+    // Do not clear previewEvent here so the draft remains visible on the calendar
   };
 
   const handleCancelModal = () => {
