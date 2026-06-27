@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+﻿import React, { useState, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import SearchBar from "./SearchBar";
 import UserMenu from "./UserMenu";
@@ -98,29 +98,29 @@ export default function Header({
   };
 
   return (
-    <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 bg-white flex-shrink-0 sticky top-0 z-50">
+    <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-[#3c3c3c] bg-white dark:bg-[#2a2a2a] flex-shrink-0 sticky top-0 z-50">
       {/* Left */}
       <div className="flex items-center space-x-4">
         <button
           onClick={goToToday}
-          className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 text-slate-700 transition relative z-50"
+          className="px-4 py-2 border border-slate-200 dark:border-[#484848] rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-[#2d2d2d] dark:hover:bg-[#353535] text-slate-700 dark:text-[#bdbdbd] transition relative z-50"
         >
           {t('today', lang)}
         </button>
         <div className="flex items-center space-x-2 relative z-50">
-          <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-slate-100 rounded-full transition">
-            <ChevronLeft className="w-5 h-5 text-slate-600" />
+          <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-[#353535] rounded-full transition">
+            <ChevronLeft className="w-5 h-5 text-slate-600 dark:text-[#bdbdbd]" />
           </button>
-          <button onClick={() => navigate(1)} className="p-1.5 hover:bg-slate-100 rounded-full transition">
-            <ChevronRight className="w-5 h-5 text-slate-600" />
+          <button onClick={() => navigate(1)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-[#353535] rounded-full transition">
+            <ChevronRight className="w-5 h-5 text-slate-600 dark:text-[#bdbdbd]" />
           </button>
         </div>
-        <h1 className="text-xl font-semibold text-slate-800">{headerTitle()}</h1>
+        <h1 className="text-xl font-semibold text-slate-800 dark:text-[#e3e3e3]">{headerTitle()}</h1>
       </div>
 
       {/* Right */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1 text-slate-500 relative z-50">
+        <div className="flex items-center gap-1 text-slate-500 dark:text-[#9e9e9e] relative z-50">
           <SearchBar
             isSearchOpen={isSearchOpen}
             setIsSearchOpen={setIsSearchOpen}
@@ -167,7 +167,7 @@ export default function Header({
           />
         </div>
 
-        <div className="h-6 w-px bg-slate-200"></div>
+        <div className="h-6 w-px bg-slate-200 dark:bg-[#3c3c3c]"></div>
 
         <ViewModeDropdown
           viewRef={viewRef}

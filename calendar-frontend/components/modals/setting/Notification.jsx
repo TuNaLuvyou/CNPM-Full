@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { t } from "@/lib/i18n";
 import { SectionLabel, Card, Row } from "./SharedUI";
 
@@ -15,8 +15,8 @@ export default function Notification({ s, set, lang }) {
 
             {/* Radio group */}
             <Card>
-                <div className="px-5 py-4 border-b border-slate-50">
-                    <p className="text-sm font-semibold text-slate-700 mb-4">{t('notif_settings.type', lang)}</p>
+                <div className="px-5 py-4 border-b border-slate-50 dark:border-[#484848]">
+                    <p className="text-sm font-semibold text-slate-700 dark:text-white mb-4">{t('notif_settings.type', lang)}</p>
                     <div className="space-y-3">
                         {NOTIF_OPTS.map((opt) => {
                             const active = s.notificationType === opt.value;
@@ -27,11 +27,11 @@ export default function Notification({ s, set, lang }) {
                                         className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition
                       ${active ? "border-blue-600 bg-blue-600" : "border-slate-300 group-hover:border-blue-400"}`}
                                     >
-                                        {active && <span className="w-2 h-2 bg-white rounded-full block" />}
+                                        {active && <span className="w-2 h-2 bg-white dark:bg-[#2d2d2d] rounded-full block" />}
                                     </div>
                                     <div onClick={() => set("notificationType", opt.value)}>
-                                        <p className="text-sm font-medium text-slate-700">{opt.label}</p>
-                                        <p className="text-xs text-slate-400 mt-0.5">{opt.desc}</p>
+                                        <p className="text-sm font-medium text-slate-700 dark:text-white">{opt.label}</p>
+                                        <p className="text-xs text-slate-400 dark:text-white mt-0.5">{opt.desc}</p>
                                     </div>
                                 </label>
                             );
@@ -65,10 +65,10 @@ export default function Notification({ s, set, lang }) {
                                     set("notificationMinutes", 1);
                                 }
                             }}
-                            className="w-16 text-sm text-center border border-slate-200 rounded-xl px-2 py-2 text-slate-700
+                            className="w-16 text-sm text-center border border-slate-200 dark:border-[#484848] dark:bg-[#1f1f1f] rounded-xl px-2 py-2 text-slate-700 dark:text-white
                 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
                         />
-                        <span className="text-sm text-slate-500 font-medium">{t('notif_settings.minutes', lang)}</span>
+                        <span className="text-sm text-slate-500 dark:text-white font-medium">{t('notif_settings.minutes', lang)}</span>
                     </div>
                 </Row>
             </Card>

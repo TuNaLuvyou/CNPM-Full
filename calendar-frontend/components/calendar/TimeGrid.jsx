@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect, useRef } from "react";
 import { getLocalizedTime, formatDateLocal, getEventStyle, HOUR_HEIGHT, getTimezoneOffsetMinutes, formatTimezoneOffset } from "../../lib/CalendarHelper";
 import { t } from "@/lib/i18n";
@@ -96,13 +96,13 @@ export default function TimeGrid({
   return (
     <div
       ref={scrollRef}
-      className="flex-1 overflow-y-auto bg-white relative scroll-smooth custom-scrollbar grid-interaction-area"
+      className="flex-1 overflow-y-auto bg-white dark:bg-[#1f1f1f] relative scroll-smooth custom-scrollbar grid-interaction-area"
     >
       <div className="flex min-h-full" ref={gridContainerRef}>
         {/* Cột thời gian */}
-        <div className="flex bg-white border-r border-slate-200 relative z-10 flex-shrink-0">
+        <div className="flex bg-white dark:bg-[#2a2a2a] border-r border-slate-200 dark:border-[#3c3c3c] relative z-10 flex-shrink-0">
           {showSecondary && (
-            <div className="w-14 flex flex-col border-r border-slate-100 bg-slate-50/30">
+            <div className="w-14 flex flex-col border-r border-slate-100 dark:border-[#3c3c3c] bg-slate-50/30">
               {displayHours.map((hour) => {
                 const primaryOffset = getTimezoneOffsetMinutes(primaryTz);
                 const secondaryOffset = getTimezoneOffsetMinutes(secondaryTz);
@@ -130,7 +130,7 @@ export default function TimeGrid({
           <div className="w-16 flex flex-col">
             {displayHours.map((hour) => (
               <div key={hour} className="h-16 flex items-start justify-end pr-3">
-                <span className="text-[11px] font-semibold text-slate-400 -mt-2 leading-none text-right">
+                <span className="text-[11px] font-semibold text-slate-400 dark:text-[#9e9e9e] -mt-2 leading-none text-right">
                   {hour === 0 
                     ? ""
                     : (timeFormat === "24h" 
@@ -146,9 +146,9 @@ export default function TimeGrid({
 
         {/* Lưới ngày */}
         <div className={`flex-1 grid ${mode === "day" ? "grid-cols-1" : (showWeekends ? "grid-cols-7" : "grid-cols-5")} relative`}>
-          <div className="absolute inset-x-0 top-0 h-[1536px] pointer-events-none flex flex-col border-b border-slate-200">
+          <div className="absolute inset-x-0 top-0 h-[1536px] pointer-events-none flex flex-col border-b border-slate-200 dark:border-[#484848]">
             {displayHours.map((hour) => (
-              <div key={hour} className="h-16 border-t border-slate-200 w-full" />
+              <div key={hour} className="h-16 border-t border-slate-200 dark:border-[#3c3c3c] w-full" />
             ))}
           </div>
 
@@ -160,7 +160,7 @@ export default function TimeGrid({
               <div
                 key={idx}
                 data-column-date={day.fullDate?.toDateString()}
-                className="border-l border-slate-200 relative min-h-full hover:bg-slate-50/50 transition-colors cursor-pointer day-column"
+                className="border-l border-slate-200 dark:border-[#3c3c3c] relative min-h-full hover:bg-slate-50 dark:hover:bg-[#2d2d2d]/50 dark:hover:bg-[#2d2d2d]/60 transition-colors cursor-pointer day-column"
                 onMouseDown={(e) => handleInteractionStart(e, 'create')}
                 onClick={(e) => handleColumnClick(e, day)}
               >

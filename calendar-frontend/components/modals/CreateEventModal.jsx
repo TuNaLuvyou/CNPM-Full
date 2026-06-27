@@ -174,7 +174,7 @@ export default function CreateModal({
       <div
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
-        className={`create-modal-root fixed w-full max-w-lg bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] max-h-[90vh] border border-slate-200 ${hideWhileDraggingPreview ? 'hidden' : 'flex flex-col pointer-events-auto'}`}
+        className={`create-modal-root fixed w-full max-w-lg bg-white dark:bg-[#2d2d2d] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] max-h-[90vh] border border-slate-200 dark:border-[#484848] ${hideWhileDraggingPreview ? 'hidden' : 'flex flex-col pointer-events-auto'}`}
         style={{ ...modalStyle }}
       >
         <CreateModalHeader
@@ -187,7 +187,7 @@ export default function CreateModal({
         />
 
         {/* Form body */}
-        <div className="overflow-y-auto custom-scrollbar px-6 py-4 flex-1 border-t border-slate-50">
+        <div className="overflow-y-auto custom-scrollbar px-6 py-4 flex-1 border-t border-slate-50 dark:border-[#484848]">
           {activeTab === "event" && <EventForm key={`event-${editingItem?.id || 'new'}`} {...formProps} currentUser={currentUser} />}
           {activeTab === "task" && <TaskForm key={`task-${editingItem?.id || 'new'}`} {...formProps} />}
           {activeTab === "appointment" && <AppointmentForm key={`app-${editingItem?.id || 'new'}`} {...formProps} currentUser={currentUser} />}

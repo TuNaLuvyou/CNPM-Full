@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { t } from '../../lib/i18n';
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const EVENT_COLORS = [
@@ -61,7 +61,7 @@ export function formatAMPM(timeStr) {
 export function FieldRow({ icon: Icon, children }) {
     return (
         <div className="flex items-start gap-3">
-            <Icon className="w-5 h-5 text-slate-400 mt-[10px] flex-shrink-0" />
+            <Icon className="w-5 h-5 text-slate-400 dark:text-[#9e9e9e] mt-[10px] flex-shrink-0" />
             <div className="flex-1">{children}</div>
         </div>
     );
@@ -89,18 +89,18 @@ export function DateTimeSelector({ date, timeStart, timeEnd, timeFormat = '24h',
             <button
                 type="button"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full text-left px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors flex items-center justify-between group"
+                className="w-full text-left px-3 py-2 text-sm font-medium text-slate-600 dark:text-[#bdbdbd] hover:bg-slate-100 dark:hover:bg-[#353535] rounded-lg transition-colors flex items-center justify-between group"
             >
-                <span className="group-hover:text-blue-600 transition-colors text-[14px]">
+                <span className="group-hover:text-blue-600 dark:group-hover:text-[#e3e3e3] transition-colors text-[14px]">
                     {summary}
                 </span>
-                <span className="text-[11px] text-slate-400 font-normal">
+                <span className="text-[11px] text-slate-400 dark:text-[#9e9e9e] font-normal">
                     {isExpanded ? t('create_modal.collapse', lang) : t('create_modal.change_datetime', lang)}
                 </span>
             </button>
             
             {isExpanded && (
-                <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="p-3 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-100 dark:border-[#484848] rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
                     {children}
                 </div>
             )}
@@ -112,8 +112,8 @@ export function InputBase({ className = '', ...props }) {
     return (
         <input
             {...props}
-            className={`w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none
-                focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 ${className}`}
+            className={`w-full px-3 py-2 text-sm border border-slate-200 dark:border-[#484848] rounded-lg outline-none
+                focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 dark:bg-[#1f1f1f] text-slate-800 dark:text-[#e3e3e3] placeholder:text-slate-400 dark:placeholder:text-[#757575] ${className}`}
         />
     );
 }
@@ -123,8 +123,8 @@ export function TextareaBase({ ...props }) {
         <textarea
             rows={3}
             {...props}
-            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none
-                focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 resize-none"
+            className={`w-full px-3 py-2 text-sm border border-slate-200 dark:border-[#484848] rounded-lg outline-none
+                focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 dark:bg-[#1f1f1f] text-slate-800 dark:text-[#e3e3e3] placeholder:text-slate-400 dark:placeholder:text-[#757575] resize-none ${props.className || ''}`}
         />
     );
 }

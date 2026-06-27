@@ -1,4 +1,4 @@
-import { Users, Calendar as CalendarIcon, CheckCircle, Circle, Clock } from 'lucide-react';
+﻿import { Users, Calendar as CalendarIcon, CheckCircle, Circle, Clock } from 'lucide-react';
 import { t } from '@/lib/i18n';
 
 export default function Event({ 
@@ -22,7 +22,7 @@ export default function Event({
     
     // Nếu hoàn thành thì dùng tone xám mờ
     const finalTheme = is_completed 
-    ? { bg: 'bg-slate-50', border: 'border-slate-300', title: 'text-slate-400 line-through', text: 'text-slate-300', handle: 'bg-slate-300' }
+    ? { bg: 'bg-slate-50 dark:bg-[#1f1f1f]', border: 'border-slate-300', title: 'text-slate-400 dark:text-[#9e9e9e] line-through', text: 'text-slate-300', handle: 'bg-slate-300' }
     : themes[color || type] || themes.blue;
 
     const isTask = event_type === 'task';
@@ -59,7 +59,7 @@ export default function Event({
                             e.stopPropagation(); 
                             onToggleComplete?.(); 
                         }}
-                        className={`flex-shrink-0 mt-0.5 transition-transform ${canEdit ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-default'} ${is_completed ? 'text-emerald-500' : 'text-slate-400'}`}
+                        className={`flex-shrink-0 mt-0.5 transition-transform ${canEdit ? 'hover:scale-110 active:scale-95 cursor-pointer' : 'cursor-default'} ${is_completed ? 'text-emerald-500' : 'text-slate-400 dark:text-[#9e9e9e]'}`}
                     >
                         {is_completed ? <CheckCircle className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
                     </button>

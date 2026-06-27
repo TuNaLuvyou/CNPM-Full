@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect } from 'react';
 import { CheckSquare, Clock, Calendar as CalendarIcon, AlignLeft, Palette, Tag, X, Paperclip } from 'lucide-react';
 import { FieldRow, InputBase, TextareaBase, toDateInputVal, toTimeInputVal, DateTimeSelector, EVENT_COLORS, CALENDAR_CATEGORIES } from './FormHelpers';
@@ -133,7 +133,7 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
                         <InputBase type="date" value={form.date} onChange={set('date')} />
                         <div className="flex items-center gap-2">
                             <InputBase type="time" value={form.time} onChange={set('time')} className="flex-1" />
-                            <span className="text-slate-400 text-sm flex-shrink-0">đến</span>
+                            <span className="text-slate-400 dark:text-[#9e9e9e] text-sm flex-shrink-0">đến</span>
                             <InputBase type="time" value={form.timeEnd} onChange={set('timeEnd')} className="flex-1" />
                         </div>
                     </div>
@@ -143,7 +143,7 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
             <FieldRow icon={CalendarIcon}>
                 <div className="flex flex-col gap-1 w-full">
                     <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase ml-1">{t('create_modal.deadline', lang)}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-[#9e9e9e] font-bold uppercase ml-1">{t('create_modal.deadline', lang)}</span>
                         <button 
                             type="button"
                             onClick={() => {
@@ -160,7 +160,7 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
                                 }
                                 setHasDeadline(!hasDeadline);
                             }}
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${hasDeadline ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${hasDeadline ? 'bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20' : 'bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20'}`}
                         >
                             {hasDeadline ? t('common.delete', lang) : t('common.add', lang)}
                         </button>
@@ -171,7 +171,7 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
                             <InputBase type="time" value={form.deadlineTime} onChange={set('deadlineTime')} className="w-32" />
                         </div>
                     ) : (
-                        <div className="px-3 py-2 bg-slate-50 border border-dashed border-slate-200 rounded-lg text-slate-400 text-xs italic">
+                        <div className="px-3 py-2 bg-slate-50 dark:bg-[#1f1f1f] text-slate-800 dark:text-[#e3e3e3] border border-dashed border-slate-200 dark:border-[#484848] rounded-lg text-slate-400 dark:text-[#9e9e9e] text-xs italic">
                             {t('create_modal.no_deadline', lang)}
                         </div>
                     )}
@@ -187,11 +187,11 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
             <FieldRow icon={Clock}>
                 <div className="flex flex-col gap-1 w-full">
                     <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase ml-1">Nhắc nhở</span>
+                        <span className="text-[10px] text-slate-400 dark:text-[#9e9e9e] font-bold uppercase ml-1">Nhắc nhở</span>
                         <button
                             type="button"
                             onClick={() => setHasReminder(!hasReminder)}
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${hasReminder ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded transition-all ${hasReminder ? 'bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20' : 'bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20'}`}
                         >
                             {hasReminder ? 'Xóa' : 'Thêm'}
                         </button>
@@ -202,7 +202,7 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
                             <InputBase type="time" value={form.reminderTime} onChange={set('reminderTime')} className="w-32" />
                         </div>
                     ) : (
-                        <div className="px-3 py-2 bg-slate-50 border border-dashed border-slate-200 rounded-lg text-slate-400 text-xs italic">
+                        <div className="px-3 py-2 bg-slate-50 dark:bg-[#1f1f1f] text-slate-800 dark:text-[#e3e3e3] border border-dashed border-slate-200 dark:border-[#484848] rounded-lg text-slate-400 dark:text-[#9e9e9e] text-xs italic">
                             Chưa có nhắc nhở
                         </div>
                     )}
@@ -211,23 +211,23 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
 
             <FieldRow icon={Paperclip}>
                 {!selectedFile ? (
-                    <label className="flex items-center justify-between w-full px-3 py-2 text-sm border border-dashed border-slate-300 rounded-lg hover:border-blue-400 hover:bg-blue-50/30 transition-all cursor-pointer group">
+                    <label className="flex items-center justify-between w-full px-3 py-2 text-sm border border-dashed border-slate-300 dark:border-[#484848] rounded-lg hover:border-blue-400 hover:bg-blue-50/30 dark:hover:border-[#bdbdbd] dark:hover:bg-[#353535] transition-all cursor-pointer group">
                         <input type="file" className="hidden" onChange={handleFileChange} />
-                        <span className="text-slate-500 group-hover:text-blue-600 transition-colors">{t('create_modal.attach_file', lang)}</span>
-                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded group-hover:bg-blue-100 group-hover:text-blue-500 transition-all">{t('create_modal.upload', lang)}</span>
+                        <span className="text-slate-500 dark:text-[#9e9e9e] group-hover:text-blue-600 dark:group-hover:text-[#e3e3e3] transition-colors">{t('create_modal.attach_file', lang)}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-[#9e9e9e] bg-slate-100 dark:bg-[#353535] px-1.5 py-0.5 rounded group-hover:bg-blue-100 group-hover:text-blue-500 dark:group-hover:bg-[#484848] dark:group-hover:text-[#e3e3e3] transition-all">{t('create_modal.upload', lang)}</span>
                     </label>
                 ) : (
-                    <div className="flex items-center justify-between w-full px-3 py-2 text-sm border border-blue-200 bg-blue-50/50 rounded-lg group animate-in zoom-in-95 duration-200">
+                    <div className="flex items-center justify-between w-full px-3 py-2 text-sm border border-blue-200 bg-blue-50/50 dark:border-[#484848] dark:bg-[#353535] rounded-lg group animate-in zoom-in-95 duration-200">
                         <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                <Paperclip className="w-4 h-4 text-blue-600" />
+                            <div className="w-8 h-8 rounded bg-blue-100 dark:bg-[#484848] flex items-center justify-center flex-shrink-0">
+                                <Paperclip className="w-4 h-4 text-blue-600 dark:text-[#e3e3e3]" />
                             </div>
                             <div className="flex flex-col min-w-0">
-                                <span className="text-slate-700 font-medium truncate text-[13px]">{selectedFile.name}</span>
-                                <span className="text-slate-400 text-[10px]">{selectedFile.size}</span>
+                                <span className="text-slate-700 dark:text-[#e3e3e3] font-medium truncate text-[13px]">{selectedFile.name}</span>
+                                <span className="text-slate-400 dark:text-[#9e9e9e] text-[10px]">{selectedFile.size}</span>
                             </div>
                         </div>
-                        <button onClick={handleRemoveFile} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all">
+                        <button onClick={handleRemoveFile} className="p-1.5 text-slate-400 dark:text-[#9e9e9e] hover:text-red-500 hover:bg-red-50 rounded-full transition-all">
                             <X className="w-4 h-4" />
                         </button>
                     </div>
@@ -238,7 +238,7 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
                 <select
                     value={form.category}
                     onChange={set('category')}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 cursor-pointer"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-[#484848] rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 dark:bg-[#1f1f1f] text-slate-800 dark:text-[#e3e3e3] cursor-pointer"
                 >
                     {appSettings?.customCategories?.map(cat => (
                         <option key={cat} value={cat}>{cat}</option>
@@ -253,7 +253,7 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
                             type="button"
                             onClick={() => setForm(p => ({ ...p, color: c.value }))}
                             className={`w-7 h-7 rounded-full ${c.cls} transition-transform hover:scale-110
-                                ${form.color === c.value ? 'ring-2 ring-offset-2 ring-slate-400 scale-110' : ''}`}
+                                ${form.color === c.value ? 'ring-2 ring-offset-2 dark:ring-offset-[#2d2d2d] ring-slate-400 dark:ring-[#484848] scale-110' : ''}`}
                         />
                     ))}
                 </div>

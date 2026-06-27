@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect } from "react";
 import { X, User, Mail, Phone, Lock, Eye, EyeOff, Save, CheckCircle } from "lucide-react";
 import { t } from "@/lib/i18n";
@@ -88,15 +88,15 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
       />
 
       {/* Modal Content */}
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+      <div className="relative w-full max-w-md bg-white dark:bg-[#2d2d2d] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-[#484848] bg-slate-50/50 dark:bg-[#2d2d2d]">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
             <User className="w-5 h-5 text-blue-600" />
             {t('profile.title', lang) || "Thông tin cá nhân"}
           </h2>
           <button 
             onClick={onClose}
-            className="p-2 hover:bg-white rounded-full transition-colors text-slate-400 hover:text-slate-600 shadow-sm border border-transparent hover:border-slate-100"
+            className="p-2 hover:bg-white dark:hover:bg-[#353535] dark:bg-[#2d2d2d] rounded-full transition-colors text-slate-400 dark:text-white hover:text-slate-600 dark:hover:text-[#bdbdbd] dark:text-white shadow-sm border border-transparent hover:border-slate-100 dark:border-[#484848]"
           >
             <X className="w-5 h-5" />
           </button>
@@ -104,14 +104,14 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg flex items-start gap-2">
+            <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/30 text-red-600 dark:text-red-400 text-sm rounded-lg flex items-start gap-2">
               <span className="shrink-0 mt-0.5">⚠️</span>
               {error}
             </div>
           )}
 
           {success && (
-            <div className="p-3 bg-emerald-50 border border-emerald-100 text-emerald-700 text-sm rounded-lg flex items-center gap-2">
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-sm rounded-lg flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />
               {t('profile.success', lang)}
             </div>
@@ -120,8 +120,8 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
           <div className="space-y-4">
             {/* Full Name */}
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 flex items-center gap-2 px-1">
-                <User className="w-4 h-4 text-slate-400" />
+              <label className="text-sm font-semibold text-slate-700 dark:text-white flex items-center gap-2 px-1">
+                <User className="w-4 h-4 text-slate-400 dark:text-white" />
                 {t('profile.fullName', lang) || "Họ và tên"}
               </label>
               <input
@@ -130,15 +130,15 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
                 value={formData.full_name}
                 onChange={handleChange}
                 placeholder={t('profile.fullNamePlaceholder', lang)}
-                className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800"
+                className="w-full h-11 px-4 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white"
                 required
               />
             </div>
 
             {/* Email */}
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 flex items-center gap-2 px-1">
-                <Mail className="w-4 h-4 text-slate-400" />
+              <label className="text-sm font-semibold text-slate-700 dark:text-white flex items-center gap-2 px-1">
+                <Mail className="w-4 h-4 text-slate-400 dark:text-white" />
                 {t('profile.email', lang) || "Email"}
               </label>
               <input
@@ -147,15 +147,15 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="email@example.com"
-                className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800"
+                className="w-full h-11 px-4 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white"
                 required
               />
             </div>
 
             {/* Phone */}
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 flex items-center gap-2 px-1">
-                <Phone className="w-4 h-4 text-slate-400" />
+              <label className="text-sm font-semibold text-slate-700 dark:text-white flex items-center gap-2 px-1">
+                <Phone className="w-4 h-4 text-slate-400 dark:text-white" />
                 {t('profile.phone', lang) || "Số điện thoại"}
               </label>
               <input
@@ -164,20 +164,20 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
                 value={formData.phone_number}
                 onChange={handleChange}
                 placeholder="0xxx xxx xxx"
-                className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800"
+                className="w-full h-11 px-4 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white"
               />
             </div>
 
-            <hr className="border-slate-100 my-6" />
+            <hr className="border-slate-100 dark:border-[#484848] my-6" />
 
             {/* Password Section */}
             <div className="space-y-4 pt-2">
-              <h3 className="text-sm font-bold text-slate-800 px-1 uppercase tracking-wider opacity-70">{t('profile.changePassword', lang)}</h3>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white px-1 uppercase tracking-wider opacity-70">{t('profile.changePassword', lang)}</h3>
               
               {/* Current Password */}
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2 px-1">
-                  <Lock className="w-4 h-4 text-slate-400" />
+                <label className="text-sm font-semibold text-slate-700 dark:text-white flex items-center gap-2 px-1">
+                  <Lock className="w-4 h-4 text-slate-400 dark:text-white" />
                   {t('profile.currentPassword', lang) || "Mật khẩu hiện tại"}
                 </label>
                 <div className="relative">
@@ -187,13 +187,13 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
                     value={formData.current_password}
                     onChange={handleChange}
                     placeholder={t('profile.currentPasswordPlaceholder', lang)}
-                    className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 pr-10"
+                    className="w-full h-11 px-4 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white pr-10"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white hover:text-slate-600 dark:hover:text-[#bdbdbd] dark:text-white transition-colors"
                   >
                     {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -203,7 +203,7 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
               {/* New Password */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-500 px-1">{t('profile.newPassword', lang)}</label>
+                  <label className="text-xs font-semibold text-slate-500 dark:text-white px-1">{t('profile.newPassword', lang)}</label>
                   <div className="relative">
                     <input
                       type={showNewPassword ? "text" : "password"}
@@ -211,26 +211,26 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
                       value={formData.new_password}
                       onChange={handleChange}
                       placeholder={t('profile.newPassword', lang)}
-                      className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 pr-10"
+                      className="w-full h-11 px-4 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white pr-10"
                     />
                     <button
                       type="button"
                       onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white hover:text-slate-600 dark:hover:text-[#bdbdbd] dark:text-white transition-colors"
                     >
                       {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-500 px-1">{t('profile.confirmPassword', lang)}</label>
+                  <label className="text-xs font-semibold text-slate-500 dark:text-white px-1">{t('profile.confirmPassword', lang)}</label>
                   <input
                     type="password"
                     name="confirm_password"
                     value={formData.confirm_password}
                     onChange={handleChange}
                     placeholder={t('contacts_panel.accept_btn', lang) || "Xác nhận"}
-                    className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800"
+                    className="w-full h-11 px-4 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white"
                   />
                 </div>
               </div>
@@ -241,14 +241,14 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-11 px-4 border border-slate-200 text-slate-600 font-medium rounded-xl hover:bg-slate-50 transition-colors"
+              className="flex-1 h-11 px-4 border border-slate-200 dark:border-[#484848] text-slate-600 dark:text-white font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-[#353535] transition-colors"
             >
               {t('cancel', lang)}
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-[2] h-11 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2"
+              className="flex-[2] h-11 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl shadow-lg shadow-blue-200 dark:shadow-none transition-all flex items-center justify-center gap-2"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -16,14 +16,14 @@ export default function CreateModalFooter({
   activeTab
 }) {
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 flex-shrink-0 bg-gray-50/50 rounded-b-2xl">
+    <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-[#484848] flex-shrink-0 bg-gray-50/50 dark:bg-transparent rounded-b-2xl">
       <div className="flex-shrink-0 flex items-center gap-4">
         {editingItem && (
           isOwner ? (
             <button
               onClick={handleXoa}
               disabled={deleting}
-              className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition cursor-pointer disabled:opacity-50"
             >
               {deleting ? t('deleting', lang) : t('delete', lang)}
             </button>
@@ -32,7 +32,7 @@ export default function CreateModalFooter({
               <button
                 onClick={handleLeave}
                 disabled={deleting}
-                className="px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 border border-red-100 rounded-lg transition cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 text-sm font-bold bg-red-600 hover:bg-red-700 text-white border-transparent rounded-lg transition cursor-pointer disabled:opacity-50"
               >
                 {deleting ? '...' : t('contacts_panel.leave_event', lang)}
               </button>
@@ -42,15 +42,15 @@ export default function CreateModalFooter({
         
         {!isOwner && editingItem?.owner_name && (
           <div className="flex flex-col">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{t('contacts_panel.owned_by', lang)}</span>
-            <span className="text-xs text-slate-600 font-medium">@{editingItem.owner_name}</span>
+            <span className="text-[10px] text-slate-400 dark:text-[#9e9e9e] font-bold uppercase tracking-tight">{t('contacts_panel.owned_by', lang)}</span>
+            <span className="text-xs text-slate-600 dark:text-[#bdbdbd] font-medium">@{editingItem.owner_name}</span>
           </div>
         )}
       </div>
       <div className="flex gap-2">
         <button
           onClick={() => (onCancel ? onCancel() : onClose?.())}
-          className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+          className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition cursor-pointer"
         >
           {t('cancel', lang)}
         </button>

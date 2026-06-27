@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { ChevronDown, Calendar as CalendarIcon, Columns, LayoutGrid, Grid3X3 } from 'lucide-react';
 import { t } from "@/lib/i18n";
 
@@ -14,13 +14,13 @@ export default function ViewModeDropdown({
     <div className="relative" ref={viewRef}>
       <button
         onClick={() => setIsViewOpen(!isViewOpen)}
-        className="h-9 px-4 bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg flex items-center gap-2 hover:bg-slate-100 transition relative z-50 group font-medium"
+        className="h-9 px-4 bg-slate-50 dark:bg-[#2d2d2d] border border-slate-200 dark:border-[#484848] text-slate-700 dark:text-[#d4d4d4] text-sm rounded-lg flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-[#353535] transition relative z-50 group font-medium"
       >
         {t(`view_${view}`, lang)}
-        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isViewOpen ? "rotate-180" : ""}`} />
+        <ChevronDown className={`w-4 h-4 text-slate-400 dark:text-[#9e9e9e] transition-transform duration-200 ${isViewOpen ? "rotate-180" : ""}`} />
       </button>
       {isViewOpen && (
-        <div className="absolute right-0 top-11 w-40 bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
+        <div className="absolute right-0 top-11 w-40 bg-white dark:bg-[#2d2d2d] rounded-xl shadow-lg border border-slate-100 dark:border-[#484848] py-2 z-50">
           {[
             { label: "day", key: "view_day", icon: <CalendarIcon className="w-4 h-4 text-blue-500" /> },
             { label: "week", key: "view_week", icon: <Columns className="w-4 h-4 text-emerald-500" /> },
@@ -33,7 +33,7 @@ export default function ViewModeDropdown({
                 setView(item.label);
                 setIsViewOpen(false);
               }}
-              className={`w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center gap-3 text-sm transition-colors ${view === item.label ? "text-blue-600 font-semibold bg-blue-50/50" : "text-slate-600"}`}
+              className={`w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#353535] flex items-center gap-3 text-sm transition-colors ${view === item.label ? "text-blue-600 font-semibold bg-blue-50/50 dark:bg-[#484848] dark:text-white" : "text-slate-600 dark:text-white"}`}
             >
               <span className={view === item.label ? "opacity-100" : "opacity-70"}>{item.icon}</span>
               {t(item.key, lang)}

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect, useRef } from "react";
 import { Plus, X, Loader2, GripVertical } from "lucide-react";
 import { t } from "@/lib/i18n";
@@ -224,22 +224,22 @@ export default function FavoriteCalendars({ lang, onChange, onPresetChange }) {
                         {t('sections.active_calendars', lang)}
                     </p>
                     {loading ? (
-                        <div className="flex items-center gap-2 text-slate-400 text-xs">
+                        <div className="flex items-center gap-2 text-slate-400 dark:text-white text-xs">
                             <Loader2 className="w-3.5 h-3.5 animate-spin" /> Đang tải...
                         </div>
                     ) : activePresets.length === 0 && customFavorites.length === 0 ? (
-                        <p className="text-xs text-slate-400 italic">
+                        <p className="text-xs text-slate-400 dark:text-white italic">
                             {lang === 'en' ? 'No calendars selected' : 'Chưa có lịch nào được chọn'}
                         </p>
                     ) : (
                         <div className="flex flex-wrap gap-2">
                             {activePresets.map(p => (
-                                <span key={p.key} className="px-2.5 py-1.5 bg-white border border-blue-100 rounded-lg text-xs font-semibold text-blue-700 shadow-sm">
+                                <span key={p.key} className="px-2.5 py-1.5 bg-white dark:bg-[#2d2d2d] border border-blue-100 rounded-lg text-xs font-semibold text-blue-700 shadow-sm">
                                     {t(p.labelKey, lang)}
                                 </span>
                             ))}
                             {customFavorites.filter(f => f.is_active).map(h => (
-                                <span key={h.id} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-blue-100 rounded-lg text-xs font-semibold text-blue-700 shadow-sm">
+                                <span key={h.id} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-[#2d2d2d] border border-blue-100 rounded-lg text-xs font-semibold text-blue-700 shadow-sm">
                                     <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
                                     {h.name}
                                 </span>
@@ -264,10 +264,10 @@ export default function FavoriteCalendars({ lang, onChange, onPresetChange }) {
             {/* Custom calendars với drag & drop sort */}
             <Card>
                 <div className="px-5 py-4">
-                    <p className="text-sm font-semibold text-slate-700 mb-1">
+                    <p className="text-sm font-semibold text-slate-700 dark:text-white mb-1">
                         {t('fav_calendars.custom_title', lang)}
                     </p>
-                    <p className="text-xs text-slate-400 mb-4">
+                    <p className="text-xs text-slate-400 dark:text-white mb-4">
                         {t('fav_calendars.custom_desc', lang)}
                     </p>
 
@@ -279,14 +279,14 @@ export default function FavoriteCalendars({ lang, onChange, onPresetChange }) {
                             onKeyDown={(e) => e.key === "Enter" && addCustom()}
                             placeholder={t('fav_calendars.custom_placeholder', lang)}
                             disabled={isDragging}
-                            className="flex-1 text-sm border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700
-                                placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition disabled:bg-slate-50 disabled:text-slate-400"
+                            className="flex-1 text-sm border border-slate-200 dark:border-[#484848] rounded-xl px-4 py-2.5 text-slate-700 dark:text-white
+                                placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition disabled:bg-slate-50 dark:bg-[#1f1f1f] disabled:text-slate-400 dark:text-white"
                         />
                         <button
                             type="button"
                             onClick={addCustom}
                             disabled={!newHoliday.trim() || adding || isDragging}
-                            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400
+                            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 dark:text-white
                                 text-white text-sm font-semibold rounded-xl transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
                         >
                             {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
@@ -296,7 +296,7 @@ export default function FavoriteCalendars({ lang, onChange, onPresetChange }) {
 
                     {customFavorites.length > 0 ? (
                         <div className="space-y-1.5">
-                            <p className="text-[10px] text-slate-400 mb-2 flex items-center gap-1.5">
+                            <p className="text-[10px] text-slate-400 dark:text-white mb-2 flex items-center gap-1.5">
                                 <GripVertical className="w-3 h-3" />
                                 {lang === 'en' ? 'Drag to reorder' : 'Kéo để sắp xếp'}
                             </p>
@@ -322,15 +322,15 @@ export default function FavoriteCalendars({ lang, onChange, onPresetChange }) {
                                         e.preventDefault();
                                         e.dataTransfer.dropEffect = "move";
                                     }}
-                                    className="flex items-center justify-between px-3 py-2.5 bg-slate-50 hover:bg-slate-100
+                                    className="flex items-center justify-between px-3 py-2.5 bg-slate-50 dark:bg-[#1f1f1f] hover:bg-slate-100 dark:hover:bg-[#353535]
                                         rounded-xl transition group cursor-grab active:cursor-grabbing border border-transparent
-                                        hover:border-slate-200"
+                                        hover:border-slate-200 dark:border-[#484848]"
                                     style={{ opacity: draggingId === h.id ? 0.6 : 1, minHeight: 52 }}
                                 >
                                     <div className="flex items-center gap-2.5">
-                                        <GripVertical className="w-4 h-4 text-slate-300 group-hover:text-slate-400 flex-shrink-0" />
+                                        <GripVertical className="w-4 h-4 text-slate-300 group-hover:text-slate-400 dark:text-white flex-shrink-0" />
                                         <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
-                                        <span className="text-sm text-slate-700 font-medium">{h.name}</span>
+                                        <span className="text-sm text-slate-700 dark:text-white font-medium">{h.name}</span>
                                     </div>
                                     <button
                                         type="button"

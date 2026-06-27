@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Bell, Calendar as CalendarIcon, CheckSquare, Clock, Check, X as CloseIcon } from 'lucide-react';
 import { t } from "@/lib/i18n";
 import { 
@@ -9,9 +9,9 @@ import {
 } from "../../../../lib/api";
 
 const NOTIF_ICON = {
-  event: { Icon: CalendarIcon, color: "text-blue-500", bg: "bg-blue-50" },
-  task: { Icon: CheckSquare, color: "text-emerald-500", bg: "bg-emerald-50" },
-  appointment: { Icon: Clock, color: "text-purple-500", bg: "bg-purple-50" },
+  event: { Icon: CalendarIcon, color: "text-blue-500 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10" },
+  task: { Icon: CheckSquare, color: "text-emerald-500 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
+  appointment: { Icon: Clock, color: "text-purple-500 dark:text-purple-400", bg: "bg-purple-50 dark:bg-purple-500/10" },
 };
 
 export default function NotificationsDropdown({
@@ -78,7 +78,7 @@ export default function NotificationsDropdown({
           setIsSearchOpen(false);
           setIsSettingsOpen(false);
         }}
-        className={`relative p-2 rounded-full transition ${isNotifOpen ? "bg-blue-50 text-blue-600" : "hover:text-slate-700 hover:bg-slate-100"}`}
+        className={`relative p-2 rounded-full transition ${isNotifOpen ? "bg-blue-50 text-blue-600 dark:bg-[#484848] dark:text-white" : "hover:text-slate-700 dark:hover:text-[#e3e3e3] dark:text-white hover:bg-slate-100 dark:hover:bg-[#353535]"}`}
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
@@ -88,9 +88,9 @@ export default function NotificationsDropdown({
         )}
       </button>
       {isNotifOpen && (
-        <div className="absolute right-0 top-11 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-50">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white sticky top-0 z-10">
-            <h3 className="text-sm font-bold text-slate-700">{t('notifications', lang)}</h3>
+        <div className="absolute right-0 top-11 w-80 bg-white dark:bg-[#2d2d2d] rounded-2xl shadow-xl border border-slate-200 dark:border-[#484848] overflow-hidden z-50">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-[#3c3c3c] bg-white dark:bg-[#2d2d2d] sticky top-0 z-10">
+            <h3 className="text-sm font-bold text-slate-700 dark:text-white">{t('notifications', lang)}</h3>
             {notifications.length > 0 && (
               <button 
                 onClick={handleDeleteAll}
@@ -102,8 +102,8 @@ export default function NotificationsDropdown({
           </div>
           <div className="max-h-80 overflow-y-auto custom-scrollbar">
             {notifications.length === 0 ? (
-              <div className="py-8 flex flex-col items-center gap-2 text-slate-400">
-                <Bell className="w-8 h-8 text-slate-200" />
+              <div className="py-8 flex flex-col items-center gap-2 text-slate-400 dark:text-white">
+                <Bell className="w-8 h-8 text-slate-200 dark:text-white" />
                 <p className="text-sm">{t('contacts_panel.no_notifications', lang)}</p>
               </div>
             ) : (
@@ -120,17 +120,17 @@ export default function NotificationsDropdown({
                         onNotificationClick(notif.event);
                       }
                     }}
-                    className={`flex flex-col px-4 py-4 transition border-b border-slate-50 last:border-0 ${!notif.is_read ? "bg-blue-50/40" : "hover:bg-slate-50"} ${notif.event ? "cursor-pointer" : ""}`}
+                    className={`flex flex-col px-4 py-4 transition border-b border-slate-50 dark:border-[#484848] last:border-0 ${!notif.is_read ? "bg-blue-50/40 dark:bg-blue-500/10" : "hover:bg-slate-50 dark:hover:bg-[#2d2d2d]"} ${notif.event ? "cursor-pointer" : ""}`}
                   >
                     <div className="flex items-start gap-3">
                       <div className={`w-9 h-9 rounded-xl ${cfg.bg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
                         <Icon className={`w-5 h-5 ${cfg.color}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                          <p className={`text-[13px] leading-relaxed ${!notif.is_read ? "font-semibold text-slate-800" : "text-slate-600"}`}>
+                          <p className={`text-[13px] leading-relaxed ${!notif.is_read ? "font-semibold text-slate-800 dark:text-white" : "text-slate-600 dark:text-white"}`}>
                             {notif.desc}
                           </p>
-                          <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider flex items-center gap-2">
+                          <p className="text-[10px] text-slate-400 dark:text-white mt-1 uppercase font-bold tracking-wider flex items-center gap-2">
                               {new Date(notif.time).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US')}
                               {isInvite && notif.is_read && (
                                   <span className="text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded text-[9px] normal-case">
@@ -152,7 +152,7 @@ export default function NotificationsDropdown({
                           </button>
                           <button
                               onClick={(e) => handleDecline(e, notif)}
-                              className="px-4 py-2 bg-white border border-slate-200 text-slate-600 text-[11px] font-bold rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2"
+                              className="px-4 py-2 bg-white dark:bg-[#2d2d2d] border border-slate-200 dark:border-[#484848] text-slate-600 dark:text-white text-[11px] font-bold rounded-lg hover:bg-slate-50 dark:hover:bg-[#2d2d2d] transition-colors flex items-center gap-2"
                           >
                               <CloseIcon className="w-3.5 h-3.5" /> {t('contacts_panel.decline_btn', lang)}
                           </button>
@@ -163,8 +163,8 @@ export default function NotificationsDropdown({
               })
             )}
           </div>
-          <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50">
-            <button className="w-full text-[11px] text-center text-slate-400 uppercase tracking-widest font-bold py-1">
+          <div className="px-4 py-3 border-t border-slate-100 dark:border-[#3c3c3c] bg-slate-50/50 dark:bg-[#2d2d2d]">
+            <button className="w-full text-[11px] text-center text-slate-400 dark:text-white uppercase tracking-widest font-bold py-1">
               {t('view_all_notifications', lang)}
             </button>
           </div>

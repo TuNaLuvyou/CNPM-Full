@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useState } from 'react';
 import { X, Loader2, Mail, RefreshCw, LogOut, CheckCircle } from 'lucide-react';
 import { login, register, forgotPassword, resendVerification } from '@/lib/api';
@@ -13,25 +13,25 @@ export default function AuthModal({ isOpen, type, onClose, onSwitchType, onLogin
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 animate-in fade-in zoom-in duration-200">
+            <div className="relative w-full max-w-md bg-white dark:bg-[#2d2d2d] rounded-2xl shadow-2xl p-8 animate-in fade-in zoom-in duration-200">
                 {canClose && !isVerifyPending && (
                     <button
                         onClick={onClose}
-                        className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition"
+                        className="absolute top-4 right-4 p-2 text-slate-400 dark:text-[#9e9e9e] hover:text-slate-600 dark:hover:text-[#bdbdbd] dark:text-[#bdbdbd] hover:bg-slate-100 dark:hover:bg-[#353535] rounded-full transition"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 )}
 
                 <div className="text-center mb-6">
-                    <h2 className="text-2xl font-bold text-slate-800">
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-[#e3e3e3]">
                         {isLogin ? 'Đăng nhập'
                             : isForgot ? 'Khôi phục mật khẩu'
                             : isRegister ? 'Tạo tài khoản mới'
                             : 'Xác thực email'}
                     </h2>
                     {isForgot && (
-                        <p className="text-sm text-slate-500 mt-2 px-4">
+                        <p className="text-sm text-slate-500 dark:text-[#9e9e9e] mt-2 px-4">
                             Nhập email của bạn để nhận hướng dẫn đặt lại mật khẩu.
                         </p>
                     )}
@@ -101,14 +101,14 @@ function LoginForm({ onSuccess, onSwitchType }) {
         <form onSubmit={handleSubmit} className="space-y-4">
             {error && <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
             <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-[#e3e3e3] mb-1">Email</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                     placeholder="name@example.com"
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
             </div>
             <div>
                 <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-medium text-slate-700">Mật khẩu</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-[#e3e3e3]">Mật khẩu</label>
                     <span onClick={() => onSwitchType('forgot')} className="text-xs text-blue-600 hover:underline cursor-pointer font-medium">
                         Quên mật khẩu?
                     </span>
@@ -122,7 +122,7 @@ function LoginForm({ onSuccess, onSwitchType }) {
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </button>
-            <div className="mt-4 text-center text-sm text-slate-600">
+            <div className="mt-4 text-center text-sm text-slate-600 dark:text-[#bdbdbd]">
                 Chưa có tài khoản?{' '}
                 <span onClick={() => onSwitchType('register')} className="text-blue-600 font-medium hover:underline cursor-pointer">
                     Đăng ký ngay
@@ -177,19 +177,19 @@ function RegisterForm({ onSuccess, onSwitchType }) {
         <form onSubmit={handleSubmit} className="space-y-4">
             {error && <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
             <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Họ và tên</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-[#e3e3e3] mb-1">Họ và tên</label>
                 <input type="text" value={fullName} onChange={e => setFullName(e.target.value)}
                     placeholder="Nhập tên của bạn"
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
             </div>
             <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-[#e3e3e3] mb-1">Email</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                     placeholder="name@example.com"
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
             </div>
             <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Mật khẩu</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-[#e3e3e3] mb-1">Mật khẩu</label>
                 <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
                     placeholder="Tối thiểu 6 ký tự"
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
@@ -199,7 +199,7 @@ function RegisterForm({ onSuccess, onSwitchType }) {
                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 {loading ? 'Đang đăng ký...' : 'Đăng ký'}
             </button>
-            <div className="mt-4 text-center text-sm text-slate-600">
+            <div className="mt-4 text-center text-sm text-slate-600 dark:text-[#bdbdbd]">
                 Đã có tài khoản?{' '}
                 <span onClick={() => onSwitchType('login')} className="text-blue-600 font-medium hover:underline cursor-pointer">
                     Đăng nhập
@@ -249,10 +249,10 @@ function VerifyPendingPanel({ email, onClose, onSwitchType, isAfterRegister = fa
 
             {/* Title */}
             <div>
-                <h3 className="text-lg font-bold text-slate-800 mb-1">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-[#f5f5f5] mb-1">
                     {isAfterRegister ? 'Kiểm tra hộp thư của bạn!' : 'Tài khoản chưa được xác thực'}
                 </h3>
-                <p className="text-sm text-slate-500 leading-relaxed px-2">
+                <p className="text-sm text-slate-500 dark:text-[#9e9e9e] leading-relaxed px-2">
                     {isAfterRegister
                         ? 'Chúng tôi đã gửi email xác nhận đến:'
                         : 'Email của tài khoản này chưa được xác thực. Vui lòng kiểm tra:'}
@@ -300,13 +300,13 @@ function VerifyPendingPanel({ email, onClose, onSwitchType, isAfterRegister = fa
             {/* Close / Back button */}
             <button
                 onClick={onClose}
-                className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 bg-slate-100 dark:bg-[#353535] hover:bg-slate-200 dark:hover:bg-[#484848] text-slate-600 dark:text-[#bdbdbd] font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
             >
                 <LogOut className="w-4 h-4" />
                 {showBackToLogin ? 'Quay lại đăng nhập' : 'Đóng'}
             </button>
 
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 dark:text-[#9e9e9e]">
                 Đã xác nhận email?{' '}
                 <span
                     onClick={() => onSwitchType?.('login')}
@@ -350,7 +350,7 @@ function ForgotForm({ onSwitchType }) {
                 <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                 </div>
-                <p className="text-slate-600 font-medium px-2">{message}</p>
+                <p className="text-slate-600 dark:text-[#bdbdbd] font-medium px-2">{message}</p>
                 <button onClick={() => onSwitchType('login')}
                     className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
                     Quay lại đăng nhập
@@ -363,7 +363,7 @@ function ForgotForm({ onSwitchType }) {
         <form className="space-y-4" onSubmit={handleSubmit}>
             {error && <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
             <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-[#e3e3e3] mb-1">Email</label>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                     placeholder="name@example.com"
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />

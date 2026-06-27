@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { HelpCircle, Check, AlertCircle, Send } from 'lucide-react';
 import { t } from "@/lib/i18n";
 import { submitSupportRequest } from "../../../../lib/api";
@@ -42,33 +42,33 @@ export default function SupportDropdown({
           setIsNotifOpen(false);
           setIsSettingsOpen(false);
         }}
-        className={`p-2 rounded-full transition ${isHelpOpen ? "bg-blue-50 text-blue-600" : "hover:text-slate-700 hover:bg-slate-100"}`}
+        className={`p-2 rounded-full transition ${isHelpOpen ? "bg-blue-50 text-blue-600 dark:text-blue-400 dark:bg-[#484848] dark:text-white" : "hover:text-slate-700 dark:hover:text-[#e3e3e3] dark:text-white hover:bg-slate-100 dark:hover:bg-[#353535]"}`}
         title={t('help', lang)}
       >
         <HelpCircle className="w-5 h-5" />
       </button>
       {isHelpOpen && (
-        <div className="absolute right-0 top-11 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-50 p-4">
+        <div className="absolute right-0 top-11 w-80 bg-white dark:bg-[#2d2d2d] rounded-2xl shadow-xl border border-slate-200 dark:border-[#484848] overflow-hidden z-50 p-4">
           {helpStatus === "success" ? (
             <div className="py-6 flex flex-col items-center text-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center animate-bounce">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center animate-bounce">
                 <Check className="w-6 h-6 text-emerald-500" />
               </div>
-              <h3 className="text-sm font-bold text-slate-800">{t('support.success', lang)}</h3>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white">{t('support.success', lang)}</h3>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="flex items-center gap-2 mb-1">
-                <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <HelpCircle className="w-4 h-4 text-blue-600" />
+                <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+                  <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 </div>
-                <h3 className="text-sm font-bold text-slate-700">{t('support.title', lang)}</h3>
+                <h3 className="text-sm font-bold text-slate-700 dark:text-white">{t('support.title', lang)}</h3>
               </div>
               
               <select
                 value={helpFormData.type}
                 onChange={(e) => setHelpFormData({ ...helpFormData, type: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none bg-slate-50/50"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#484848] text-xs focus:ring-2 focus:ring-blue-500/20 outline-none bg-slate-50/50 dark:placeholder-white dark:bg-[#1f1f1f] dark:text-white"
               >
                 {['bug_report', 'feedback', 'feature_request', 'password_reset', 'other'].map(type => (
                   <option key={type} value={type}>{t(`support.types.${type}`, lang)}</option>
@@ -80,7 +80,7 @@ export default function SupportDropdown({
                 placeholder={t('support.subject_placeholder', lang)}
                 value={helpFormData.subject}
                 onChange={(e) => setHelpFormData({ ...helpFormData, subject: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none bg-slate-50/50"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#484848] text-xs focus:ring-2 focus:ring-blue-500/20 outline-none bg-slate-50/50 dark:placeholder-white dark:bg-[#1f1f1f] dark:text-white"
                 required
               />
 
@@ -88,7 +88,7 @@ export default function SupportDropdown({
                 placeholder={t('support.message_placeholder', lang)}
                 value={helpFormData.message}
                 onChange={(e) => setHelpFormData({ ...helpFormData, message: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none bg-slate-50/50 resize-none h-20"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#484848] text-xs focus:ring-2 focus:ring-blue-500/20 outline-none bg-slate-50/50 dark:placeholder-white dark:bg-[#1f1f1f] dark:text-white resize-none h-20"
                 required
               />
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { getFriends } from '@/lib/api';
 
 export function useEventGuests({ initialData, currentUser }) {

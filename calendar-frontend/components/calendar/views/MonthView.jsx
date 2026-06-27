@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Circle, CheckCircle, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { DAY_NAMES, formatDateLocal, getOrderedDayLabels, getWeekNumber } from "../../../lib/CalendarHelper";
@@ -77,22 +77,22 @@ export default function MonthView({
     : `grid-cols-${showWeekends ? 7 : 5}`;
 
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-slate-200">
-      <div className="flex shadow-sm flex-shrink-0 sticky top-0 z-20 bg-slate-200">
+    <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-slate-200 dark:bg-[#1f1f1f]">
+      <div className="flex shadow-sm flex-shrink-0 sticky top-0 z-20 bg-slate-200 dark:bg-[#1f1f1f]">
         <div className={`flex-1 grid ${gridClass} gap-px`}>
           {showWeekNum && (
-            <div className="bg-white text-center py-3 text-[10px] font-bold text-slate-300 uppercase">
+            <div className="bg-white dark:bg-[#2a2a2a] text-center py-3 text-[10px] font-bold text-slate-300 dark:text-[#616161] uppercase">
               {lang === 'vi' ? 'Tuần' : 'Wk'}
             </div>
           )}
           {filteredHeaders.map((d) => (
-            <div key={d} className="bg-white text-center py-3 text-sm font-semibold text-slate-500">
+            <div key={d} className="bg-white dark:bg-[#2a2a2a] text-center py-3 text-sm font-semibold text-slate-500 dark:text-[#9e9e9e]">
               {d}
             </div>
           ))}
         </div>
       </div>
-      <div className={`grid ${gridClass} flex-1 gap-px bg-slate-200 mt-px`}>
+      <div className={`grid ${gridClass} flex-1 gap-px bg-slate-200 dark:bg-[#3c3c3c] mt-px`}>
         {filteredCells.map((cell, idx) => {
           const cellEvents = getEventsForCell(cell.fullDate);
           const isHovered = hoverCellIdx === idx;
@@ -101,13 +101,13 @@ export default function MonthView({
           return (
             <React.Fragment key={idx}>
               {showWeekNum && isFirstDayOfRow && (
-                <div className="bg-white flex items-start justify-center pt-3 text-[11px] font-medium text-slate-300 italic border-r border-slate-100">
+                <div className="bg-white dark:bg-[#2a2a2a] flex items-start justify-center pt-3 text-[11px] font-medium text-slate-300 dark:text-[#616161] italic border-r border-slate-100 dark:border-[#3c3c3c]">
                   {getWeekNumber(cell.fullDate)}
                 </div>
               )}
               <div 
-                  className={`bg-white p-2 min-h-[120px] transition-colors cursor-cell relative
-                      ${isHovered ? "bg-blue-50/50 ring-2 ring-inset ring-blue-400/30" : "hover:bg-slate-50"}`}
+                  className={`bg-white dark:bg-[#2a2a2a] p-2 min-h-[120px] transition-colors cursor-cell relative
+                      ${isHovered ? "bg-blue-50/50 dark:bg-blue-900/20 ring-2 ring-inset ring-blue-400/30" : "hover:bg-slate-50 dark:hover:bg-[#2d2d2d]"}`}
                 onDragOver={(e) => { e.preventDefault(); setHoverCellIdx(idx); }}
                 onDragLeave={() => setHoverCellIdx(null)}
                 onDrop={(e) => handleDrop(e, cell.fullDate)}
@@ -126,12 +126,12 @@ export default function MonthView({
                 <div
                   onClick={(e) => { e.stopPropagation(); handleDayClick(cell.fullDate); }}
                   className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-medium transition-all cursor-pointer
-                    ${!cell.isCurrentMonth ? "text-slate-400 opacity-60" : ""}
+                    ${!cell.isCurrentMonth ? "text-slate-400 dark:text-[#9e9e9e] opacity-60" : ""}
                     ${
                       cell.isToday
                         ? "bg-blue-600 text-white shadow-md font-bold"
                         : cell.isCurrentMonth
-                        ? "text-slate-700 hover:bg-slate-200"
+                        ? "text-slate-700 dark:text-[#9e9e9e] hover:bg-slate-200 dark:hover:bg-[#353535]"
                         : ""
                     }`}
                 >

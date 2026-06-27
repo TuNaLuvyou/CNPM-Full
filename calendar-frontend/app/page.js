@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import ThemeProvider from "@/components/ThemeProvider";
 import {
   Plus,
   Calendar as CalendarIcon,
@@ -614,8 +615,8 @@ export default function CalendarApp() {
 
   if (!mounted) {
     return (
-      <div className="flex h-screen bg-white items-center justify-center">
-        <div className="animate-pulse text-slate-400 font-medium text-sm">Đang tải lịch...</div>
+      <div className="flex h-screen bg-white dark:bg-[#1f1f1f] items-center justify-center">
+        <div className="animate-pulse text-slate-400 dark:text-[#9e9e9e] font-medium text-sm">Đang tải lịch...</div>
       </div>
     );
   }
@@ -799,26 +800,28 @@ export default function CalendarApp() {
   });
 
   return (
-    <div className="flex h-screen bg-white text-slate-800 font-sans overflow-hidden relative">
-      {!currentUser && (
+    <>
+      <ThemeProvider appSettings={appSettings} />
+      <div className="flex h-screen bg-white dark:bg-[#1f1f1f] text-slate-800 dark:text-[#e3e3e3] font-sans overflow-hidden relative">
+        {!currentUser && (
         <div 
           onClick={() => {
             setAuthModal({ isOpen: true, type: "login" });
           }}
           className="absolute inset-0 z-40 bg-slate-900/[0.02] backdrop-blur-[0.5px] cursor-pointer flex flex-col items-center justify-center transition-all duration-300"
         >
-          <div className="bg-white/95 px-6 py-4 rounded-2xl shadow-xl border border-slate-100 flex flex-col items-center gap-2 animate-bounce pointer-events-none select-none">
-            <span className="text-sm font-semibold text-slate-700">Vui lòng đăng nhập để sử dụng ứng dụng</span>
-            <span className="text-xs text-slate-400">Nhấp vào bất kỳ đâu để đăng nhập</span>
+          <div className="bg-white dark:bg-[#2d2d2d]/95 px-6 py-4 rounded-2xl shadow-xl border border-slate-100 dark:border-[#3c3c3c] flex flex-col items-center gap-2 animate-bounce pointer-events-none select-none">
+            <span className="text-sm font-semibold text-slate-700 dark:text-[#e3e3e3]">Vui lòng đăng nhập để sử dụng ứng dụng</span>
+            <span className="text-xs text-slate-400 dark:text-[#9e9e9e]">Nhấp vào bất kỳ đâu để đăng nhập</span>
           </div>
         </div>
       )}
-      <aside className="w-80 flex-shrink-0 bg-slate-50 border-r border-slate-200 flex flex-col relative shadow-sm">
-        <div className="h-16 flex items-center px-6 border-b border-slate-200">
+      <aside className="w-80 flex-shrink-0 bg-slate-50 dark:bg-[#2a2a2a] border-r border-slate-200 dark:border-[#3c3c3c] flex flex-col relative shadow-sm">
+        <div className="h-16 flex items-center px-6 border-b border-slate-200 dark:border-[#3c3c3c]">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 shadow-sm">
             <CalendarIcon className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-[#f5f5f5] dark:to-[#f5f5f5]">
             {t('app_name', appSettings.language)}
           </span>
         </div>
@@ -829,14 +832,14 @@ export default function CalendarApp() {
               <Plus className="w-5 h-5 mr-2" /> {t('create', appSettings.language)}
             </button>
             {isCreateMenuOpen && (
-              <div className="absolute top-14 left-0 w-full bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
-                <button onClick={() => openCreate("event")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center text-sm text-slate-700">
+              <div className="absolute top-14 left-0 w-full bg-white dark:bg-[#2d2d2d] rounded-xl shadow-lg border border-slate-100 dark:border-[#3c3c3c] py-2 z-50">
+                <button onClick={() => openCreate("event")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#2d2d2d] dark:hover:bg-[#353535] flex items-center text-sm text-slate-700 dark:text-[#d4d4d4]">
                   <CalendarIcon className="w-4 h-4 mr-3 text-blue-500" /> {t('event', appSettings.language)}
                 </button>
-                <button onClick={() => openCreate("task")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center text-sm text-slate-700">
+                <button onClick={() => openCreate("task")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#2d2d2d] dark:hover:bg-[#353535] flex items-center text-sm text-slate-700 dark:text-[#d4d4d4]">
                   <CheckSquare className="w-4 h-4 mr-3 text-emerald-500" /> {t('task', appSettings.language)}
                 </button>
-                <button onClick={() => openCreate("appointment")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center text-sm text-slate-700">
+                <button onClick={() => openCreate("appointment")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#2d2d2d] dark:hover:bg-[#353535] flex items-center text-sm text-slate-700 dark:text-[#d4d4d4]">
                   <Clock className="w-4 h-4 mr-3 text-purple-500" /> {t('appointment', appSettings.language)}
                 </button>
               </div>
@@ -850,82 +853,82 @@ export default function CalendarApp() {
             events={filteredEventsForComponents}
             appSettings={appSettings}
           />
-          <hr className="border-slate-200 my-6" />
+          <hr className="border-slate-200 dark:border-[#484848] my-4" />
 
-          <div className="mt-8">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">{t('my_calendars_title', appSettings.language)}</h3>
+          <div className="">
+            <h3 className="text-xs font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-wider mb-3 px-1">{t('my_calendars_title', appSettings.language)}</h3>
             <div className="space-y-2">
               {/* Dynamic Categories */}
               {(appSettings.customCategories || []).map(catName => (
-                <label key={catName} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 transition-colors">
+                <label key={catName} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
                   <input 
                     type="checkbox" 
                     checked={visibleCategories.includes(catName)} 
                     onChange={() => setVisibleCategories(prev => prev.includes(catName) ? prev.filter(v => v !== catName) : [...prev, catName])} 
                     className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                   />
-                  <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
+                  <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
                     {catName}
                   </span>
                 </label>
               ))}
 
-              <hr className="border-slate-100 my-2" />
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">{t('holidays_title', appSettings.language)}</h3>
+              <hr className="border-slate-200 dark:border-[#484848] my-4" />
+              <h3 className="text-xs font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-wider mb-3 px-1">{t('holidays_title', appSettings.language)}</h3>
 
               {/* Holiday Calendars (Conditional on Settings) */}
               <div className="space-y-2">
                 {appSettings.vietnamHolidays && (
-                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 transition-colors">
+                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
                     <input 
                       type="checkbox" 
                       checked={visibleHolidays.includes("vietnam")} 
                       onChange={() => setVisibleHolidays(prev => prev.includes("vietnam") ? prev.filter(v => v !== "vietnam") : [...prev, "vietnam"])} 
                       className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                     />
-                    <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
+                    <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
                       {t('fav_calendars.vn_holidays', appSettings.language)}
                     </span>
                   </label>
                 )}
 
                 {appSettings.worldHolidays && (
-                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 transition-colors">
+                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
                     <input 
                       type="checkbox" 
                       checked={visibleHolidays.includes("world")} 
                       onChange={() => setVisibleHolidays(prev => prev.includes("world") ? prev.filter(v => v !== "world") : [...prev, "world"])} 
                       className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                     />
-                    <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
+                    <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
                       {t('fav_calendars.world_holidays', appSettings.language)}
                     </span>
                   </label>
                 )}
 
                 {appSettings.otherHolidays && (
-                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 transition-colors">
+                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
                     <input 
                       type="checkbox" 
                       checked={visibleHolidays.includes("other")} 
                       onChange={() => setVisibleHolidays(prev => prev.includes("other") ? prev.filter(v => v !== "other") : [...prev, "other"])} 
                       className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                     />
-                    <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
+                    <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
                       {t('fav_calendars.other_holidays', appSettings.language)}
                     </span>
                   </label>
                 )}
 
                 {appSettings.customHolidays?.map(h => (
-                  <label key={h.id} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 transition-colors">
+                  <label key={h.id} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
                     <input 
                       type="checkbox" 
                       checked={visibleHolidays.includes(h.id)} 
                       onChange={() => setVisibleHolidays(prev => prev.includes(h.id) ? prev.filter(v => v !== h.id) : [...prev, h.id])} 
                       className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                     />
-                    <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
+                    <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
                       {h.name}
                     </span>
                   </label>
@@ -935,13 +938,13 @@ export default function CalendarApp() {
               {/* Connected People's Calendars Section */}
               {appSettings.showFriendsCalendars && friends.length > 0 && (
                 <>
-                  <hr className="border-slate-100 my-4" />
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
+                  <hr className="border-slate-200 dark:border-[#484848] my-4" />
+                  <h3 className="text-xs font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-wider mb-3 px-1">
                     {t('connected_calendars_title', appSettings.language)}
                   </h3>
                   <div className="space-y-2">
                     {friends.map(friend => (
-                      <label key={friend.friend_id} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 transition-colors">
+                      <label key={friend.friend_id} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
                         <input 
                           type="checkbox" 
                           checked={visibleFriends.includes(friend.friend_id)} 
@@ -949,7 +952,7 @@ export default function CalendarApp() {
                           className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                         />
                         <div className="flex items-center overflow-hidden">
-                          <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors truncate">
+                          <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors truncate">
                             {friend.friend_email}
                           </span>
                         </div>
@@ -963,7 +966,7 @@ export default function CalendarApp() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-x-auto overflow-y-hidden bg-white relative">
+      <main className="flex-1 overflow-x-auto overflow-y-hidden bg-white dark:bg-[#1f1f1f] relative">
         <Calendar
           view={view} setView={setView} viewDate={viewDate} setViewDate={setViewDate}
           selectedDate={selectedDate} setSelectedDate={setSelectedDate}
@@ -1042,6 +1045,7 @@ export default function CalendarApp() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; border: 2px solid transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
       `}} />
-    </div>
+      </div>
+    </>
   );
 }

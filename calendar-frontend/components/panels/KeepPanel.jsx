@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import { Lightbulb, Plus, Loader2 } from "lucide-react";
 import NoteCard from "@/components/ui/NoteCard";
 import { getNotes, createNote, togglePinNote, deleteNote } from "@/lib/api";
@@ -90,14 +90,14 @@ export default function KeepPanel({ appSettings }) {
   const unpinned = notes.filter((n) => !n.is_pinned).map(normalizeNote);
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
-        <h2 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+    <div className="flex flex-col h-full bg-white dark:bg-[#2d2d2d]">
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-[#484848] flex items-center justify-between sticky top-0 bg-white dark:bg-[#2d2d2d] z-10">
+        <h2 className="text-sm font-bold text-slate-700 dark:text-[#e3e3e3] flex items-center gap-2">
           <Lightbulb className="w-4 h-4 text-yellow-500" /> {t('sidebar_tools.keep', lang)}
         </h2>
         <button
           onClick={() => setAddingNote((v) => !v)}
-          className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition"
+          className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-[#353535] text-slate-400 dark:text-[#9e9e9e] hover:text-slate-600 dark:hover:text-[#bdbdbd] dark:text-[#bdbdbd] transition"
         >
           <Plus className="w-4 h-4" />
         </button>
@@ -105,29 +105,29 @@ export default function KeepPanel({ appSettings }) {
 
       {/* Add note form */}
       {addingNote && (
-        <div className="mx-3 my-2 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="mx-3 my-2 border border-slate-200 dark:border-[#484848] rounded-xl overflow-hidden shadow-sm">
           <input
             value={newNoteTitle}
             onChange={(e) => setNewNoteTitle(e.target.value)}
             placeholder={t('keep_panel.title_placeholder', lang)}
-            className="w-full px-3 py-2 text-sm font-semibold text-slate-700 placeholder-slate-400 outline-none border-b border-slate-100 bg-white"
+            className="w-full px-3 py-2 text-sm font-semibold text-slate-700 dark:text-[#e3e3e3] placeholder-slate-400 dark:placeholder-[#757575] outline-none border-b border-slate-100 dark:border-[#484848] bg-white dark:bg-[#2d2d2d]"
           />
           <textarea
             value={newNoteContent}
             onChange={(e) => setNewNoteContent(e.target.value)}
             placeholder={t('keep_panel.content_placeholder', lang)}
             rows={3}
-            className="w-full px-3 py-2 text-sm text-slate-700 placeholder-slate-400 outline-none resize-none bg-white"
+            className="w-full px-3 py-2 text-sm text-slate-700 dark:text-[#e3e3e3] placeholder-slate-400 dark:placeholder-[#757575] outline-none resize-none bg-white dark:bg-[#2d2d2d]"
             autoFocus
           />
-          <div className="flex items-center justify-end gap-2 px-3 py-1.5 bg-slate-50 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-2 px-3 py-1.5 bg-slate-50 dark:bg-[#1f1f1f] border-t border-slate-100 dark:border-[#484848]">
             <button
               onClick={() => {
                 setAddingNote(false);
                 setNewNoteTitle("");
                 setNewNoteContent("");
               }}
-              className="text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded-lg transition font-medium"
+              className="text-xs text-slate-500 dark:text-[#9e9e9e] hover:text-slate-700 dark:hover:text-[#e3e3e3] dark:text-[#e3e3e3] px-3 py-1.5 rounded-lg transition font-medium"
             >
               {t('cancel', lang)}
             </button>
@@ -144,15 +144,15 @@ export default function KeepPanel({ appSettings }) {
       {/* Notes list */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-2 space-y-3">
         {loading ? (
-          <div className="flex items-center justify-center h-32 gap-2 text-slate-400">
+          <div className="flex items-center justify-center h-32 gap-2 text-slate-400 dark:text-[#9e9e9e]">
             <Loader2 className="w-5 h-5 animate-spin" />
             <span className="text-xs">{t('loading', lang)}</span>
           </div>
         ) : !localStorage.getItem('token') ? (
-            <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-2 px-6 text-center">
+            <div className="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-[#9e9e9e] gap-2 px-6 text-center">
               <Lightbulb className="w-8 h-8 opacity-20" />
-              <p className="text-xs font-bold text-slate-500">{t('user.login_required', lang)}</p>
-              <p className="text-[10px] text-slate-400">Bạn cần đăng nhập để tạo và xem các ghi chú cá nhân.</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-[#9e9e9e]">{t('user.login_required', lang)}</p>
+              <p className="text-[10px] text-slate-400 dark:text-[#9e9e9e]">Bạn cần đăng nhập để tạo và xem các ghi chú cá nhân.</p>
             </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-32 text-red-400 gap-2 px-4 text-center">
@@ -163,7 +163,7 @@ export default function KeepPanel({ appSettings }) {
           <>
             {pinned.length > 0 && (
               <div className="space-y-2">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">
+                <p className="text-[10px] font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-wider px-1">
                   {t('keep_panel.pinned', lang)}
                 </p>
                 <div className="grid gap-2">
@@ -182,7 +182,7 @@ export default function KeepPanel({ appSettings }) {
             {unpinned.length > 0 && (
               <div className="space-y-2 pt-2">
                 {pinned.length > 0 && (
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-wider px-1">
                     {t('keep_panel.other', lang)}
                   </p>
                 )}
@@ -200,7 +200,7 @@ export default function KeepPanel({ appSettings }) {
             )}
 
             {notes.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-2">
+              <div className="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-[#9e9e9e] gap-2">
                 <Lightbulb className="w-10 h-10 text-slate-200" />
                 <p className="text-xs font-medium">{t('keep_panel.no_notes', lang)}</p>
               </div>

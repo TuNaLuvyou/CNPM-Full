@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Inbox, Check, X } from "lucide-react";
 import { t } from "@/lib/i18n";
 
@@ -16,14 +16,14 @@ export default function InvitationsTab({
         </div>
       ) : (
         invitations.map((inv) => (
-          <div key={inv.id} className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm space-y-3">
+          <div key={inv.id} className="bg-white dark:bg-[#2d2d2d] border border-slate-100 dark:border-[#3c3c3c] rounded-2xl p-4 shadow-sm space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white text-sm font-bold">
                 {inv.sender_name?.[0]?.toUpperCase()}
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-700">{inv.sender_name}</p>
-                <p className="text-xs text-slate-400">{inv.sender_email}</p>
+                <p className="text-sm font-bold text-slate-700 dark:text-[#e3e3e3]">{inv.sender_name}</p>
+                <p className="text-xs text-slate-400 dark:text-[#9e9e9e]">{inv.sender_email}</p>
               </div>
             </div>
             <div className="flex gap-2 pt-1">
@@ -35,7 +35,7 @@ export default function InvitationsTab({
               </button>
               <button
                 onClick={() => handleInviteAction(inv.id, 'decline')}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-slate-100 dark:bg-[#353535] text-slate-600 dark:text-[#bdbdbd] rounded-xl text-xs font-bold hover:bg-slate-200 dark:hover:bg-[#484848] transition"
               >
                 <X className="w-3.5 h-3.5" /> {t('contacts_panel.decline_btn', lang)}
               </button>

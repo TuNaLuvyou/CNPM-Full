@@ -1,4 +1,4 @@
-import { buildMonthCells, MONTH_NAMES, formatDateLocal, getOrderedDayKeys } from "../../../lib/CalendarHelper";
+﻿import { buildMonthCells, MONTH_NAMES, formatDateLocal, getOrderedDayKeys } from "../../../lib/CalendarHelper";
 import { t } from "@/lib/i18n";
 
 function MonthCard({ year, month, onDayClick, events = [], appSettings = {} }) {
@@ -12,11 +12,11 @@ function MonthCard({ year, month, onDayClick, events = [], appSettings = {} }) {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 min-w-[196px]">
-      <h3 className="text-sm font-semibold text-slate-700 mb-3 text-center">
+    <div className="bg-white dark:bg-[#2d2d2d] rounded-xl border border-slate-200 dark:border-[#484848] p-4 min-w-[196px]">
+      <h3 className="text-sm font-semibold text-slate-700 dark:text-[#e3e3e3] mb-3 text-center">
         {(MONTH_NAMES[lang] || MONTH_NAMES.vi)[month]} {year}
       </h3>
-      <div className={`grid ${showWeekends ? "grid-cols-7" : "grid-cols-5"} gap-0.5 text-center text-[11px] font-medium text-slate-400 mb-1`}>
+      <div className={`grid ${showWeekends ? "grid-cols-7" : "grid-cols-5"} gap-0.5 text-center text-[11px] font-medium text-slate-400 dark:text-[#9e9e9e] mb-1`}>
         {getOrderedDayKeys("monday").filter(key => {
           if (showWeekends) return true;
           return key !== 'sat' && key !== 'sun';
@@ -47,8 +47,8 @@ function MonthCard({ year, month, onDayClick, events = [], appSettings = {} }) {
                 className={`w-7 h-7 mx-auto flex items-center justify-center rounded-full transition-colors
                   ${
                     !cell.isCurrentMonth
-                      ? "text-slate-300 pointer-events-none"
-                      : "cursor-pointer text-slate-700 hover:bg-slate-100"
+                      ? "text-slate-300 dark:text-[#616161] pointer-events-none"
+                      : "cursor-pointer text-slate-700 dark:text-[#e3e3e3] hover:bg-slate-100 dark:hover:bg-[#353535]"
                   }
                   ${cell.isToday ? "!bg-blue-600 !text-white font-bold" : ""}`}
               >

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+﻿import React, { useState, useRef } from "react";
 import { MapPin, Search, ExternalLink } from "lucide-react";
 import { t } from "@/lib/i18n";
 
@@ -9,28 +9,28 @@ export default function MapsPanel({ appSettings }) {
   const mapInputRef = useRef(null);
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      <div className="px-4 py-3 border-b border-slate-100">
-        <h2 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+    <div className="flex flex-col h-full bg-white dark:bg-[#2d2d2d]">
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-[#484848]">
+        <h2 className="text-sm font-bold text-slate-700 dark:text-[#e3e3e3] flex items-center gap-2">
           <MapPin className="w-4 h-4 text-red-500" /> {t('sidebar_tools.maps', lang)}
         </h2>
       </div>
       {/* Search */}
-      <div className="px-3 py-2 border-b border-slate-100">
+      <div className="px-3 py-2 border-b border-slate-100 dark:border-[#484848]">
         <form
           onSubmit={(e) => {
             e.preventDefault();
             if (mapQuery.trim()) setMapSearch(mapQuery.trim());
           }}
-          className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2 border border-transparent focus-within:border-blue-300 transition-colors"
+          className="flex items-center gap-2 bg-slate-50 dark:bg-[#1f1f1f] rounded-lg px-3 py-2 border border-transparent focus-within:border-blue-300 transition-colors"
         >
-          <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          <Search className="w-4 h-4 text-slate-400 dark:text-[#9e9e9e] flex-shrink-0" />
           <input
             ref={mapInputRef}
             value={mapQuery}
             onChange={(e) => setMapQuery(e.target.value)}
             placeholder={t('maps_panel.search_placeholder', lang)}
-            className="flex-1 text-sm bg-transparent outline-none text-slate-700 placeholder-slate-400"
+            className="flex-1 text-sm bg-transparent outline-none text-slate-700 dark:text-[#e3e3e3] placeholder-slate-400 dark:placeholder-[#757575]"
           />
           {mapQuery && (
             <button
@@ -56,7 +56,7 @@ export default function MapsPanel({ appSettings }) {
         />
       </div>
       {/* Open in Maps link */}
-      <div className="px-4 py-2 border-t border-slate-100">
+      <div className="px-4 py-2 border-t border-slate-100 dark:border-[#484848]">
         <a
           href={`https://maps.google.com/maps?q=${encodeURIComponent(mapSearch)}`}
           target="_blank"

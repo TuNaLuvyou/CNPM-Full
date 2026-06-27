@@ -1,9 +1,9 @@
-import React from "react";
+﻿import React from "react";
 import Tooltip from "../../ui/Tooltip";
 
 export default function SidebarStrip({ buttons, rightPanel, toggleRightPanel }) {
   return (
-    <div className="w-12 border-l border-slate-200 bg-white flex-shrink-0 flex flex-col items-center py-3 gap-1">
+    <div className="w-12 border-l border-slate-200 dark:border-[#3c3c3c] bg-white dark:bg-[#2a2a2a] flex-shrink-0 flex flex-col items-center py-3 gap-1">
       {buttons.map((btn) => (
         <Tooltip key={btn.id} label={btn.label} position="left">
           <button
@@ -12,7 +12,7 @@ export default function SidebarStrip({ buttons, rightPanel, toggleRightPanel }) 
               ${
                 rightPanel === btn.id
                   ? `${btn.activeBg} ${btn.activeColor}`
-                  : `${btn.activeColor} hover:bg-slate-100`
+                  : `${btn.activeColor} hover:bg-slate-100 dark:hover:bg-[#353535]`
               }`}
           >
             {btn.icon}

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Clock, MapPin, AlignLeft, Paperclip, Palette, Tag, X } from 'lucide-react';
 import { FieldRow, InputBase, TextareaBase, EVENT_COLORS, toDateInputVal, toTimeInputVal, DateTimeSelector } from './FormHelpers';
@@ -99,7 +99,7 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
                         <InputBase type="date" value={form.date} onChange={set('date')} />
                         <div className="flex items-center gap-2">
                             <InputBase type="time" value={form.timeStart} onChange={set('timeStart')} className="flex-1" />
-                            <span className="text-slate-400 text-sm flex-shrink-0">đến</span>
+                            <span className="text-slate-400 dark:text-[#9e9e9e] text-sm flex-shrink-0">đến</span>
                             <InputBase type="time" value={form.timeEnd}   onChange={set('timeEnd')}   className="flex-1" />
                         </div>
                     </div>
@@ -118,25 +118,25 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
 
             <FieldRow icon={Paperclip}>
                 {!selectedFile ? (
-                    <label className="flex items-center justify-between w-full px-3 py-2 text-sm border border-dashed border-slate-300 rounded-lg hover:border-blue-400 hover:bg-blue-50/30 transition-all cursor-pointer group">
+                    <label className="flex items-center justify-between w-full px-3 py-2 text-sm border border-dashed border-slate-300 dark:border-[#484848] rounded-lg hover:border-blue-400 hover:bg-blue-50/30 dark:hover:border-[#bdbdbd] dark:hover:bg-[#353535] transition-all cursor-pointer group">
                         <input type="file" className="hidden" onChange={handleFileChange} />
-                        <span className="text-slate-500 group-hover:text-blue-600 transition-colors">{t('create_modal.attach_file', lang)}</span>
-                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded group-hover:bg-blue-100 group-hover:text-blue-500 transition-all">{t('create_modal.upload', lang)}</span>
+                        <span className="text-slate-500 dark:text-[#9e9e9e] group-hover:text-blue-600 dark:group-hover:text-[#e3e3e3] transition-colors">{t('create_modal.attach_file', lang)}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-[#9e9e9e] bg-slate-100 dark:bg-[#353535] px-1.5 py-0.5 rounded group-hover:bg-blue-100 group-hover:text-blue-500 dark:group-hover:bg-[#484848] dark:group-hover:text-[#e3e3e3] transition-all">{t('create_modal.upload', lang)}</span>
                     </label>
                 ) : (
-                    <div className="flex items-center justify-between w-full px-3 py-2 text-sm border border-blue-200 bg-blue-50/50 rounded-lg group animate-in zoom-in-95 duration-200">
+                    <div className="flex items-center justify-between w-full px-3 py-2 text-sm border border-blue-200 bg-blue-50/50 dark:border-[#484848] dark:bg-[#353535] rounded-lg group animate-in zoom-in-95 duration-200">
                         <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                <Paperclip className="w-4 h-4 text-blue-600" />
+                            <div className="w-8 h-8 rounded bg-blue-100 dark:bg-[#484848] flex items-center justify-center flex-shrink-0">
+                                <Paperclip className="w-4 h-4 text-blue-600 dark:text-[#e3e3e3]" />
                             </div>
                             <div className="flex flex-col min-w-0">
-                                <span className="text-slate-700 font-medium truncate text-[13px]">{selectedFile.name}</span>
-                                <span className="text-slate-400 text-[10px]">{selectedFile.size}</span>
+                                <span className="text-slate-700 dark:text-[#e3e3e3] font-medium truncate text-[13px]">{selectedFile.name}</span>
+                                <span className="text-slate-400 dark:text-[#9e9e9e] text-[10px]">{selectedFile.size}</span>
                             </div>
                         </div>
                         <button 
                             onClick={handleRemoveFile}
-                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                            className="p-1.5 text-slate-400 dark:text-[#9e9e9e] hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
                             title="Gỡ bỏ"
                         >
                             <X className="w-4 h-4" />
@@ -149,7 +149,7 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
                 <select
                     value={form.category}
                     onChange={set('category')}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 cursor-pointer"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-[#484848] rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 dark:bg-[#1f1f1f] text-slate-800 dark:text-[#e3e3e3] cursor-pointer"
                 >
                     {appSettings?.customCategories?.map(cat => (
                         <option key={cat} value={cat}>{cat}</option>
@@ -164,7 +164,7 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
                             type="button"
                             onClick={() => setForm(p => ({ ...p, color: c.value }))}
                             className={`w-7 h-7 rounded-full ${c.cls} transition-transform hover:scale-110
-                                ${form.color === c.value ? 'ring-2 ring-offset-2 ring-slate-400 scale-110' : ''}`}
+                                ${form.color === c.value ? 'ring-2 ring-offset-2 dark:ring-offset-[#2d2d2d] ring-slate-400 dark:ring-[#484848] scale-110' : ''}`}
                         />
                     ))}
                 </div>

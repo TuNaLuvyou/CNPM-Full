@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+﻿import React, { useEffect, useRef } from "react";
 import { X, Calendar as CalendarIcon, Clock, CheckCircle, Circle } from "lucide-react";
 import { DAY_NAMES, MONTH_NAMES } from "../../lib/CalendarHelper";
 import { t } from "@/lib/i18n";
@@ -76,26 +76,26 @@ export default function YearDayPopup({
       <div
         ref={popupRef}
         style={finalStyle}
-        className="year-day-popup absolute pointer-events-auto w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="year-day-popup absolute pointer-events-auto w-64 bg-white dark:bg-[#2d2d2d] rounded-2xl shadow-2xl border border-slate-200 dark:border-[#484848] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
       >
         {/* ══ HEADER ══ */}
-        <div className="p-4 flex flex-col items-center relative border-b border-slate-100 bg-slate-50/30">
+        <div className="p-4 flex flex-col items-center relative border-b border-slate-100 dark:border-[#484848] bg-slate-50/30">
           <button
             onClick={onClose}
-            className="absolute right-3 top-3 p-1 hover:bg-slate-200 rounded-full transition-colors"
+            className="absolute right-3 top-3 p-1 hover:bg-slate-200 dark:hover:bg-[#484848] rounded-full transition-colors"
           >
-            <X className="w-4 h-4 text-slate-400" />
+            <X className="w-4 h-4 text-slate-400 dark:text-[#9e9e9e]" />
           </button>
 
           <button
             onClick={() => onNavigateToDay(date)}
             className="flex flex-col items-center group"
           >
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 group-hover:text-blue-600 transition-colors">
+            <span className="text-xs font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-widest mb-1 group-hover:text-blue-600 transition-colors">
               {dayName}
             </span>
-            <div className="w-12 h-12 flex items-center justify-center rounded-full group-hover:bg-slate-100 transition-all duration-300 bg-white">
-              <span className="text-2xl font-bold text-slate-800 transition-colors">
+            <div className="w-12 h-12 flex items-center justify-center rounded-full group-hover:bg-slate-100 dark:hover:bg-[#353535] transition-all duration-300 bg-white dark:bg-[#2d2d2d]">
+              <span className="text-2xl font-bold text-slate-800 dark:text-[#f5f5f5] transition-colors">
                 {date.getDate()}
               </span>
             </div>
@@ -103,18 +103,18 @@ export default function YearDayPopup({
         </div>
 
         {/* ══ EVENTS LIST ══ */}
-        <div className="flex-1 overflow-y-auto max-h-60 p-4 bg-white">
+        <div className="flex-1 overflow-y-auto max-h-60 p-4 bg-white dark:bg-[#2d2d2d]">
           {events.length > 0 ? (
             <div className="space-y-3">
               {events.map((ev, i) => (
                 <div
                   key={i}
                   onClick={(e) => { e.stopPropagation(); onEventClick?.(ev, e); }}
-                  className="flex gap-3 items-start p-2 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors active:scale-95"
+                  className="flex gap-3 items-start p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#353535] cursor-pointer transition-colors active:scale-95"
                 >
                   <div className="flex-shrink-0 mt-1">
                     {ev.event_type === 'task' ? (
-                      ev.is_completed ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> : <Circle className="w-3.5 h-3.5 text-slate-400" />
+                      ev.is_completed ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> : <Circle className="w-3.5 h-3.5 text-slate-400 dark:text-[#9e9e9e]" />
                     ) : ev.event_type === 'appointment' ? (
                       <CalendarIcon className="w-3.5 h-3.5 text-purple-500" />
                     ) : (
@@ -122,10 +122,10 @@ export default function YearDayPopup({
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-700 truncate">
+                    <p className="text-sm font-semibold text-slate-700 dark:text-[#e3e3e3] truncate">
                       {ev.title}
                     </p>
-                    <p className="text-[11px] text-slate-400 font-medium">
+                    <p className="text-[11px] text-slate-400 dark:text-[#9e9e9e] font-medium">
                       {ev.time_start_display
                         ? `${ev.time_start_display} ${ev.time_end_display ? `- ${ev.time_end_display}` : ""}`
                         : t('all_day', lang)}
@@ -135,7 +135,7 @@ export default function YearDayPopup({
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center text-slate-400">
+            <div className="flex flex-col items-center justify-center py-8 text-center text-slate-400 dark:text-[#9e9e9e]">
               <CalendarIcon className="w-10 h-10 mb-2 opacity-10" />
               <p className="text-sm font-medium italic px-4">
                 {t('no_events_day', lang)}
