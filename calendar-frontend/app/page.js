@@ -524,12 +524,16 @@ export default function CalendarApp() {
     if (appSettings.notificationType === "off") return;
 
     const checkReminders = () => {
-        const now = getVNTime();
-        const reminderWindowMs = appSettings.notificationMinutes * 60 * 1000;
+        // Dùng new Date() (UTC-aware) để so sánh với start_time (ISO UTC string từ server)
+        const now = new Date();
+        const minutes = appSettings.notificationMinutes;
+        const reminderWindowMs = minutes * 60 * 1000;
         
         const upcoming = events.filter(ev => {
-            if (ev.is_completed || notifiedEventsRef.current.has(ev.id)) return false;
-            const startTime = new Date(ev.start_time);
+            // Dùng composite key id+minutes: nếu user đổi số phút thì sự kiện được nhắc lại với cài đặt mới
+            const evKey = `${String(ev.id)}-${minutes}`;
+            if (ev.is_completed || notifiedEventsRef.current.has(evKey)) return false;
+            const startTime = new Date(ev.start_time); // parse ISO string -> UTC
             const timeDiff = startTime - now;
             // Trả về true nếu sự kiện sắp diễn ra trong khoảng reminderWindow
             return timeDiff > 0 && timeDiff <= reminderWindowMs;
@@ -540,16 +544,19 @@ export default function CalendarApp() {
                 id: `remind-${ev.id}-${Date.now()}`,
                 type: ev.event_type || "event",
                 title: `${ev.title}`,
-                desc: t('upcoming_start', appSettings.language, [appSettings.notificationMinutes]),
+                desc: t('upcoming_start', appSettings.language, [minutes]),
                 read: false,
                 timestamp: new Date()
             }));
 
             setNotifications(prev => [...newNotifs, ...prev]);
-            upcoming.forEach(ev => notifiedEventsRef.current.add(ev.id));
+            // Đánh dấu với composite key để khi đổi số phút thì sự kiện được nhắc lại
+            upcoming.forEach(ev => notifiedEventsRef.current.add(`${String(ev.id)}-${minutes}`));
         }
     };
 
+    // Chạy ngay lập tức lần đầu, không chờ 30s mới kiểm tra
+    checkReminders();
     const interval = setInterval(checkReminders, 30000); // Check mỗi 30s
     return () => clearInterval(interval);
   }, [events, appSettings]);

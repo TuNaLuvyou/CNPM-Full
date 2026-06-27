@@ -55,7 +55,7 @@ class EventSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'event_type', 'user', 'owner_name', 'owner_email', 'is_owner', 'is_invitee', 'my_permission',
             'calendar_group', 'recurrence_rule',
-            'title', 'description', 'location', 'link', 'color', 
+            'title', 'category', 'description', 'location', 'link', 'color', 
             'is_all_day', 'deleted_at',
             'start_time', 'end_time', 'created_at', 'updated_at',
             'date', 'timeStart', 'timeEnd',
@@ -161,6 +161,11 @@ class EventSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         request = self.context.get('request')
+
+        # Nếu start_time bị thay đổi → reset reminder_sent để scheduler gửi lại thông báo đúng giờ mới
+        if 'start_time' in validated_data and validated_data['start_time'] != instance.start_time:
+            validated_data['reminder_sent'] = False
+
         # Standard update
         instance = super().update(instance, validated_data)
         

@@ -4,3 +4,4 @@ cryptography
 djangorestframework
 django-cors-headers
 python-dotenv
+apscheduler

@@ -4,6 +4,7 @@ from django.utils.html import strip_tags
 from datetime import datetime, timedelta
 from django.utils import timezone
 from .models import Event, Notification, ReminderPreference
+from accounts.models import UserSettings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,13 @@ def should_send_email_notification(user):
     pref = get_user_reminder_preference(user)
     return pref in ['email', 'both']
 
+def get_user_notification_minutes(user):
+    """Get user's notification_minutes from UserSettings (defaults to 15 if not set)"""
+    try:
+        return user.settings.notification_minutes
+    except UserSettings.DoesNotExist:
+        return 15
+
 def create_reminder_notification(event):
     """Create a reminder notification in the system"""
     try:
@@ -38,8 +46,9 @@ def create_reminder_notification(event):
             logger.info(f"App notification disabled for user {user.username}")
             return None
         
-        # Format event time
-        event_time = event.start_time.strftime('%H:%M ngày %d/%m/%Y')
+        # Format event time using local timezone (not raw UTC)
+        local_start = timezone.localtime(event.start_time)
+        event_time = local_start.strftime('%H:%M ngày %d/%m/%Y')
         
         # Create notification content
         content = f"Sắp đến giờ của sự kiện '{event.title}' lúc {event_time}"
@@ -75,9 +84,13 @@ def send_event_reminder_email(event):
             logger.warning(f"User {user.username} has no email address")
             return False
         
-        # Format event time
-        event_time = event.start_time.strftime('%H:%M ngày %d/%m/%Y')
+        # Format event time using local timezone (not raw UTC)
+        local_start = timezone.localtime(event.start_time)
+        event_time = local_start.strftime('%H:%M ngày %d/%m/%Y')
         
+        # Get reminder minutes from user settings (not from event model default)
+        reminder_minutes = get_user_notification_minutes(user)
+
         # Email context
         context = {
             'username': user.first_name or user.username,
@@ -85,7 +98,7 @@ def send_event_reminder_email(event):
             'event_time': event_time,
             'event_location': event.location or 'Không xác định',
             'event_description': event.description or 'Không có mô tả',
-            'reminder_minutes': event.reminder_minutes,
+            'reminder_minutes': reminder_minutes,
         }
         
         # Create email content
@@ -133,8 +146,11 @@ def check_and_send_reminders():
             time_until_event = event.start_time - now
             minutes_until = time_until_event.total_seconds() / 60
             
+            # Use user's notification_minutes from UserSettings (not event-level default)
+            user_reminder_minutes = get_user_notification_minutes(event.user)
+
             # Send reminder if we're within the reminder window
-            if minutes_until <= event.reminder_minutes + 1:  # +1 for timing tolerance
+            if minutes_until <= user_reminder_minutes + 1:  # +1 for timing tolerance
                 user_pref = get_user_reminder_preference(event.user)
                 
                 # Skip if preference is 'off'

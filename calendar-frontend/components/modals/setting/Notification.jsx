@@ -49,7 +49,22 @@ export default function Notification({ s, set, lang }) {
                             min={1}
                             max={120}
                             value={s.notificationMinutes}
-                            onChange={(e) => set("notificationMinutes", Math.max(1, Math.min(120, Number(e.target.value))))}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === "") {
+                                    set("notificationMinutes", "");
+                                } else {
+                                    const num = parseInt(val, 10);
+                                    if (!isNaN(num)) {
+                                        set("notificationMinutes", Math.min(120, num));
+                                    }
+                                }
+                            }}
+                            onBlur={() => {
+                                if (s.notificationMinutes === "" || Number(s.notificationMinutes) < 1) {
+                                    set("notificationMinutes", 1);
+                                }
+                            }}
                             className="w-16 text-sm text-center border border-slate-200 rounded-xl px-2 py-2 text-slate-700
                 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
                         />

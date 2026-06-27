@@ -40,6 +40,7 @@ class Event(models.Model):
     calendar_group = models.ForeignKey(CalendarGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name='events')
     
     title = models.CharField(max_length=255)
+    category = models.CharField(max_length=100, default='Mặc định', blank=True)
     description = models.TextField(blank=True, null=True)
     location = models.CharField(max_length=255, blank=True, null=True)
     link = models.URLField(blank=True, null=True)
