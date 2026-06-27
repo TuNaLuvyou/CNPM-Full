@@ -32,7 +32,7 @@ export default function SettingsDropdown({
               setIsSettingsModalOpen(true);
               setIsSettingsOpen(false);
             }}
-            className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#2d2d2d] dark:hover:bg-[#353535] flex items-center gap-3 text-sm text-slate-700 dark:text-[#d4d4d4] transition"
+            className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#353535] flex items-center gap-3 text-sm text-slate-700 dark:text-white transition"
           >
             <Settings className="w-4 h-4 text-slate-400 dark:text-[#9e9e9e]" /> {t('settings', lang)}
           </button>

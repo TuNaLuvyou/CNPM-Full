@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import SearchBar from "./SearchBar";
 import UserMenu from "./UserMenu";
@@ -103,7 +103,7 @@ export default function Header({
       <div className="flex items-center space-x-4">
         <button
           onClick={goToToday}
-          className="px-4 py-2 border border-slate-200 dark:border-[#484848] rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-[#2d2d2d] dark:hover:bg-[#353535] text-slate-700 dark:text-[#bdbdbd] transition relative z-50"
+          className="px-4 py-2 border border-slate-200 dark:border-[#484848] rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-[#353535] text-slate-700 dark:text-white transition relative z-50"
         >
           {t('today', lang)}
         </button>
