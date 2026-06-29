@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Clock, Link, MapPin, AlignLeft, Paperclip, Palette, Tag, X, Repeat, Layers } from 'lucide-react';
 import { FieldRow, InputBase, TextareaBase, EVENT_COLORS, toDateInputVal, toTimeInputVal, DateTimeSelector } from './FormHelpers';
@@ -28,7 +28,13 @@ export default function EventForm({ now, duration, isInteracting, onSave, initia
     });
 
     const [submitted, setSubmitted] = useState(false);
-    const [selectedFile, setSelectedFile] = useState(null);
+    const [selectedFile, setSelectedFile] = useState(() => {
+        if (initialData?.attachment) {
+            const fileName = initialData.attachment.split('/').pop();
+            return { name: fileName, url: initialData.attachment, isExisting: true };
+        }
+        return null;
+    });
 
     // ── Guests Hook ──
     const {
@@ -53,7 +59,7 @@ export default function EventForm({ now, duration, isInteracting, onSave, initia
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            setSelectedFile({ name: file.name, size: (file.size / 1024).toFixed(1) + ' KB' });
+            setSelectedFile(file);
         }
     };
 
@@ -152,11 +158,19 @@ export default function EventForm({ now, duration, isInteracting, onSave, initia
                                 <Paperclip className="w-4 h-4 text-blue-600 dark:text-[#e3e3e3]" />
                             </div>
                             <div className="flex flex-col min-w-0">
-                                <span className="text-slate-700 dark:text-[#e3e3e3] font-medium truncate text-[13px]">{selectedFile.name}</span>
-                                <span className="text-slate-400 dark:text-[#9e9e9e] text-[10px]">{selectedFile.size}</span>
+                                {selectedFile.isExisting ? (
+                                    <a href={selectedFile.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 font-medium truncate text-[13px] hover:underline">
+                                        {selectedFile.name}
+                                    </a>
+                                ) : (
+                                    <span className="text-slate-700 dark:text-[#e3e3e3] font-medium truncate text-[13px]">{selectedFile.name}</span>
+                                )}
+                                <span className="text-slate-400 dark:text-[#9e9e9e] text-[10px]">
+                                    {!selectedFile.isExisting && selectedFile.size ? (selectedFile.size / 1024).toFixed(1) + ' KB' : 'Đính kèm'}
+                                </span>
                             </div>
                         </div>
-                        <button onClick={handleRemoveFile} className="p-1.5 text-slate-400 dark:text-[#9e9e9e] hover:text-red-500 hover:bg-red-50 rounded-full transition-all">
+                        <button type="button" onClick={handleRemoveFile} className="p-1.5 text-slate-400 dark:text-[#9e9e9e] hover:text-red-500 hover:bg-red-50 rounded-full transition-all">
                             <X className="w-4 h-4" />
                         </button>
                     </div>
@@ -164,12 +178,18 @@ export default function EventForm({ now, duration, isInteracting, onSave, initia
             </FieldRow>
 
             <FieldRow icon={Tag}>
-                <select value={form.category} onChange={set('category')}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-[#484848] rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 dark:bg-[#1f1f1f] text-slate-800 dark:text-[#e3e3e3] cursor-pointer">
-                    {appSettings?.customCategories?.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                </select>
+                {isOwner ? (
+                    <select value={form.category} onChange={set('category')}
+                        className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-[#484848] rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition bg-slate-50 dark:bg-[#1f1f1f] text-slate-800 dark:text-[#e3e3e3] cursor-pointer">
+                        {appSettings?.customCategories?.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                    </select>
+                ) : (
+                    <div className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-[#484848] rounded-lg bg-slate-100 dark:bg-[#2a2a2a] text-slate-500 dark:text-[#9e9e9e] cursor-not-allowed">
+                        {initialData?.owner_email}
+                    </div>
+                )}
             </FieldRow>
 
             <FieldRow icon={Repeat}>

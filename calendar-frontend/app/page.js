@@ -12,6 +12,7 @@ import Calendar from "@/components/widgets/Calendar";
 import CreateModal from "@/components/modals/CreateEventModal";
 import YearDayPopup from "@/components/widgets/YearDayPopup";
 import { getLocalizedTime, getVNTime, formatDateLocal, buildWeekDays, buildMonthCells, DAY_NAMES, MONTH_NAMES } from "@/lib/CalendarHelper";
+import { getHolidayEventsForRange } from "@/lib/holidays";
 import { getEvents, getTasks, updateEvent, updateTask, toggleTask, trashEvent, trashTask,
   getMe, getTrashedEvents, getTrashedTasks, restoreEvent, permanentDeleteEvent, restoreTask, permanentDeleteTask,
   getNotifications, getFavoriteCalendars
@@ -633,8 +634,35 @@ export default function CalendarApp() {
     setSelectedDate(now);
   }, []);
 
+  // ── Holiday events (thuần frontend, tính theo viewDate range) ──────────────
+  const holidayEvents = React.useMemo(() => {
+    let dateFrom, dateTo;
+    if (view === "day") {
+      const d = formatDateLocal(selectedDate);
+      dateFrom = d; dateTo = d;
+    } else if (view === "week" || view === "work_week") {
+      const days = buildWeekDays(viewDate);
+      dateFrom = formatDateLocal(days[0].fullDate);
+      dateTo = formatDateLocal(days[days.length - 1].fullDate);
+    } else if (view === "month") {
+      const y = viewDate.getFullYear(), m = viewDate.getMonth();
+      // Mở rộng thêm 1 tuần trước/sau để cover ô lịch tháng
+      dateFrom = formatDateLocal(new Date(y, m, -6));
+      dateTo = formatDateLocal(new Date(y, m + 1, 7));
+    } else if (view === "year") {
+      dateFrom = `${viewDate.getFullYear()}-01-01`;
+      dateTo = `${viewDate.getFullYear()}-12-31`;
+    } else {
+      // Fallback: tháng hiện tại
+      const y = viewDate.getFullYear(), m = viewDate.getMonth();
+      dateFrom = formatDateLocal(new Date(y, m, 1));
+      dateTo = formatDateLocal(new Date(y, m + 1, 0));
+    }
+    return getHolidayEventsForRange(dateFrom, dateTo, appSettings, visibleHolidays);
+  }, [view, viewDate, selectedDate, appSettings.vietnamHolidays, appSettings.worldHolidays, appSettings.otherHolidays, appSettings.language, visibleHolidays]);
+
   const filteredEvents = React.useMemo(() => {
-    return events.filter(ev => {
+    const regularFiltered = events.filter(ev => {
         const cat = ev.category || 'Mặc định';
         const isMyEvent = ev.user === currentUser?.id;
         
@@ -656,7 +684,8 @@ export default function CalendarApp() {
             return visibleCategories.includes(cat) && isFriendChecked;
         }
     });
-  }, [events, visibleCategories, visibleFriends, currentUser?.id, appSettings.showFriendsCalendars]);
+    return [...regularFiltered, ...holidayEvents];
+  }, [events, visibleCategories, visibleFriends, currentUser?.id, appSettings.showFriendsCalendars, holidayEvents]);
 
   // Giữ editingItem luôn tươi mới nếu data background thay đổi (Move to after initialization)
   useEffect(() => {
@@ -853,18 +882,20 @@ export default function CalendarApp() {
   };
 
   // Filter events based on settings (Completed tasks, Categories, etc.)
-  const filteredEventsForComponents = events.filter(ev => {
-    // 1. Task completion filter
-    if (ev.event_type === 'task' && ev.is_completed && !appSettings.showCompletedTasks) return false;
+  const filteredEventsForComponents = [
+    ...events.filter(ev => {
+      // 1. Task completion filter
+      if (ev.event_type === 'task' && ev.is_completed && !appSettings.showCompletedTasks) return false;
 
-    // 2. Category visibility filter
-    // If an event has a category, it must be in visibleCategories
-    if (ev.category && !visibleCategories.includes(ev.category)) return false;
+      // 2. Category visibility filter
+      // If an event has a category, it must be in visibleCategories
+      if (ev.category && !visibleCategories.includes(ev.category)) return false;
 
-    // 3. (Optional) Holiday filters can be added here if holidays are represented as events
-    
-    return true;
-  });
+      return true;
+    }),
+    // 3. Merge holiday events
+    ...holidayEvents,
+  ];
 
   return (
     <>
@@ -1071,7 +1102,7 @@ export default function CalendarApp() {
         onClose={() => setYearDayPopup({ ...yearDayPopup, isOpen: false })}
         onNavigateToDay={handleNavigateFromYearPopup}
         appSettings={appSettings}
-        events={events.filter(ev => formatDateLocal(new Date(ev.start_time)) === formatDateLocal(yearDayPopup.date))}
+        events={filteredEvents.filter(ev => formatDateLocal(new Date(ev.start_time)) === formatDateLocal(yearDayPopup.date))}
         onEventClick={(ev, e) => {
           const pos = e ? { x: e.clientX, y: e.clientY } : null;
           openCreate(ev.event_type || 'event', ev, pos);

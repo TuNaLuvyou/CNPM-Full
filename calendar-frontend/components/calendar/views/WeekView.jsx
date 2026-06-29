@@ -18,9 +18,12 @@ export default function WeekView({
   onToggleTask,
   appSettings,
 }) {
+  // Tách holiday events để hiển trong CalendarHeader (banner), không đưa lên time grid
+  const nonHolidayEvents = events.filter(ev => !ev.is_holiday);
+
   return (
     <>
-      <CalendarHeader weekDays={weekDays} onDayClick={handleDayClick} appSettings={appSettings} />
+      <CalendarHeader weekDays={weekDays} onDayClick={handleDayClick} appSettings={appSettings} events={events} />
       <TimeGrid
         mode="week"
         weekDays={weekDays}
@@ -31,7 +34,7 @@ export default function WeekView({
         onInteractionEnd={onInteractionEnd}
         onInteractionUpdate={onInteractionUpdate}
         setSelectedDate={setSelectedDate}
-        events={events}
+        events={nonHolidayEvents}
         onEventClick={onEventClick}
         onEventUpdate={onEventUpdate}
         onToggleTask={onToggleTask}

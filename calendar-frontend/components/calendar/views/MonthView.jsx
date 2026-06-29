@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { Circle, CheckCircle, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { DAY_NAMES, formatDateLocal, getOrderedDayLabels, getWeekNumber } from "../../../lib/CalendarHelper";
@@ -19,6 +19,27 @@ export default function MonthView({
     const dStr = formatDateLocal(fullDate);
     return events.filter(ev => formatDateLocal(new Date(ev.start_time)) === dStr);
   }
+
+  function getHolidaysForCell(fullDate) {
+    const dStr = formatDateLocal(fullDate);
+    return events.filter(ev => ev.is_holiday && formatDateLocal(new Date(ev.start_time)) === dStr);
+  }
+
+  function getRegularEventsForCell(fullDate) {
+    const dStr = formatDateLocal(fullDate);
+    return events.filter(ev => !ev.is_holiday && formatDateLocal(new Date(ev.start_time)) === dStr);
+  }
+
+  // Colour pill cho holiday
+  const holidayColors = {
+    red: 'bg-red-100 border-red-200 text-red-700 hover:bg-red-200',
+    amber: 'bg-amber-100 border-amber-200 text-amber-700 hover:bg-amber-200',
+    purple: 'bg-purple-100 border-purple-200 text-purple-700 hover:bg-purple-200',
+    pink: 'bg-pink-100 border-pink-200 text-pink-700 hover:bg-pink-200',
+    green: 'bg-green-100 border-green-200 text-green-700 hover:bg-green-200',
+    orange: 'bg-orange-100 border-orange-200 text-orange-700 hover:bg-orange-200',
+    teal: 'bg-teal-100 border-teal-200 text-teal-700 hover:bg-teal-200',
+  };
 
   const [draggingId, setDraggingId] = React.useState(null);
 
@@ -151,7 +172,22 @@ export default function MonthView({
                     </div>
                 )}
 
-                {cellEvents.map((ev) => {
+                {/* Holiday events — hiển thị ở đầu ô ngày */}
+                {getHolidaysForCell(cell.fullDate).map((ev) => {
+                    const hColor = holidayColors[ev.color] || holidayColors.red;
+                    return (
+                        <div
+                            key={ev.id}
+                            className={`text-[9px] px-1 py-0.5 rounded border truncate leading-tight cursor-default flex items-center gap-1 ${hColor}`}
+                        >
+                            <span className="flex-shrink-0">🎉</span>
+                            <span className="font-semibold truncate">{ev.title}</span>
+                        </div>
+                    );
+                })}
+
+                {/* Regular events */}
+                {getRegularEventsForCell(cell.fullDate).map((ev) => {
                     const colors = {
                         blue: 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100',
                         purple: 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100',

@@ -19,6 +19,9 @@ export default function DayView({
   onToggleTask,
   appSettings,
 }) {
+  // Tách holiday events để hiển trong CalendarHeader (banner), không đưa lên time grid
+  const nonHolidayEvents = events.filter(ev => !ev.is_holiday);
+
   return (
     <>
       <CalendarHeader
@@ -27,6 +30,7 @@ export default function DayView({
         selectedDayName={selectedDayName}
         isSelectedToday={isSelectedToday}
         appSettings={appSettings}
+        events={events}
       />
       <TimeGrid
         mode="day"
@@ -37,7 +41,7 @@ export default function DayView({
         onInteractionEnd={onInteractionEnd}
         onInteractionUpdate={onInteractionUpdate}
         setSelectedDate={setSelectedDate}
-        events={events}
+        events={nonHolidayEvents}
         onEventClick={onEventClick}
         onEventUpdate={onEventUpdate}
         onToggleTask={onToggleTask}

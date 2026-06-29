@@ -1,4 +1,4 @@
-﻿import { buildMonthCells, MONTH_NAMES, formatDateLocal, getOrderedDayKeys } from "../../../lib/CalendarHelper";
+import { buildMonthCells, MONTH_NAMES, formatDateLocal, getOrderedDayKeys } from "../../../lib/CalendarHelper";
 import { t } from "@/lib/i18n";
 
 function MonthCard({ year, month, onDayClick, events = [], appSettings = {} }) {
@@ -8,7 +8,12 @@ function MonthCard({ year, month, onDayClick, events = [], appSettings = {} }) {
   
   const hasEvent = (date) => {
     const dStr = formatDateLocal(date);
-    return events.some(ev => formatDateLocal(new Date(ev.start_time)) === dStr);
+    return events.some(ev => !ev.is_holiday && formatDateLocal(new Date(ev.start_time)) === dStr);
+  };
+
+  const hasHoliday = (date) => {
+    const dStr = formatDateLocal(date);
+    return events.some(ev => ev.is_holiday && formatDateLocal(new Date(ev.start_time)) === dStr);
   };
 
   return (
@@ -36,6 +41,7 @@ function MonthCard({ year, month, onDayClick, events = [], appSettings = {} }) {
           return d !== 0 && d !== 6;
         }).map((cell, idx) => {
           const hasEv = cell.isCurrentMonth && hasEvent(cell.fullDate);
+          const hasHol = cell.isCurrentMonth && hasHoliday(cell.fullDate);
           
           return (
             <div
@@ -48,15 +54,19 @@ function MonthCard({ year, month, onDayClick, events = [], appSettings = {} }) {
                   ${
                     !cell.isCurrentMonth
                       ? "text-slate-300 dark:text-[#616161] pointer-events-none"
-                      : "cursor-pointer text-slate-700 dark:text-[#e3e3e3] hover:bg-slate-100 dark:hover:bg-[#353535]"
+                      : hasHol
+                        ? "cursor-pointer text-red-600 dark:text-red-400 font-semibold hover:bg-red-50 dark:hover:bg-red-900/20"
+                        : "cursor-pointer text-slate-700 dark:text-[#e3e3e3] hover:bg-slate-100 dark:hover:bg-[#353535]"
                   }
                   ${cell.isToday ? "!bg-blue-600 !text-white font-bold" : ""}`}
               >
                 {cell.num}
               </div>
-              {hasEv && (
-                <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full" />
-              )}
+              {/* Dots: đỏ cho ngày lễ, xanh cho event thường */}
+              <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
+                {hasHol && <div className="w-1 h-1 bg-red-400 rounded-full" />}
+                {hasEv && <div className="w-1 h-1 bg-blue-500 rounded-full" />}
+              </div>
             </div>
           );
         })}

@@ -1,4 +1,4 @@
-﻿import { Users, Calendar as CalendarIcon, CheckCircle, Circle, Clock } from 'lucide-react';
+import { Users, Calendar as CalendarIcon, CheckCircle, Circle, Clock, MapPin } from 'lucide-react';
 import { t } from '@/lib/i18n';
 
 export default function Event({ 
@@ -94,7 +94,7 @@ export default function Event({
             <div className="mt-1.5 space-y-1">
                 {location && (
                     <p className={`text-[9px] flex items-center ${finalTheme.text} truncate`}>
-                        <Users className="w-2.5 h-2.5 mr-1" /> {location}
+                        <MapPin className="w-2.5 h-2.5 mr-1" /> {location}
                     </p>
                 )}
                 {showDescription && (

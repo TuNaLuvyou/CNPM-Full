@@ -98,6 +98,16 @@ class EventViewSet(viewsets.ModelViewSet):
             invitation.delete()
             # Clear notifications related to this event for this user
             Notification.objects.filter(user=request.user, event=event).delete()
+            
+            # Thông báo cho chủ sự kiện
+            if event.user != request.user:
+                Notification.objects.create(
+                    user=event.user,
+                    ntype='declined',
+                    event=event,
+                    content=f"{request.user.username} đã rời khỏi sự kiện: {event.title}"
+                )
+                
             return Response({"status": "left"})
         return Response({"error": "Not a participant"}, status=400)
 
@@ -160,6 +170,15 @@ class InvitationViewSet(viewsets.ViewSet):
             invite = EventInvitation.objects.get(event_id=pk, invitee=request.user)
             invite.status = 'declined'
             invite.save()
+
+            # Thông báo cho chủ nhà
+            if invite.event.user != request.user:
+                Notification.objects.create(
+                    user=invite.event.user,
+                    ntype='declined',
+                    event=invite.event,
+                    content=f"{request.user.username} đã từ chối lời mời tham gia: {invite.event.title}"
+                )
 
             return Response({"status": "declined"})
         except EventInvitation.DoesNotExist:
