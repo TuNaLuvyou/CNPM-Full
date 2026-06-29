@@ -47,6 +47,9 @@ Hệ thống quản lý lịch trình và công việc cao cấp, được thi�
 
 ### 4. ⚡ Nâng Cấp Trải Nghiệm Grid (UX Grid Enhancements)
 *   **Đóng & tạo siêu tốc**: Khi đang mở Modal tạo sự kiện, nếu bạn click sang một vị trí trống khác, Modal cũ sẽ tự động đóng lại và tạo ngay preview sự kiện tại vị trí mới (không cần tắt Modal thủ công).
+*   **Xử lý mượt mà sự kiện kéo thả (Drag & Drop Refinement)**: Ngăn chặn hoàn toàn lỗi dính chuột (sticky drag) khi kéo sự kiện vượt ra ngoài giao diện lưới hoặc thả sai mục tiêu, đảm bảo mọi thao tác kéo thả luôn được xử lý và dọn dẹp sạch sẽ trạng thái.
+*   **Chỉnh sửa đa kích thước chính xác**: Giữ nguyên thông số chiều cao sự kiện nháp (ghost event) khi người dùng click vào để tiếp tục chỉnh sửa, thay vì tự động thu nhỏ về 1 giờ, giúp thiết lập linh hoạt các sự kiện dài hạn.
+*   **Làm sạch giao diện tự động (Ghost Cleanup)**: Khi tạo sự kiện thành công hoặc nhấn hủy, thẻ sự kiện nháp (previewEvent) và tọa độ vị trí click cũ sẽ lập tức biến mất khỏi lưới, tránh tình trạng lỗi giao diện (bị đè thẻ) hoặc popup hiển thị sai vị trí.
 *   **Coordinate Fallbacks**: Khắc phục lỗi kéo thả khi click vào các ô trống trên lưới để không xảy ra hiện tượng Crash giao diện.
 *   **Hydration Mismatch Fixed**: Khắc phục triệt để lỗi Hydration Next.js ở chế độ SSR.
 
