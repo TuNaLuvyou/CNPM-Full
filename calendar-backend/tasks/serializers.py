@@ -38,8 +38,8 @@ class TaskSerializer(serializers.ModelSerializer):
             'reminderDate', 'reminderTime',
             'date_display', 'time_display', 'end_time_display', 'deadline_display', 'reminder_display',
         ]
-        read_only_fields = ['created_at', 'updated_at', 'deleted_at',
-                           'date_display', 'time_display', 'deadline_display', 'reminder_display']
+        read_only_fields = ['user', 'created_at', 'updated_at', 'deleted_at',
+                           'date_display', 'time_display', 'end_time_display', 'deadline_display', 'reminder_display']
         extra_kwargs = {
             'start_time': {'required': False, 'allow_null': True},
             'end_time': {'required': False, 'allow_null': True},

@@ -94,6 +94,7 @@ class Notification(models.Model):
         ('canceled', 'Event Canceled'),
         ('friend_request', 'Friend Request'),
         ('friend_accepted', 'Friend Request Accepted'),
+        ('friend_declined', 'Friend Request Declined'),
         ('security', 'Security Alert'),
         ('system', 'System Announcement'),
         ('reminder', 'Event Reminder'),
