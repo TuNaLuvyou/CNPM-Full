@@ -70,8 +70,9 @@ class UserSerializer(serializers.ModelSerializer):
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(required=False, allow_blank=True)
     phone_number = serializers.CharField(required=False, allow_blank=True)
-    current_password = serializers.CharField(write_only=True, required=True)
+    current_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     new_password = serializers.CharField(write_only=True, required=False, min_length=6)
+    email = serializers.EmailField(required=False)
 
     class Meta:
         model = User
@@ -79,8 +80,14 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
 
     def validate_current_password(self, value):
         user = self.context['request'].user
-        if not user.check_password(value):
-            raise serializers.ValidationError("Mật khẩu hiện tại không đúng.")
+        email = self.initial_data.get('email', user.email)
+        new_password = self.initial_data.get('new_password', '')
+        needs_password = (email != user.email) or bool(new_password)
+        if needs_password:
+            if not value:
+                raise serializers.ValidationError("Vui lòng nhập mật khẩu hiện tại để thay đổi email hoặc mật khẩu.")
+            if not user.check_password(value):
+                raise serializers.ValidationError("Mật khẩu hiện tại không đúng.")
         return value
 
     def validate_email(self, value):
@@ -94,7 +101,7 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         full_name = validated_data.pop('full_name', None)
         phone_number = validated_data.pop('phone_number', None)
         new_password = validated_data.pop('new_password', None)
-        validated_data.pop('current_password')
+        validated_data.pop('current_password', None)
 
         instance.email = validated_data.get('email', instance.email)
 
