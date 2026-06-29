@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+﻿import React, { useState, useRef, useEffect } from "react";
 import { Search, X, Calendar, CheckSquare } from "lucide-react";
 
 export default function SearchBar({ isSearchOpen, setIsSearchOpen, events = [], onSearchItemClick }) {
@@ -88,17 +88,17 @@ export default function SearchBar({ isSearchOpen, setIsSearchOpen, events = [], 
           setHasSearched(false);
         }}
         className={`p-2 rounded-full transition ${
-          isSearchOpen ? "bg-blue-50 text-blue-600" : "hover:text-slate-700 hover:bg-slate-100"
+          isSearchOpen ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 dark:bg-[#484848] dark:text-white" : "hover:text-slate-700 dark:hover:text-[#e3e3e3] dark:text-white hover:bg-slate-100 dark:hover:bg-[#353535]"
         }`}
       >
         <Search className="w-5 h-5" />
       </button>
       
       {isSearchOpen && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-11 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200/80 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute left-1/2 -translate-x-1/2 top-11 w-80 bg-white dark:bg-[#2d2d2d] rounded-2xl shadow-2xl border border-slate-200 dark:border-[#484848]/80 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
           {/* Input Box */}
-          <div className="flex items-center gap-2 px-4 py-3.5 border-b border-slate-100 bg-slate-50/50">
-            <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          <div className="flex items-center gap-2 px-4 py-3.5 border-b border-slate-100 dark:border-[#3c3c3c] bg-slate-50/50 dark:bg-[#1f1f1f]">
+            <Search className="w-4 h-4 text-slate-400 dark:text-white flex-shrink-0" />
             <input
               ref={searchInputRef}
               type="text"
@@ -106,7 +106,7 @@ export default function SearchBar({ isSearchOpen, setIsSearchOpen, events = [], 
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Nhập tên sự kiện, task... và nhấn Enter"
-              className="flex-1 text-sm text-slate-800 placeholder-slate-400 outline-none bg-transparent"
+              className="flex-1 text-sm text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-white outline-none bg-transparent"
             />
             {searchQuery && (
               <button
@@ -115,7 +115,7 @@ export default function SearchBar({ isSearchOpen, setIsSearchOpen, events = [], 
                   setResults([]);
                   setHasSearched(false);
                 }}
-                className="text-slate-400 hover:text-slate-600 transition"
+                className="text-slate-400 dark:text-white hover:text-slate-600 dark:hover:text-[#bdbdbd] dark:text-white transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -133,10 +133,10 @@ export default function SearchBar({ isSearchOpen, setIsSearchOpen, events = [], 
                       <div
                         key={item.id}
                         onClick={() => handleItemClick(item)}
-                        className="flex items-start gap-3 px-4 py-3 hover:bg-blue-50/40 transition cursor-pointer group"
+                        className="flex items-start gap-3 px-4 py-3 hover:bg-blue-50/40 dark:hover:bg-[#353535] transition cursor-pointer group"
                       >
                         <div className={`mt-0.5 p-1.5 rounded-lg flex-shrink-0 ${
-                          isTask ? "bg-purple-50 text-purple-600" : "bg-blue-50 text-blue-600"
+                          isTask ? "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400" : "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
                         }`}>
                           {isTask ? (
                             <CheckSquare className="w-4 h-4" />
@@ -145,10 +145,10 @@ export default function SearchBar({ isSearchOpen, setIsSearchOpen, events = [], 
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-semibold text-slate-700 group-hover:text-blue-600 transition truncate">
+                          <h4 className="text-sm font-semibold text-slate-700 dark:text-white group-hover:text-blue-600 dark:group-hover:text-[#e3e3e3] transition truncate">
                             {item.title || "Không có tiêu đề"}
                           </h4>
-                          <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1 font-medium">
+                          <p className="text-xs text-slate-400 dark:text-white mt-0.5 flex items-center gap-1 font-medium">
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
                               isTask ? "bg-purple-100/60 text-purple-700" : "bg-blue-100/60 text-blue-700"
                             }`}>
@@ -163,21 +163,21 @@ export default function SearchBar({ isSearchOpen, setIsSearchOpen, events = [], 
                   })}
                 </div>
               ) : (
-                <div className="py-10 flex flex-col items-center gap-2 text-slate-400">
-                  <Search className="w-8 h-8 text-slate-200" />
+                <div className="py-10 flex flex-col items-center gap-2 text-slate-400 dark:text-white">
+                  <Search className="w-8 h-8 text-slate-200 dark:text-white" />
                   <p className="text-sm font-medium">
                     Không tìm thấy kết quả cho "{searchQuery}"
                   </p>
-                  <p className="text-xs text-slate-300">
+                  <p className="text-xs text-slate-300 dark:text-white">
                     Vui lòng thử lại với từ khóa khác.
                   </p>
                 </div>
               )
             ) : (
-              <div className="py-10 flex flex-col items-center gap-2 text-slate-400">
-                <Search className="w-8 h-8 text-slate-200" />
+              <div className="py-10 flex flex-col items-center gap-2 text-slate-400 dark:text-white">
+                <Search className="w-8 h-8 text-slate-200 dark:text-white" />
                 <p className="text-sm font-medium">Nhập từ khóa và nhấn Enter</p>
-                <p className="text-xs text-slate-300">
+                <p className="text-xs text-slate-300 dark:text-white">
                   Tìm kiếm sự kiện, việc làm, lịch hẹn...
                 </p>
               </div>

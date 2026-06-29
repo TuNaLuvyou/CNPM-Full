@@ -8,15 +8,20 @@ function MonthCard({ year, month, onDayClick, events = [], appSettings = {} }) {
   
   const hasEvent = (date) => {
     const dStr = formatDateLocal(date);
-    return events.some(ev => formatDateLocal(new Date(ev.start_time)) === dStr);
+    return events.some(ev => !ev.is_holiday && formatDateLocal(new Date(ev.start_time)) === dStr);
+  };
+
+  const hasHoliday = (date) => {
+    const dStr = formatDateLocal(date);
+    return events.some(ev => ev.is_holiday && formatDateLocal(new Date(ev.start_time)) === dStr);
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 min-w-[196px]">
-      <h3 className="text-sm font-semibold text-slate-700 mb-3 text-center">
+    <div className="bg-white dark:bg-[#2d2d2d] rounded-xl border border-slate-200 dark:border-[#484848] p-4 min-w-[196px]">
+      <h3 className="text-sm font-semibold text-slate-700 dark:text-[#e3e3e3] mb-3 text-center">
         {(MONTH_NAMES[lang] || MONTH_NAMES.vi)[month]} {year}
       </h3>
-      <div className={`grid ${showWeekends ? "grid-cols-7" : "grid-cols-5"} gap-0.5 text-center text-[11px] font-medium text-slate-400 mb-1`}>
+      <div className={`grid ${showWeekends ? "grid-cols-7" : "grid-cols-5"} gap-0.5 text-center text-[11px] font-medium text-slate-400 dark:text-[#9e9e9e] mb-1`}>
         {getOrderedDayKeys("monday").filter(key => {
           if (showWeekends) return true;
           return key !== 'sat' && key !== 'sun';
@@ -36,6 +41,7 @@ function MonthCard({ year, month, onDayClick, events = [], appSettings = {} }) {
           return d !== 0 && d !== 6;
         }).map((cell, idx) => {
           const hasEv = cell.isCurrentMonth && hasEvent(cell.fullDate);
+          const hasHol = cell.isCurrentMonth && hasHoliday(cell.fullDate);
           
           return (
             <div
@@ -47,16 +53,20 @@ function MonthCard({ year, month, onDayClick, events = [], appSettings = {} }) {
                 className={`w-7 h-7 mx-auto flex items-center justify-center rounded-full transition-colors
                   ${
                     !cell.isCurrentMonth
-                      ? "text-slate-300 pointer-events-none"
-                      : "cursor-pointer text-slate-700 hover:bg-slate-100"
+                      ? "text-slate-300 dark:text-[#616161] pointer-events-none"
+                      : hasHol
+                        ? "cursor-pointer text-red-600 dark:text-red-400 font-semibold hover:bg-red-50 dark:hover:bg-red-900/20"
+                        : "cursor-pointer text-slate-700 dark:text-[#e3e3e3] hover:bg-slate-100 dark:hover:bg-[#353535]"
                   }
                   ${cell.isToday ? "!bg-blue-600 !text-white font-bold" : ""}`}
               >
                 {cell.num}
               </div>
-              {hasEv && (
-                <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full" />
-              )}
+              {/* Dots: đỏ cho ngày lễ, xanh cho event thường */}
+              <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
+                {hasHol && <div className="w-1 h-1 bg-red-400 rounded-full" />}
+                {hasEv && <div className="w-1 h-1 bg-blue-500 rounded-full" />}
+              </div>
             </div>
           );
         })}

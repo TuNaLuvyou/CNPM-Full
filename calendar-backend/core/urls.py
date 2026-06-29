@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from django.http import JsonResponse
 from management import views as management_views
 
@@ -29,3 +31,6 @@ urlpatterns = [
     # Support API
     path('api/support/submit/', management_views.SubmitSupportRequestView.as_view(), name='api_support_submit'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import SidebarStrip from "./SidebarStrip";
 import TasksPanel from "@/components/panels/TasksPanel";
 import KeepPanel from "@/components/panels/KeepPanel";
@@ -115,7 +115,7 @@ export default function RightSidebar({ appSettings, currentUser }) {
             }`}
           />
           <div
-            className="border-l border-slate-200 bg-white flex-shrink-0 flex flex-col overflow-hidden shadow-lg relative z-20"
+            className="border-l border-slate-200 dark:border-[#3c3c3c] bg-white dark:bg-[#2a2a2a] flex-shrink-0 flex flex-col overflow-hidden shadow-lg relative z-20"
             style={{ 
               width: `${rightPanelWidth}px`,
               animation: "slideInRight 0.2s ease-out" 

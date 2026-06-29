@@ -20,6 +20,27 @@ export default function MonthView({
     return events.filter(ev => formatDateLocal(new Date(ev.start_time)) === dStr);
   }
 
+  function getHolidaysForCell(fullDate) {
+    const dStr = formatDateLocal(fullDate);
+    return events.filter(ev => ev.is_holiday && formatDateLocal(new Date(ev.start_time)) === dStr);
+  }
+
+  function getRegularEventsForCell(fullDate) {
+    const dStr = formatDateLocal(fullDate);
+    return events.filter(ev => !ev.is_holiday && formatDateLocal(new Date(ev.start_time)) === dStr);
+  }
+
+  // Colour pill cho holiday
+  const holidayColors = {
+    red: 'bg-red-100 border-red-200 text-red-700 hover:bg-red-200',
+    amber: 'bg-amber-100 border-amber-200 text-amber-700 hover:bg-amber-200',
+    purple: 'bg-purple-100 border-purple-200 text-purple-700 hover:bg-purple-200',
+    pink: 'bg-pink-100 border-pink-200 text-pink-700 hover:bg-pink-200',
+    green: 'bg-green-100 border-green-200 text-green-700 hover:bg-green-200',
+    orange: 'bg-orange-100 border-orange-200 text-orange-700 hover:bg-orange-200',
+    teal: 'bg-teal-100 border-teal-200 text-teal-700 hover:bg-teal-200',
+  };
+
   const [draggingId, setDraggingId] = React.useState(null);
 
   const [hoverCellIdx, setHoverCellIdx] = React.useState(null);
@@ -77,22 +98,22 @@ export default function MonthView({
     : `grid-cols-${showWeekends ? 7 : 5}`;
 
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-slate-200">
-      <div className="flex shadow-sm flex-shrink-0 sticky top-0 z-20 bg-slate-200">
+    <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-slate-200 dark:bg-[#1f1f1f]">
+      <div className="flex shadow-sm flex-shrink-0 sticky top-0 z-20 bg-slate-200 dark:bg-[#1f1f1f]">
         <div className={`flex-1 grid ${gridClass} gap-px`}>
           {showWeekNum && (
-            <div className="bg-white text-center py-3 text-[10px] font-bold text-slate-300 uppercase">
+            <div className="bg-white dark:bg-[#2a2a2a] text-center py-3 text-[10px] font-bold text-slate-300 dark:text-[#616161] uppercase">
               {lang === 'vi' ? 'Tuần' : 'Wk'}
             </div>
           )}
           {filteredHeaders.map((d) => (
-            <div key={d} className="bg-white text-center py-3 text-sm font-semibold text-slate-500">
+            <div key={d} className="bg-white dark:bg-[#2a2a2a] text-center py-3 text-sm font-semibold text-slate-500 dark:text-[#9e9e9e]">
               {d}
             </div>
           ))}
         </div>
       </div>
-      <div className={`grid ${gridClass} flex-1 gap-px bg-slate-200 mt-px`}>
+      <div className={`grid ${gridClass} flex-1 gap-px bg-slate-200 dark:bg-[#3c3c3c] mt-px`}>
         {filteredCells.map((cell, idx) => {
           const cellEvents = getEventsForCell(cell.fullDate);
           const isHovered = hoverCellIdx === idx;
@@ -101,13 +122,13 @@ export default function MonthView({
           return (
             <React.Fragment key={idx}>
               {showWeekNum && isFirstDayOfRow && (
-                <div className="bg-white flex items-start justify-center pt-3 text-[11px] font-medium text-slate-300 italic border-r border-slate-100">
+                <div className="bg-white dark:bg-[#2a2a2a] flex items-start justify-center pt-3 text-[11px] font-medium text-slate-300 dark:text-[#616161] italic border-r border-slate-100 dark:border-[#3c3c3c]">
                   {getWeekNumber(cell.fullDate)}
                 </div>
               )}
               <div 
-                  className={`bg-white p-2 min-h-[120px] transition-colors cursor-cell relative
-                      ${isHovered ? "bg-blue-50/50 ring-2 ring-inset ring-blue-400/30" : "hover:bg-slate-50"}`}
+                  className={`bg-white dark:bg-[#2a2a2a] p-2 min-h-[120px] transition-colors cursor-cell relative
+                      ${isHovered ? "bg-blue-50/50 dark:bg-blue-900/20 ring-2 ring-inset ring-blue-400/30" : "hover:bg-slate-50 dark:hover:bg-[#2d2d2d]"}`}
                 onDragOver={(e) => { e.preventDefault(); setHoverCellIdx(idx); }}
                 onDragLeave={() => setHoverCellIdx(null)}
                 onDrop={(e) => handleDrop(e, cell.fullDate)}
@@ -126,12 +147,12 @@ export default function MonthView({
                 <div
                   onClick={(e) => { e.stopPropagation(); handleDayClick(cell.fullDate); }}
                   className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-medium transition-all cursor-pointer
-                    ${!cell.isCurrentMonth ? "text-slate-400 opacity-60" : ""}
+                    ${!cell.isCurrentMonth ? "text-slate-400 dark:text-[#9e9e9e] opacity-60" : ""}
                     ${
                       cell.isToday
                         ? "bg-blue-600 text-white shadow-md font-bold"
                         : cell.isCurrentMonth
-                        ? "text-slate-700 hover:bg-slate-200"
+                        ? "text-slate-700 dark:text-[#9e9e9e] hover:bg-slate-200 dark:hover:bg-[#353535]"
                         : ""
                     }`}
                 >
@@ -151,7 +172,22 @@ export default function MonthView({
                     </div>
                 )}
 
-                {cellEvents.map((ev) => {
+                {/* Holiday events — hiển thị ở đầu ô ngày */}
+                {getHolidaysForCell(cell.fullDate).map((ev) => {
+                    const hColor = holidayColors[ev.color] || holidayColors.red;
+                    return (
+                        <div
+                            key={ev.id}
+                            className={`text-[9px] px-1 py-0.5 rounded border truncate leading-tight cursor-default flex items-center gap-1 ${hColor}`}
+                        >
+                            <span className="flex-shrink-0">🎉</span>
+                            <span className="font-semibold truncate">{ev.title}</span>
+                        </div>
+                    );
+                })}
+
+                {/* Regular events */}
+                {getRegularEventsForCell(cell.fullDate).map((ev) => {
                     const colors = {
                         blue: 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100',
                         purple: 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100',

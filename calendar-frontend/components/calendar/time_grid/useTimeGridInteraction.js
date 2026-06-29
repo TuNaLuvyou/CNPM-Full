@@ -352,78 +352,82 @@ export function useTimeGridInteraction({
       const currInteraction = interactionRef.current;
       if (!currInteraction) return;
 
-      const { existingEvent } = currInteraction;
-      const isPreview = !currInteraction.existingEvent && (currInteraction.type === 'move' || currInteraction.type === 'create' || currInteraction.type === 'resize');
-      const latest = (currInteraction.existingEvent || isPreview) ? {
-        fullDate: currInteraction.currentDate,
-        height: currInteraction.currentHeight,
-        top: currInteraction.currentTop
-      } : latestPreviewRef.current;
+      try {
+        const { existingEvent } = currInteraction;
+        const isPreview = !currInteraction.existingEvent && (currInteraction.type === 'move' || currInteraction.type === 'create' || currInteraction.type === 'resize');
+        const latest = (currInteraction.existingEvent || isPreview) ? {
+          fullDate: currInteraction.currentDate,
+          height: currInteraction.currentHeight,
+          top: currInteraction.currentTop
+        } : latestPreviewRef.current;
 
-      if (currInteraction && latest) {
-        const hasMoved = didMoveRef.current;
+        if (currInteraction && latest) {
+          const hasMoved = didMoveRef.current;
 
-        if (existingEvent) {
-          let newDurationMin = Math.round((latest.height / 64) * 60);
-          const start = latest.fullDate;
+          if (existingEvent) {
+            let newDurationMin = Math.round((latest.height / 64) * 60);
+            const start = latest.fullDate;
 
-          if (start.getHours() === 23 && start.getMinutes() + newDurationMin > 60) {
-            newDurationMin = 60 - start.getMinutes();
-          }
-
-          setOptimisticUpdates(prev => ({
-            ...prev,
-            [String(existingEvent.id)]: {
-              top: currInteraction.currentTop,
-              height: currInteraction.currentHeight,
-              date: latest.fullDate,  // lưu ngày mới để render đúng ngày sau khi thả
+            if (start && start.getHours() === 23 && start.getMinutes() + newDurationMin > 60) {
+              newDurationMin = 60 - start.getMinutes();
             }
-          }));
 
-          if (!hasMoved) {
-            callbacksRef.current.onEventClick?.(existingEvent, {
-              clientX: e.clientX,
-              clientY: e.clientY,
-              columnRect: currInteraction.containerRect
-            });
+            setOptimisticUpdates(prev => ({
+              ...prev,
+              [String(existingEvent.id)]: {
+                top: currInteraction.currentTop,
+                height: currInteraction.currentHeight,
+                date: latest.fullDate,  // lưu ngày mới để render đúng ngày sau khi thả
+              }
+            }));
+
+            if (!hasMoved) {
+              callbacksRef.current.onEventClick?.(existingEvent, {
+                clientX: e.clientX,
+                clientY: e.clientY,
+                columnRect: currInteraction.containerRect
+              });
+            } else {
+              callbacksRef.current.onEventUpdate?.(existingEvent, start, newDurationMin);
+            }
+            callbacksRef.current.onInteractionEnd?.({ fullDate: latest.fullDate, isUpdate: true, hasMoved });
           } else {
-            callbacksRef.current.onEventUpdate?.(existingEvent, start, newDurationMin);
+            const targetCol = e.target && typeof e.target.closest === 'function' ? (e.target.closest('.day-column') || e.target.closest('[data-column-date]')) : null;
+            if (targetCol) {
+              callbacksRef.current.onInteractionEnd?.({
+                fullDate: latest.fullDate,
+                topOffset: latest.top,
+                height: latest.height,
+                columnRect: targetCol.getBoundingClientRect(),
+                hasMoved
+              });
+            }
           }
-          callbacksRef.current.onInteractionEnd?.({ fullDate: latest.fullDate, isUpdate: true, hasMoved });
-        } else {
-          const targetCol = e.target.closest('.day-column') || e.target.closest('[data-column-date]');
-          if (targetCol) {
-            callbacksRef.current.onInteractionEnd?.({
-              fullDate: latest.fullDate,
-              topOffset: latest.top,
-              height: latest.height,
-              columnRect: targetCol.getBoundingClientRect(),
-              hasMoved
-            });
-          }
+
+          lastResultRef.current = {
+            id: currInteraction.existingEvent?.id,
+            topOffset: currInteraction.existingEvent ? currInteraction.currentTop : latest.top,
+            height: latest.height,
+            fullDate: latest.fullDate,
+            ts: Date.now()
+          };
         }
+      } catch (err) {
+        console.error("Lỗi khi kết thúc kéo thả:", err);
+      } finally {
+        setTimeout(() => {
+          setInteraction(null);
+          interactionRef.current = null;
+          setIsPreviewDragging?.(false);
+        }, 50);
 
-        lastResultRef.current = {
-          id: currInteraction.existingEvent?.id,
-          topOffset: currInteraction.existingEvent ? currInteraction.currentTop : latest.top,
-          height: latest.height,
-          fullDate: latest.fullDate,
-          ts: Date.now()
-        };
+        setTimeout(() => {
+          isInteractingRef.current = false;
+          didMoveRef.current = false;
+        }, 200);
+
+        if (rafId) cancelAnimationFrame(rafId);
       }
-
-      setTimeout(() => {
-        setInteraction(null);
-        interactionRef.current = null;
-        setIsPreviewDragging?.(false);
-      }, 50);
-
-      setTimeout(() => {
-        isInteractingRef.current = false;
-        didMoveRef.current = false;
-      }, 200);
-
-      if (rafId) cancelAnimationFrame(rafId);
     };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+﻿import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Users } from "lucide-react";
 
 import { 
@@ -174,23 +174,23 @@ export default function ContactsPanel({ appSettings, currentUser }) {
 
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-white dark:bg-[#2d2d2d]">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-100 bg-white z-10">
-        <h2 className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3">
+      <div className="px-4 py-3 border-b border-slate-100 dark:border-[#484848] bg-white dark:bg-[#2d2d2d] z-10">
+        <h2 className="text-sm font-bold text-slate-700 dark:text-[#e3e3e3] flex items-center gap-2 mb-3">
           <Users className="w-4 h-4 text-emerald-600" /> {t('contacts_panel.title', lang)}
         </h2>
         
         {/* Tabs */}
-        <div className="flex bg-slate-100 p-1 rounded-xl">
+        <div className="flex bg-slate-100 dark:bg-[#353535] p-1 rounded-xl">
           {Object.values(TABS).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all ${
                 activeTab === tab 
-                ? "bg-white text-blue-600 shadow-sm" 
-                : "text-slate-500 hover:text-slate-700"
+                ? "bg-white dark:bg-[#2d2d2d] text-blue-600 shadow-sm" 
+                : "text-slate-500 dark:text-[#9e9e9e] hover:text-slate-700 dark:hover:text-[#e3e3e3] dark:text-[#e3e3e3]"
               }`}
             >
               {t(`contacts_panel.tabs.${tab}`, lang)}
@@ -202,10 +202,10 @@ export default function ContactsPanel({ appSettings, currentUser }) {
       {/* Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {!localStorage.getItem('token') ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2 px-6 text-center">
+            <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-[#9e9e9e] gap-2 px-6 text-center">
               <Users className="w-10 h-10 opacity-20" />
-              <p className="text-xs font-bold text-slate-500">{t('user.login_required', lang)}</p>
-              <p className="text-[10px] text-slate-400">Bạn cần đăng nhập để tìm kiếm người dùng và quản lý danh bạ.</p>
+              <p className="text-xs font-bold text-slate-500 dark:text-[#9e9e9e]">{t('user.login_required', lang)}</p>
+              <p className="text-[10px] text-slate-400 dark:text-[#9e9e9e]">Bạn cần đăng nhập để tìm kiếm người dùng và quản lý danh bạ.</p>
             </div>
         ) : activeTab === TABS.NOT_CONNECTED ? (
           <AddFriendTab

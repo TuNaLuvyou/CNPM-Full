@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import ThemeProvider from "@/components/ThemeProvider";
 import {
   Plus,
   Calendar as CalendarIcon,
@@ -11,6 +12,7 @@ import Calendar from "@/components/widgets/Calendar";
 import CreateModal from "@/components/modals/CreateEventModal";
 import YearDayPopup from "@/components/widgets/YearDayPopup";
 import { getLocalizedTime, getVNTime, formatDateLocal, buildWeekDays, buildMonthCells, DAY_NAMES, MONTH_NAMES } from "@/lib/CalendarHelper";
+import { getHolidayEventsForRange } from "@/lib/holidays";
 import { getEvents, getTasks, updateEvent, updateTask, toggleTask, trashEvent, trashTask,
   getMe, getTrashedEvents, getTrashedTasks, restoreEvent, permanentDeleteEvent, restoreTask, permanentDeleteTask,
   getNotifications, getFavoriteCalendars
@@ -183,9 +185,60 @@ export default function CalendarApp() {
         getTasks(params)
       ]);
 
-      const formattedEvents = (Array.isArray(eventsResponse) 
-        ? eventsResponse 
-        : (eventsResponse.results || [])).map(e => {
+      const viewStart = params.date_from ? new Date(params.date_from + 'T00:00:00') : new Date('2000-01-01');
+      const viewEnd = params.date_to ? new Date(params.date_to + 'T23:59:59') : new Date('2100-01-01');
+
+      const expandRecurringEvents = (eventList) => {
+        const expanded = [];
+        eventList.forEach(e => {
+          if (!e.recurrence_rule || e.recurrence_rule === '') {
+            expanded.push(e);
+            return;
+          }
+
+          const originalStart = new Date(e.start_time);
+          const originalEnd = new Date(e.end_time);
+          const durationMs = originalEnd.getTime() - originalStart.getTime();
+
+          let currentStart = new Date(originalStart);
+          let count = 0;
+          const MAX_INSTANCES = 730; 
+
+          while (currentStart <= viewEnd && count < MAX_INSTANCES) {
+            const currentEnd = new Date(currentStart.getTime() + durationMs);
+            
+            if (currentEnd >= viewStart && currentStart <= viewEnd) {
+              expanded.push({
+                ...e,
+                id: count === 0 ? e.id : `${e.id}_${count}`,
+                original_id: e.id,
+                original_start_time: e.start_time,
+                original_end_time: e.end_time,
+                start_time: currentStart.toISOString(),
+                end_time: currentEnd.toISOString()
+              });
+            }
+
+            if (e.recurrence_rule === 'DAILY') {
+              currentStart.setDate(currentStart.getDate() + 1);
+            } else if (e.recurrence_rule === 'WEEKLY') {
+              currentStart.setDate(currentStart.getDate() + 7);
+            } else if (e.recurrence_rule === 'MONTHLY') {
+              currentStart.setMonth(currentStart.getMonth() + 1);
+            } else if (e.recurrence_rule === 'YEARLY') {
+              currentStart.setFullYear(currentStart.getFullYear() + 1);
+            } else {
+              break; 
+            }
+            count++;
+          }
+        });
+        return expanded;
+      };
+
+      const rawEvents = (Array.isArray(eventsResponse) ? eventsResponse : (eventsResponse.results || []));
+      
+      const formattedEvents = expandRecurringEvents(rawEvents).map(e => {
           const start = new Date(e.start_time);
           const end = new Date(e.end_time);
           const duration = !isNaN(start) && !isNaN(end) ? Math.round((end - start) / 60000) : 60;
@@ -416,11 +469,14 @@ export default function CalendarApp() {
 
   const handleEventSaved = useCallback(() => {
     setEventSavedTick(t => t + 1);
+    setPreviewEvent(null);
+    setClickPosition(null);
   }, []);
 
   const handleToggleTask = async (compositeId) => {
     try {
-      const cleanId = compositeId.toString().replace('task-', '');
+      let cleanId = compositeId.toString().replace('task-', '');
+      cleanId = cleanId.split('_')[0];
       await toggleTask(cleanId);
       handleEventSaved(); // Refresh UI
     } catch (e) {
@@ -489,12 +545,24 @@ export default function CalendarApp() {
     }
 
     try {
-      const itemId = item.id.toString().replace('event-', '').replace('task-', '');
-      let payload = { start_time: newStartTime.toISOString() };
+      let itemId = item.id.toString().replace('event-', '').replace('task-', '');
+      itemId = itemId.split('_')[0];
+      
+      let finalStartTimeForBackend = newStartTime;
+      let finalEndTimeForBackend = newEndTime;
+      
+      if (item.recurrence_rule && item.original_start_time) {
+          const instanceStart = new Date(item.start_time);
+          const delta = newStartTime.getTime() - instanceStart.getTime();
+          finalStartTimeForBackend = new Date(new Date(item.original_start_time).getTime() + delta);
+          finalEndTimeForBackend = new Date(finalStartTimeForBackend.getTime() + durationMs);
+      }
+
+      let payload = { start_time: finalStartTimeForBackend.toISOString() };
       const isEventRelated = itemType === 'event' || itemType === 'appointment';
 
       if (isEventRelated) {
-        payload.end_time = newEndTime.toISOString();
+        payload.end_time = finalEndTimeForBackend.toISOString();
         await updateEvent(itemId, payload);
       } else {
         payload.end_time = newEndTime.toISOString(); // Cập nhật block thời gian cho Task (giống Sự kiện)
@@ -568,8 +636,35 @@ export default function CalendarApp() {
     setSelectedDate(now);
   }, []);
 
+  // ── Holiday events (thuần frontend, tính theo viewDate range) ──────────────
+  const holidayEvents = React.useMemo(() => {
+    let dateFrom, dateTo;
+    if (view === "day") {
+      const d = formatDateLocal(selectedDate);
+      dateFrom = d; dateTo = d;
+    } else if (view === "week" || view === "work_week") {
+      const days = buildWeekDays(viewDate);
+      dateFrom = formatDateLocal(days[0].fullDate);
+      dateTo = formatDateLocal(days[days.length - 1].fullDate);
+    } else if (view === "month") {
+      const y = viewDate.getFullYear(), m = viewDate.getMonth();
+      // Mở rộng thêm 1 tuần trước/sau để cover ô lịch tháng
+      dateFrom = formatDateLocal(new Date(y, m, -6));
+      dateTo = formatDateLocal(new Date(y, m + 1, 7));
+    } else if (view === "year") {
+      dateFrom = `${viewDate.getFullYear()}-01-01`;
+      dateTo = `${viewDate.getFullYear()}-12-31`;
+    } else {
+      // Fallback: tháng hiện tại
+      const y = viewDate.getFullYear(), m = viewDate.getMonth();
+      dateFrom = formatDateLocal(new Date(y, m, 1));
+      dateTo = formatDateLocal(new Date(y, m + 1, 0));
+    }
+    return getHolidayEventsForRange(dateFrom, dateTo, appSettings, visibleHolidays);
+  }, [view, viewDate, selectedDate, appSettings.vietnamHolidays, appSettings.worldHolidays, appSettings.otherHolidays, appSettings.language, visibleHolidays]);
+
   const filteredEvents = React.useMemo(() => {
-    return events.filter(ev => {
+    const regularFiltered = events.filter(ev => {
         const cat = ev.category || 'Mặc định';
         const isMyEvent = ev.user === currentUser?.id;
         
@@ -591,7 +686,8 @@ export default function CalendarApp() {
             return visibleCategories.includes(cat) && isFriendChecked;
         }
     });
-  }, [events, visibleCategories, visibleFriends, currentUser?.id, appSettings.showFriendsCalendars]);
+    return [...regularFiltered, ...holidayEvents];
+  }, [events, visibleCategories, visibleFriends, currentUser?.id, appSettings.showFriendsCalendars, holidayEvents]);
 
   // Giữ editingItem luôn tươi mới nếu data background thay đổi (Move to after initialization)
   useEffect(() => {
@@ -614,8 +710,8 @@ export default function CalendarApp() {
 
   if (!mounted) {
     return (
-      <div className="flex h-screen bg-white items-center justify-center">
-        <div className="animate-pulse text-slate-400 font-medium text-sm">Đang tải lịch...</div>
+      <div className="flex h-screen bg-white dark:bg-[#1f1f1f] items-center justify-center">
+        <div className="animate-pulse text-slate-400 dark:text-[#9e9e9e] font-medium text-sm">Đang tải lịch...</div>
       </div>
     );
   }
@@ -630,7 +726,7 @@ export default function CalendarApp() {
     else setViewDate(clickedDate);
   };
 
-  const handleGridClick = ({ x, y, fullDate, hour, topOffset, columnRect }) => {
+  const handleGridClick = ({ x, y, fullDate, hour, topOffset, height, columnRect }) => {
     setEditingItem(null); // Reset trạng thái đang sửa để hiện form tạo mới
     let finalTop = topOffset;
     let totalMinutes = Math.round((topOffset / 64) * 60);
@@ -644,8 +740,9 @@ export default function CalendarApp() {
     const dateWithTime = new Date(fullDate);
     dateWithTime.setHours(Math.floor(totalMinutes / 60), totalMinutes % 60, 0, 0);
 
-    setClickPosition({ x, y, columnRect });
-    setPreviewEvent({ fullDate: dateWithTime, top: finalTop, height: 64, type: "grid", ts: Date.now() });
+    const ts = Date.now();
+    setClickPosition({ x, y, columnRect, ts });
+    setPreviewEvent({ fullDate: dateWithTime, top: finalTop, height: height || 64, type: "grid", ts });
     setCreateModal({ isOpen: true, tab: "event" });
     setSelectedDate(dateWithTime);
   };
@@ -760,6 +857,7 @@ export default function CalendarApp() {
   const handleCloseModal = () => {
     setCreateModal(prev => ({ ...prev, isOpen: false }));
     setEditingItem(null);
+    // Do not clear previewEvent here so the draft remains visible on the calendar
   };
 
   const handleCancelModal = () => {
@@ -767,13 +865,16 @@ export default function CalendarApp() {
     setCreateModal(prev => ({ ...prev, isOpen: false }));
     setEditingItem(null);
     setPreviewEvent(null);
+    setClickPosition(null);
   };
 
   const handleDelete = async () => {
     if (!editingItem) return;
     try {
       const isTask = editingItem.event_type === 'task';
-      const cleanId = editingItem.id.toString().replace('event-', '').replace('task-', '');
+      let cleanId = editingItem.id.toString().replace('event-', '').replace('task-', '');
+      // Remove recurrence suffix if exists (e.g. "123_1" -> "123")
+      cleanId = cleanId.split('_')[0];
       if (isTask) await trashTask(cleanId);
       else await trashEvent(cleanId);
       handleEventSaved();
@@ -785,40 +886,44 @@ export default function CalendarApp() {
   };
 
   // Filter events based on settings (Completed tasks, Categories, etc.)
-  const filteredEventsForComponents = events.filter(ev => {
-    // 1. Task completion filter
-    if (ev.event_type === 'task' && ev.is_completed && !appSettings.showCompletedTasks) return false;
+  const filteredEventsForComponents = [
+    ...events.filter(ev => {
+      // 1. Task completion filter
+      if (ev.event_type === 'task' && ev.is_completed && !appSettings.showCompletedTasks) return false;
 
-    // 2. Category visibility filter
-    // If an event has a category, it must be in visibleCategories
-    if (ev.category && !visibleCategories.includes(ev.category)) return false;
+      // 2. Category visibility filter
+      // If an event has a category, it must be in visibleCategories
+      if (ev.category && !visibleCategories.includes(ev.category)) return false;
 
-    // 3. (Optional) Holiday filters can be added here if holidays are represented as events
-    
-    return true;
-  });
+      return true;
+    }),
+    // 3. Merge holiday events
+    ...holidayEvents,
+  ];
 
   return (
-    <div className="flex h-screen bg-white text-slate-800 font-sans overflow-hidden relative">
-      {!currentUser && (
+    <>
+      <ThemeProvider appSettings={appSettings} />
+      <div className="flex h-screen bg-white dark:bg-[#1f1f1f] text-slate-800 dark:text-[#e3e3e3] font-sans overflow-hidden relative">
+        {!currentUser && (
         <div 
           onClick={() => {
             setAuthModal({ isOpen: true, type: "login" });
           }}
           className="absolute inset-0 z-40 bg-slate-900/[0.02] backdrop-blur-[0.5px] cursor-pointer flex flex-col items-center justify-center transition-all duration-300"
         >
-          <div className="bg-white/95 px-6 py-4 rounded-2xl shadow-xl border border-slate-100 flex flex-col items-center gap-2 animate-bounce pointer-events-none select-none">
-            <span className="text-sm font-semibold text-slate-700">Vui lòng đăng nhập để sử dụng ứng dụng</span>
-            <span className="text-xs text-slate-400">Nhấp vào bất kỳ đâu để đăng nhập</span>
+          <div className="bg-white dark:bg-[#2d2d2d]/95 px-6 py-4 rounded-2xl shadow-xl border border-slate-100 dark:border-[#3c3c3c] flex flex-col items-center gap-2 animate-bounce pointer-events-none select-none">
+            <span className="text-sm font-semibold text-slate-700 dark:text-[#e3e3e3]">Vui lòng đăng nhập để sử dụng ứng dụng</span>
+            <span className="text-xs text-slate-400 dark:text-[#9e9e9e]">Nhấp vào bất kỳ đâu để đăng nhập</span>
           </div>
         </div>
       )}
-      <aside className="w-80 flex-shrink-0 bg-slate-50 border-r border-slate-200 flex flex-col relative shadow-sm">
-        <div className="h-16 flex items-center px-6 border-b border-slate-200">
+      <aside className="w-80 flex-shrink-0 bg-slate-50 dark:bg-[#2a2a2a] border-r border-slate-200 dark:border-[#3c3c3c] flex flex-col relative shadow-sm">
+        <div className="h-16 flex items-center px-6 border-b border-slate-200 dark:border-[#3c3c3c]">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 shadow-sm">
             <CalendarIcon className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-[#f5f5f5] dark:to-[#f5f5f5]">
             {t('app_name', appSettings.language)}
           </span>
         </div>
@@ -829,14 +934,14 @@ export default function CalendarApp() {
               <Plus className="w-5 h-5 mr-2" /> {t('create', appSettings.language)}
             </button>
             {isCreateMenuOpen && (
-              <div className="absolute top-14 left-0 w-full bg-white rounded-xl shadow-lg border border-slate-100 py-2 z-50">
-                <button onClick={() => openCreate("event")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center text-sm text-slate-700">
+              <div className="absolute top-14 left-0 w-full bg-white dark:bg-[#2d2d2d] rounded-xl shadow-lg border border-slate-100 dark:border-[#3c3c3c] py-2 z-50">
+                <button onClick={() => openCreate("event")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#2d2d2d] dark:hover:bg-[#353535] flex items-center text-sm text-slate-700 dark:text-[#d4d4d4]">
                   <CalendarIcon className="w-4 h-4 mr-3 text-blue-500" /> {t('event', appSettings.language)}
                 </button>
-                <button onClick={() => openCreate("task")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center text-sm text-slate-700">
+                <button onClick={() => openCreate("task")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#2d2d2d] dark:hover:bg-[#353535] flex items-center text-sm text-slate-700 dark:text-[#d4d4d4]">
                   <CheckSquare className="w-4 h-4 mr-3 text-emerald-500" /> {t('task', appSettings.language)}
                 </button>
-                <button onClick={() => openCreate("appointment")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center text-sm text-slate-700">
+                <button onClick={() => openCreate("appointment")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#2d2d2d] dark:hover:bg-[#353535] flex items-center text-sm text-slate-700 dark:text-[#d4d4d4]">
                   <Clock className="w-4 h-4 mr-3 text-purple-500" /> {t('appointment', appSettings.language)}
                 </button>
               </div>
@@ -850,82 +955,82 @@ export default function CalendarApp() {
             events={filteredEventsForComponents}
             appSettings={appSettings}
           />
-          <hr className="border-slate-200 my-6" />
+          <hr className="border-slate-200 dark:border-[#484848] my-4" />
 
-          <div className="mt-8">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">{t('my_calendars_title', appSettings.language)}</h3>
+          <div className="">
+            <h3 className="text-xs font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-wider mb-3 px-1">{t('my_calendars_title', appSettings.language)}</h3>
             <div className="space-y-2">
               {/* Dynamic Categories */}
               {(appSettings.customCategories || []).map(catName => (
-                <label key={catName} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 transition-colors">
+                <label key={catName} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
                   <input 
                     type="checkbox" 
                     checked={visibleCategories.includes(catName)} 
                     onChange={() => setVisibleCategories(prev => prev.includes(catName) ? prev.filter(v => v !== catName) : [...prev, catName])} 
                     className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                   />
-                  <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
+                  <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
                     {catName}
                   </span>
                 </label>
               ))}
 
-              <hr className="border-slate-100 my-2" />
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">{t('holidays_title', appSettings.language)}</h3>
+              <hr className="border-slate-200 dark:border-[#484848] my-4" />
+              <h3 className="text-xs font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-wider mb-3 px-1">{t('holidays_title', appSettings.language)}</h3>
 
               {/* Holiday Calendars (Conditional on Settings) */}
               <div className="space-y-2">
                 {appSettings.vietnamHolidays && (
-                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 transition-colors">
+                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
                     <input 
                       type="checkbox" 
                       checked={visibleHolidays.includes("vietnam")} 
                       onChange={() => setVisibleHolidays(prev => prev.includes("vietnam") ? prev.filter(v => v !== "vietnam") : [...prev, "vietnam"])} 
                       className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                     />
-                    <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
+                    <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
                       {t('fav_calendars.vn_holidays', appSettings.language)}
                     </span>
                   </label>
                 )}
 
                 {appSettings.worldHolidays && (
-                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 transition-colors">
+                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
                     <input 
                       type="checkbox" 
                       checked={visibleHolidays.includes("world")} 
                       onChange={() => setVisibleHolidays(prev => prev.includes("world") ? prev.filter(v => v !== "world") : [...prev, "world"])} 
                       className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                     />
-                    <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
+                    <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
                       {t('fav_calendars.world_holidays', appSettings.language)}
                     </span>
                   </label>
                 )}
 
                 {appSettings.otherHolidays && (
-                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 transition-colors">
+                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
                     <input 
                       type="checkbox" 
                       checked={visibleHolidays.includes("other")} 
                       onChange={() => setVisibleHolidays(prev => prev.includes("other") ? prev.filter(v => v !== "other") : [...prev, "other"])} 
                       className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                     />
-                    <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
+                    <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
                       {t('fav_calendars.other_holidays', appSettings.language)}
                     </span>
                   </label>
                 )}
 
                 {appSettings.customHolidays?.map(h => (
-                  <label key={h.id} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 transition-colors">
+                  <label key={h.id} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
                     <input 
                       type="checkbox" 
                       checked={visibleHolidays.includes(h.id)} 
                       onChange={() => setVisibleHolidays(prev => prev.includes(h.id) ? prev.filter(v => v !== h.id) : [...prev, h.id])} 
                       className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                     />
-                    <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
+                    <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
                       {h.name}
                     </span>
                   </label>
@@ -935,13 +1040,13 @@ export default function CalendarApp() {
               {/* Connected People's Calendars Section */}
               {appSettings.showFriendsCalendars && friends.length > 0 && (
                 <>
-                  <hr className="border-slate-100 my-4" />
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
+                  <hr className="border-slate-200 dark:border-[#484848] my-4" />
+                  <h3 className="text-xs font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-wider mb-3 px-1">
                     {t('connected_calendars_title', appSettings.language)}
                   </h3>
                   <div className="space-y-2">
                     {friends.map(friend => (
-                      <label key={friend.friend_id} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 transition-colors">
+                      <label key={friend.friend_id} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
                         <input 
                           type="checkbox" 
                           checked={visibleFriends.includes(friend.friend_id)} 
@@ -949,7 +1054,7 @@ export default function CalendarApp() {
                           className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                         />
                         <div className="flex items-center overflow-hidden">
-                          <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors truncate">
+                          <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors truncate">
                             {friend.friend_email}
                           </span>
                         </div>
@@ -963,7 +1068,7 @@ export default function CalendarApp() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-x-auto overflow-y-hidden bg-white relative">
+      <main className="flex-1 overflow-x-auto overflow-y-hidden bg-white dark:bg-[#1f1f1f] relative">
         <Calendar
           view={view} setView={setView} viewDate={viewDate} setViewDate={setViewDate}
           selectedDate={selectedDate} setSelectedDate={setSelectedDate}
@@ -1001,7 +1106,7 @@ export default function CalendarApp() {
         onClose={() => setYearDayPopup({ ...yearDayPopup, isOpen: false })}
         onNavigateToDay={handleNavigateFromYearPopup}
         appSettings={appSettings}
-        events={events.filter(ev => formatDateLocal(new Date(ev.start_time)) === formatDateLocal(yearDayPopup.date))}
+        events={filteredEvents.filter(ev => formatDateLocal(new Date(ev.start_time)) === formatDateLocal(yearDayPopup.date))}
         onEventClick={(ev, e) => {
           const pos = e ? { x: e.clientX, y: e.clientY } : null;
           openCreate(ev.event_type || 'event', ev, pos);
@@ -1042,6 +1147,7 @@ export default function CalendarApp() {
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; border: 2px solid transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
       `}} />
-    </div>
+      </div>
+    </>
   );
 }

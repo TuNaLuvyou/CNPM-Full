@@ -29,8 +29,10 @@ class EventViewSet(viewsets.ModelViewSet):
         # Filter theo thời gian nếu có
         date_from = self.request.query_params.get('date_from')
         date_to = self.request.query_params.get('date_to')
-        if date_from: qs = qs.filter(end_time__date__gte=date_from)
-        if date_to: qs = qs.filter(start_time__date__lte=date_to)
+        if date_from:
+            qs = qs.filter(Q(end_time__date__gte=date_from) | Q(recurrence_rule__in=['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']))
+        if date_to:
+            qs = qs.filter(Q(start_time__date__lte=date_to) | Q(recurrence_rule__in=['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']))
         
         return qs.order_by('start_time')
 
@@ -96,6 +98,16 @@ class EventViewSet(viewsets.ModelViewSet):
             invitation.delete()
             # Clear notifications related to this event for this user
             Notification.objects.filter(user=request.user, event=event).delete()
+            
+            # Thông báo cho chủ sự kiện
+            if event.user != request.user:
+                Notification.objects.create(
+                    user=event.user,
+                    ntype='declined',
+                    event=event,
+                    content=f"{request.user.username} đã rời khỏi sự kiện: {event.title}"
+                )
+                
             return Response({"status": "left"})
         return Response({"error": "Not a participant"}, status=400)
 
@@ -158,6 +170,15 @@ class InvitationViewSet(viewsets.ViewSet):
             invite = EventInvitation.objects.get(event_id=pk, invitee=request.user)
             invite.status = 'declined'
             invite.save()
+
+            # Thông báo cho chủ nhà
+            if invite.event.user != request.user:
+                Notification.objects.create(
+                    user=invite.event.user,
+                    ntype='declined',
+                    event=invite.event,
+                    content=f"{request.user.username} đã từ chối lời mời tham gia: {invite.event.title}"
+                )
 
             return Response({"status": "declined"})
         except EventInvitation.DoesNotExist:

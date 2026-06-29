@@ -6,11 +6,17 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 export async function request(path, options = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const headers = {
-    'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Token ${token}` } : {}),
     ...options.headers,
   };
   
+  // Set default Content-Type to application/json only if body is not FormData
+  if (!options.body || !(options.body instanceof FormData)) {
+    if (!headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+  }
+
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
@@ -108,16 +114,56 @@ export async function getEvents(params = {}) {
 }
 
 export async function createEvent(data) {
+  let body = data;
+  if (data.file) {
+    body = new FormData();
+    for (const key in data) {
+      if (data[key] !== null && data[key] !== undefined && key !== 'file') {
+        if (typeof data[key] === 'object' && !(data[key] instanceof File)) {
+          body.append(key, JSON.stringify(data[key]));
+        } else {
+          body.append(key, data[key]);
+        }
+      }
+    }
+    body.append('attachment', data.file);
+  } else {
+    body = JSON.stringify(data);
+  }
+  
   return request('/events/', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body,
   });
 }
 
 export async function updateEvent(id, data) {
+  let body = data;
+  if (data.file || data.file === null) {
+    body = new FormData();
+    for (const key in data) {
+      if (data[key] !== undefined && key !== 'file') {
+        if (data[key] === null) {
+          body.append(key, '');
+        } else if (typeof data[key] === 'object' && !(data[key] instanceof File)) {
+          body.append(key, JSON.stringify(data[key]));
+        } else {
+          body.append(key, data[key]);
+        }
+      }
+    }
+    if (data.file instanceof File) {
+      body.append('attachment', data.file);
+    } else if (data.file === null) {
+      body.append('attachment', '');
+    }
+  } else {
+    body = JSON.stringify(data);
+  }
+
   return request(`/events/${id}/`, {
     method: 'PATCH',
-    body: JSON.stringify(data),
+    body,
   });
 }
 

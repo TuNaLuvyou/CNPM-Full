@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { t } from "@/lib/i18n";
 import { SectionLabel, Card, Row, Select } from "./SharedUI";
 
@@ -45,7 +45,7 @@ export default function LanguageRegion({ s, set, lang }) {
                     <Select value={s.dateFormat} onChange={(v) => set("dateFormat", v)} options={DATE_FORMATS} className="min-w-0" />
                 </Row>
                 <Row label={t('lang_region.time_format', lang)} desc={t('lang_region.time_format_desc', lang)}>
-                    <div className="flex rounded-xl overflow-hidden border border-slate-200 min-w-[240px] sm:min-w-[300px]">
+                    <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-[#484848] min-w-[240px] sm:min-w-[300px]">
                         {[
                             { v: "12h", label: t('lang_region.hour_12', lang) },
                             { v: "24h", label: t('lang_region.hour_24', lang) },
@@ -55,7 +55,7 @@ export default function LanguageRegion({ s, set, lang }) {
                                 type="button"
                                 onClick={() => set("timeFormat", v)}
                                 className={`flex-1 py-2 text-sm font-semibold transition
-                  ${s.timeFormat === v ? "bg-blue-600 text-white" : "bg-white text-slate-500 hover:bg-slate-50"}`}
+                  ${s.timeFormat === v ? "bg-blue-600 text-white" : "bg-white dark:bg-[#1f1f1f] text-slate-500 dark:text-white hover:bg-slate-50 dark:hover:bg-[#2d2d2d]"}`}
                             >
                                 {label}
                             </button>

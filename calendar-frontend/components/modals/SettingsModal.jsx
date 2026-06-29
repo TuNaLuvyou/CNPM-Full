@@ -168,6 +168,23 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
         wasOpenRef.current = true;
     }, [isOpen, initialSettings]);
 
+    // Live theme preview
+    useEffect(() => {
+        if (!isOpen) return;
+        const root = document.documentElement;
+        if (settings.theme === "dark") {
+            root.classList.add("dark");
+        } else if (settings.theme === "light") {
+            root.classList.remove("dark");
+        } else {
+            if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+                root.classList.add("dark");
+            } else {
+                root.classList.remove("dark");
+            }
+        }
+    }, [settings.theme, isOpen]);
+
     if (!isOpen) return null;
 
     const set = (key, value) =>
@@ -212,20 +229,20 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
             />
 
             {/* Modal */}
-            <div className="relative w-full max-w-4xl bg-slate-50 rounded-3xl shadow-2xl shadow-black/20 flex flex-col overflow-hidden"
+            <div className="relative w-full max-w-4xl bg-slate-50 dark:bg-[#1f1f1f] rounded-3xl shadow-2xl shadow-black/20 flex flex-col overflow-hidden"
                 style={{ maxHeight: "88vh" }}>
 
                 {/* ── Top bar ── */}
-                <div className="flex items-center justify-between px-8 py-5 bg-white border-b border-slate-200 flex-shrink-0">
+                <div className="flex items-center justify-between px-8 py-5 bg-white dark:bg-[#2d2d2d] border-b border-slate-200 dark:border-[#3c3c3c] flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <div>
-                            <h2 className="text-lg font-bold text-slate-800 leading-tight">{t('settings', settings.language)}</h2>
-                            <p className="text-xs text-slate-400">{t('settings_desc', settings.language)}</p>
+                            <h2 className="text-lg font-bold text-slate-800 dark:text-white leading-tight">{t('settings', settings.language)}</h2>
+                            <p className="text-xs text-slate-400 dark:text-white">{t('settings_desc', settings.language)}</p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-slate-100 rounded-full transition text-slate-400 hover:text-slate-600"
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-[#353535] rounded-full transition text-slate-400 dark:text-white hover:text-slate-600 dark:hover:text-[#bdbdbd] dark:text-white"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -235,7 +252,7 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
                 <div className="flex flex-1 min-h-0 overflow-hidden">
 
                     {/* Sidebar nav */}
-                    <nav className="w-52 bg-white border-r border-slate-200 py-3 flex-shrink-0 overflow-y-auto min-h-0">
+                    <nav className="w-52 bg-white dark:bg-[#2d2d2d] border-r border-slate-200 dark:border-[#3c3c3c] py-3 flex-shrink-0 overflow-y-auto min-h-0">
                         {SECTIONS.map(({ key, labelKey }) => {
                             const active = activeSection === key;
                             return (
@@ -245,8 +262,8 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
                                     onClick={() => scrollToSection(key)}
                                     className={`w-full flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all text-left border-r-[3px]
                                         ${active
-                                            ? "text-blue-600 bg-blue-50 border-blue-600"
-                                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-800 border-transparent"
+                                            ? "text-blue-600 bg-blue-50 border-blue-600 dark:bg-[#484848] dark:text-white dark:border-blue-400"
+                                            : "text-slate-600 dark:text-white hover:bg-slate-50 dark:hover:bg-[#2d2d2d] hover:text-slate-800 dark:hover:text-[#f5f5f5] dark:text-white border-transparent"
                                         }`}
                                 >
                                     <span className="truncate">{t(labelKey, settings.language)}</span>
@@ -258,38 +275,38 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
                     {/* Content area - Multi-section scrollable list */}
                     <div 
                         ref={scrollContainerRef}
-                        className="flex-1 min-h-0 overflow-y-auto p-8 custom-scrollbar space-y-12"
+                        className="flex-1 min-h-0 overflow-y-auto p-8 custom-scrollbar space-y-12 bg-slate-50 dark:bg-[#1f1f1f]"
                     >
                         <LanguageRegion s={settings} set={set} lang={settings.language} />
-                        <hr className="border-slate-200/60" />
+                        <hr className="border-slate-200 dark:border-[#484848]/60" />
                         <Timezone s={settings} set={set} lang={settings.language} />
-                        <hr className="border-slate-200/60" />
+                        <hr className="border-slate-200 dark:border-[#484848]/60" />
                         <EventSettings s={settings} set={set} lang={settings.language} />
-                        <hr className="border-slate-200/60" />
+                        <hr className="border-slate-200 dark:border-[#484848]/60" />
                         <Notification s={settings} set={set} lang={settings.language} />
-                        <hr className="border-slate-200/60" />
+                        <hr className="border-slate-200 dark:border-[#484848]/60" />
                         <ViewOptions s={settings} set={set} lang={settings.language} />
-                        <hr className="border-slate-200/60" />
+                        <hr className="border-slate-200 dark:border-[#484848]/60" />
                         <FavoriteCalendars
                             lang={settings.language}
                             onChange={handleFavoriteCalendarsChange}
                             onPresetChange={handleFavoritePresetChange}
                         />
-                        <hr className="border-slate-200/60" />
+                        <hr className="border-slate-200 dark:border-[#484848]/60" />
                         <CategoryManagement s={settings} set={set} lang={settings.language} />
                     </div>
                 </div>
 
                 {/* ── Footer ── */}
-                <div className="flex items-center justify-between px-8 py-4 bg-white border-t border-slate-200 flex-shrink-0">
-                    <p className="text-xs text-slate-400">
+                <div className="flex items-center justify-between px-8 py-4 bg-white dark:bg-[#2d2d2d] border-t border-slate-200 dark:border-[#3c3c3c] flex-shrink-0">
+                    <p className="text-xs text-slate-400 dark:text-white">
                         {settings.language === 'en' ? 'Settings apply to the current session' : 'Cài đặt áp dụng cho phiên hiện tại'}
                     </p>
                     <div className="flex gap-2">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                            className="px-5 py-2 text-sm font-medium text-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-[#353535] rounded-xl transition"
                         >
                             {t('cancel', settings.language)}
                         </button>
@@ -298,8 +315,8 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
                             onClick={handleSave}
                             className={`px-6 py-2 text-sm font-semibold rounded-xl transition-all flex items-center gap-2
                 ${saveState === "saved"
-                                    ? "bg-emerald-500 text-white shadow-sm shadow-emerald-200"
-                                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-200"
+                                    ? "bg-emerald-500 text-white shadow-sm shadow-emerald-200 dark:shadow-none"
+                                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-200 dark:shadow-none"
                                 }`}
                         >
                             {saveState === "saved" ? (

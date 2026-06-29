@@ -1,10 +1,10 @@
-import React from "react";
+﻿import React from "react";
 import { CheckCircle2, Circle, X } from "lucide-react";
 
 export default function TaskItem({ task, onToggle, onDelete }) {
   return (
     <div
-      className={`group flex items-start gap-3 px-4 py-2.5 hover:bg-slate-50 transition ${
+      className={`group flex items-start gap-3 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#2d2d2d] transition ${
         task.done ? "opacity-60" : "border-b border-slate-50 last:border-0"
       }`}
     >
@@ -16,10 +16,10 @@ export default function TaskItem({ task, onToggle, onDelete }) {
         )}
       </button>
       <div className="flex-1 min-w-0">
-        <p className={`text-sm ${task.done ? "text-slate-500 line-through" : "text-slate-700"}`}>
+        <p className={`text-sm ${task.done ? "text-slate-500 dark:text-[#9e9e9e] line-through" : "text-slate-700 dark:text-[#e3e3e3]"}`}>
           {task.text}
         </p>
-        {task.due && <p className="text-xs text-slate-400 mt-0.5">{task.due}</p>}
+        {task.due && <p className="text-xs text-slate-400 dark:text-[#9e9e9e] mt-0.5">{task.due}</p>}
       </div>
       <button
         onClick={() => onDelete(task.id)}

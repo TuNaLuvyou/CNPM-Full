@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 
 export default function Button({
   children,
@@ -12,9 +12,9 @@ export default function Button({
   
   const variants = {
     primary: "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-100",
-    secondary: "bg-slate-100 hover:bg-slate-200 text-slate-700",
-    outline: "border border-slate-200 text-slate-700 hover:bg-slate-50",
-    ghost: "text-slate-600 hover:text-slate-900 hover:bg-slate-100",
+    secondary: "bg-slate-100 dark:bg-[#353535] hover:bg-slate-200 dark:hover:bg-[#484848] text-slate-700 dark:text-[#e3e3e3]",
+    outline: "border border-slate-200 dark:border-[#484848] text-slate-700 dark:text-[#e3e3e3] hover:bg-slate-50 dark:hover:bg-[#2d2d2d]",
+    ghost: "text-slate-600 dark:text-[#bdbdbd] hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white hover:bg-slate-100 dark:hover:bg-[#353535]",
     danger: "bg-red-500 hover:bg-red-600 text-white shadow-sm shadow-red-100",
   };
 

@@ -140,6 +140,14 @@ class ConnectionViewSet(viewsets.ModelViewSet):
             content__icontains=connection.sender.username
         ).delete()
         
+        # Gửi thông báo cho người gửi nếu người nhận từ chối lời mời
+        if connection.status == 'pending' and connection.receiver == request.user:
+            Notification.objects.create(
+                user=connection.sender,
+                ntype='friend_declined',
+                content=f"{request.user.username} đã từ chối lời mời kết nối của bạn."
+            )
+        
         connection.delete()
         return Response({"message": "Đã xoá kết nối/Từ chối lời mời"}, status=status.HTTP_200_OK)
 

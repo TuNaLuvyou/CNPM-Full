@@ -45,6 +45,7 @@ class Event(models.Model):
     location = models.CharField(max_length=255, blank=True, null=True)
     link = models.URLField(blank=True, null=True)
     color = models.CharField(max_length=50, default='blue')
+    attachment = models.FileField(upload_to='attachments/', blank=True, null=True)
     
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
@@ -94,6 +95,7 @@ class Notification(models.Model):
         ('canceled', 'Event Canceled'),
         ('friend_request', 'Friend Request'),
         ('friend_accepted', 'Friend Request Accepted'),
+        ('friend_declined', 'Friend Request Declined'),
         ('security', 'Security Alert'),
         ('system', 'System Announcement'),
         ('reminder', 'Event Reminder'),

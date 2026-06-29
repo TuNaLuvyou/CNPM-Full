@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Search, Loader2, UserPlus, Check, Users } from "lucide-react";
 import { t } from "@/lib/i18n";
 
@@ -16,13 +16,13 @@ export default function AddFriendTab({
   return (
     <div className="p-4 space-y-4">
       <form onSubmit={handleSearch} className="flex gap-2">
-        <div className="flex-1 flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2 border border-slate-100 focus-within:border-blue-300 focus-within:bg-white transition-all">
-          <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+        <div className="flex-1 flex items-center gap-2 bg-slate-50 dark:bg-[#1f1f1f] rounded-xl px-3 py-2 border border-slate-100 dark:border-[#3c3c3c] focus-within:border-blue-300 focus-within:bg-white dark:bg-[#2d2d2d] transition-all">
+          <Search className="w-4 h-4 text-slate-400 dark:text-[#9e9e9e] flex-shrink-0" />
           <input
             value={searchEmail}
             onChange={(e) => setSearchEmail(e.target.value)}
             placeholder={t('contacts_panel.search_user_placeholder', lang)}
-            className="flex-1 text-sm bg-transparent outline-none text-slate-700 placeholder-slate-300"
+            className="flex-1 text-sm bg-transparent outline-none text-slate-700 dark:text-[#e3e3e3] placeholder-slate-300"
           />
         </div>
         <button
@@ -35,14 +35,14 @@ export default function AddFriendTab({
       </form>
 
       {searchResult && (
-        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex items-center justify-between">
+        <div className="bg-slate-50 dark:bg-[#1f1f1f] rounded-2xl p-4 border border-slate-100 dark:border-[#3c3c3c] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-12 h-12 rounded-full ${searchResult.color} flex items-center justify-center text-white text-lg font-bold shadow-sm ring-2 ring-white`}>
               {searchResult.avatar}
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-700">{searchResult.name}</p>
-              <p className="text-xs text-slate-400 truncate">{searchResult.email}</p>
+              <p className="text-sm font-bold text-slate-700 dark:text-[#e3e3e3]">{searchResult.name}</p>
+              <p className="text-xs text-slate-400 dark:text-[#9e9e9e] truncate">{searchResult.email}</p>
             </div>
           </div>
           <button

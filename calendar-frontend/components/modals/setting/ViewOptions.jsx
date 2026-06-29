@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { t } from "@/lib/i18n";
 import { SectionLabel, Card, Row, Toggle, Select } from "./SharedUI";
 
@@ -44,7 +44,7 @@ export default function ViewOptions({ s, set, lang }) {
                                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition cursor-pointer
                                     ${s.theme === opt.value
                                         ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                                        : "bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600"
+                                        : "bg-white dark:bg-[#2d2d2d] text-slate-600 dark:text-white border-slate-200 dark:border-[#484848] hover:border-blue-300 hover:text-blue-600"
                                     }`}
                             >
                                 <span>{THEME_ICONS[opt.value]}</span>
