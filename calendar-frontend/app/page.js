@@ -469,6 +469,8 @@ export default function CalendarApp() {
 
   const handleEventSaved = useCallback(() => {
     setEventSavedTick(t => t + 1);
+    setPreviewEvent(null);
+    setClickPosition(null);
   }, []);
 
   const handleToggleTask = async (compositeId) => {
@@ -724,7 +726,7 @@ export default function CalendarApp() {
     else setViewDate(clickedDate);
   };
 
-  const handleGridClick = ({ x, y, fullDate, hour, topOffset, columnRect }) => {
+  const handleGridClick = ({ x, y, fullDate, hour, topOffset, height, columnRect }) => {
     setEditingItem(null); // Reset trạng thái đang sửa để hiện form tạo mới
     let finalTop = topOffset;
     let totalMinutes = Math.round((topOffset / 64) * 60);
@@ -738,8 +740,9 @@ export default function CalendarApp() {
     const dateWithTime = new Date(fullDate);
     dateWithTime.setHours(Math.floor(totalMinutes / 60), totalMinutes % 60, 0, 0);
 
-    setClickPosition({ x, y, columnRect });
-    setPreviewEvent({ fullDate: dateWithTime, top: finalTop, height: 64, type: "grid", ts: Date.now() });
+    const ts = Date.now();
+    setClickPosition({ x, y, columnRect, ts });
+    setPreviewEvent({ fullDate: dateWithTime, top: finalTop, height: height || 64, type: "grid", ts });
     setCreateModal({ isOpen: true, tab: "event" });
     setSelectedDate(dateWithTime);
   };
@@ -862,6 +865,7 @@ export default function CalendarApp() {
     setCreateModal(prev => ({ ...prev, isOpen: false }));
     setEditingItem(null);
     setPreviewEvent(null);
+    setClickPosition(null);
   };
 
   const handleDelete = async () => {

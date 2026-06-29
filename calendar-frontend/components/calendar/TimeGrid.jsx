@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useEffect, useRef } from "react";
 import { getLocalizedTime, formatDateLocal, getEventStyle, HOUR_HEIGHT, getTimezoneOffsetMinutes, formatTimezoneOffset } from "../../lib/CalendarHelper";
 import { t } from "@/lib/i18n";
@@ -245,6 +245,7 @@ export default function TimeGrid({
                             y: e.clientY,
                             fullDate: previewEvent.fullDate,
                             topOffset: previewEvent.top,
+                            height: previewEvent.height,
                             columnRect: e.currentTarget.parentElement.getBoundingClientRect()
                           });
                         }}
