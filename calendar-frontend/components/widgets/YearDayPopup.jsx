@@ -118,9 +118,9 @@ export default function YearDayPopup({
                     ) : ev.event_type === 'task' ? (
                       ev.is_completed ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> : <Circle className="w-3.5 h-3.5 text-slate-400 dark:text-[#9e9e9e]" />
                     ) : ev.event_type === 'appointment' ? (
-                      <CalendarIcon className="w-3.5 h-3.5 text-purple-500" />
+                      <Clock className="w-3.5 h-3.5 text-purple-500" />
                     ) : (
-                      <Clock className="w-3.5 h-3.5 text-blue-500" />
+                      <CalendarIcon className="w-3.5 h-3.5 text-blue-500" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

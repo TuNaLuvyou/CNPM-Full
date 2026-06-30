@@ -102,7 +102,7 @@ def toggle_user_status(request, user_id):
 def assign_user_groups(request, user_id):
     if request.method == 'POST':
         user = get_object_or_404(User, id=user_id)
-        if user == request.user and not user.is_superuser:
+        if user == request.user:
             messages.error(request, "Bạn không thể tự cấu hình nhóm của chính mình!")
         else:
             group_ids = request.POST.getlist('groups')

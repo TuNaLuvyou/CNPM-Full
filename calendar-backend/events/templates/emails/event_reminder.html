@@ -81,16 +81,16 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📅 Nhắc nhở sự kiện</h1>
+            <h1>📅 Nhắc nhở {{ event_type_str_lower }}</h1>
         </div>
         
         <p>Xin chào <strong>{{ username }}</strong>,</p>
         
-        <p>Sự kiện của bạn sắp bắt đầu! Đây là thông báo nhắc nhở:</p>
+        <p>{{ event_type_str }} của bạn sắp bắt đầu! Đây là thông báo nhắc nhở:</p>
         
         <div class="event-details">
             <div class="detail-item">
-                <span class="detail-label">Sự kiện:</span>
+                <span class="detail-label">{{ event_type_str }}:</span>
                 <span class="detail-value"><strong>{{ event_title }}</strong></span>
             </div>
             <div class="detail-item">
@@ -114,13 +114,13 @@
         </div>
         
         <div class="warning">
-            ⏰ Sự kiện sẽ bắt đầu trong {{ reminder_minutes }} phút. Hãy chuẩn bị sẵn sàng!
+            ⏰ {{ event_type_str }} sẽ bắt đầu trong {{ reminder_minutes }} phút. Hãy chuẩn bị sẵn sàng!
         </div>
         
-        <p>Nếu bạn không lên kế hoạch tham dự sự kiện này, bạn có thể vô hiệu hóa thông báo nhắc nhở.</p>
+        <p>Nếu bạn không lên kế hoạch tham dự {{ event_type_str_lower }} này, bạn có thể vô hiệu hóa thông báo nhắc nhở.</p>
         
         <div style="text-align: center;">
-            <a href="#" class="btn">Xem sự kiện</a>
+            <a href="#" class="btn">Xem {{ event_type_str_lower }}</a>
         </div>
         
         <div class="footer">

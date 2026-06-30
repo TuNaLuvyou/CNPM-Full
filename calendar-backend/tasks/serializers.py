@@ -29,7 +29,7 @@ class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = [
-            'id', 'user', 'title', 'description', 'is_completed',
+            'id', 'user', 'title', 'description', 'category', 'is_completed',
             'color', 'reminder_time',
             'deleted_at',
             'start_time', 'end_time', 'deadline_time', 'created_at', 'updated_at',
@@ -123,5 +123,8 @@ class TaskSerializer(serializers.ModelSerializer):
 
         if deadline and end and end > deadline:
             raise serializers.ValidationError({"end_time": "Thời gian kết thúc không thể vượt quá thời hạn (deadline)."})
+
+        if 'reminder_time' in data:
+            data['reminder_sent'] = False
 
         return data

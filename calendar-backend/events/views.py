@@ -149,16 +149,18 @@ class InvitationViewSet(viewsets.ViewSet):
                     "conflicts": conflict_details
                 }, status=409)
 
+            was_already_accepted = invite.status == 'accepted'
             invite.status = 'accepted'
             invite.save()
             
-            # Thông báo cho chủ nhà
-            Notification.objects.create(
-                user=invite.event.user,
-                ntype='accepted',
-                event=invite.event,
-                content=f"{request.user.username} đã chấp nhận lời mời tham gia: {invite.event.title}"
-            )
+            # Chỉ tạo notification nếu lần đầu accept (tránh duplicate)
+            if not was_already_accepted:
+                Notification.objects.create(
+                    user=invite.event.user,
+                    ntype='accepted',
+                    event=invite.event,
+                    content=f"{request.user.username} đã chấp nhận lời mời tham gia: {invite.event.title}"
+                )
             return Response({"status": "accepted"})
         except EventInvitation.DoesNotExist:
             return Response({"error": "Invitation not found"}, status=404)

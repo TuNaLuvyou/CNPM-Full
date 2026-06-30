@@ -13,6 +13,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
+from django.contrib.auth.models import Group
 import threading
 from .models import EmailVerificationToken
 
@@ -89,6 +90,13 @@ class RegisterView(APIView):
         # Đăng ký xong: khóa tài khoản chờ xác thực
         user.is_active = False
         user.save()
+
+        # Phân quyền mặc định là "Người dùng"
+        try:
+            group, _ = Group.objects.get_or_create(name='Người dùng')
+            user.groups.add(group)
+        except Exception:
+            pass
 
         # Tạo token xác thực
         verify_token = EmailVerificationToken.objects.create(user=user)

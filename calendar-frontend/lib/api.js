@@ -58,6 +58,7 @@ export async function register(fullName, email, password) {
 export async function logout() {
   await request('/accounts/logout/', { method: 'POST' }).catch(() => {});
   localStorage.removeItem('token');
+  localStorage.removeItem('appSettings');
 }
 
 export async function getMe() {
@@ -403,6 +404,10 @@ export async function getSettings() {
     dimPastEvents:          data.dim_past_events      ?? true,
     weekStartDay:           data.week_start_day       ?? 'monday',
     phoneNumber:            data.phone_number         ?? '',
+    // Nếu server trả về danh mục tuỳ chỉnh thì dùng, ngược lại giữ 4 mặc định
+    customCategories:       (data.custom_categories && data.custom_categories.length > 0)
+                              ? data.custom_categories
+                              : ['Mặc định', 'Công việc', 'Gia đình', 'Cá nhân'],
   };
 }
 
@@ -431,6 +436,7 @@ export async function updateSettings(flatData) {
     show_declined_events:    flatData.showDeclinedEvents,
     dim_past_events:         flatData.dimPastEvents,
     week_start_day:          flatData.weekStartDay,
+    custom_categories:       flatData.customCategories,
   };
   // Lọc bỏ các key undefined
   Object.keys(snakeData).forEach(k => snakeData[k] === undefined && delete snakeData[k]);
@@ -438,6 +444,13 @@ export async function updateSettings(flatData) {
   return request('/accounts/settings/', {
     method: 'PATCH',
     body: JSON.stringify(snakeData),
+  });
+}
+
+export async function saveCustomCategories(categories) {
+  return request('/accounts/settings/', {
+    method: 'PATCH',
+    body: JSON.stringify({ custom_categories: categories }),
   });
 }
 

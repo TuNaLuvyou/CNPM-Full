@@ -160,6 +160,9 @@ export default function CreateModal({
           delete formData.timeEnd;
       }
 
+      // Đảm bảo gửi đúng event_type lên backend
+      formData.event_type = activeTab;
+
       if (activeTab === "task") {
         if (editingItem) await updateTask(cleanId, formData);
         else await createTask(formData);

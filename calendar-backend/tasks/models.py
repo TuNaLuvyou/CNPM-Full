@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 class Task(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
+    category = models.CharField(max_length=100, default='Mặc định', blank=True)
     description = models.TextField(blank=True, null=True)
     
     start_time = models.DateTimeField(blank=True, null=True)
@@ -12,6 +13,7 @@ class Task(models.Model):
     
     color = models.CharField(max_length=50, default='blue')
     reminder_time = models.DateTimeField(blank=True, null=True)
+    reminder_sent = models.BooleanField(default=False)
     
     is_completed = models.BooleanField(default=False)
 

@@ -164,6 +164,7 @@ class UserSettingsSerializer(serializers.ModelSerializer):
             'show_weekends', 'show_completed_tasks', 'show_week_numbers', 'show_declined', 'show_declined_events',
             'dim_past_events', 'week_start_day',
             'phone_number',
+            'custom_categories',
         ]
 
 

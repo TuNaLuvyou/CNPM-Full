@@ -67,7 +67,9 @@
             <tr class="hover:bg-slate-50/50 transition-colors">
                 <td class="px-6 py-4 text-sm text-slate-400">#{{ u.id }}</td>
                 <td class="px-6 py-4">
-                    <div class="font-bold text-slate-700">{{ u.username }}</div>
+                    <button type="button" onclick="openUserDetailModal('{{ u.username|escapejs }}', '{{ u.email|escapejs }}', '{{ u.first_name|escapejs }}', '{{ u.last_name|escapejs }}', '{{ u.date_joined|date:"d/m/Y H:i" }}', '{{ u.last_login|date:"d/m/Y H:i"|default:"Chưa đăng nhập" }}', '{{ u.is_active|yesno:"Hoạt động,Bị khoá" }}', '{{ u.settings.phone_number|default:""|escapejs }}')" class="font-bold text-blue-600 hover:text-blue-800 hover:underline text-left transition-colors cursor-pointer">
+                        {{ u.username }}
+                    </button>
                     <div class="text-xs text-slate-400">{{ u.email }}</div>
                 </td>
                 <td class="px-6 py-4">
@@ -98,6 +100,7 @@
                     {% endif %}
                 </td>
                 <td class="px-6 py-4 text-right">
+                    {% if u.id != request.user.id %}
                     <div class="flex justify-end gap-6 items-center">
                         <button onclick="openAssignGroupsModal('{{ u.id }}', '{{ u.username|escapejs }}', [{% for g in u.groups.all %}'{{ g.id }}'{% if not forloop.last %},{% endif %}{% endfor %}])" class="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-800 uppercase tracking-wider transition-colors h-8 leading-none">
                             <span class="w-5 h-5 flex items-center justify-center">
@@ -120,6 +123,9 @@
                             </button>
                         </form>
                     </div>
+                    {% else %}
+                    <span class="text-[10px] text-slate-300 italic px-2">Không thể thao tác</span>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
@@ -158,7 +164,84 @@
     </div>
 </div>
 
+<!-- Modal Thông tin Tài khoản -->
+<div id="user-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm hidden">
+    <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="p-8 border-b border-slate-100 flex justify-between items-start">
+            <div>
+                <h3 class="text-xl font-bold text-slate-800 mb-1">Thông tin Tài khoản</h3>
+                <p class="text-slate-500 text-sm italic">Chi tiết hồ sơ của người dùng</p>
+            </div>
+            <button type="button" onclick="document.getElementById('user-detail-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        
+        <div class="p-8 italic space-y-4">
+            <div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tài khoản</p>
+                <p id="detail-username" class="font-bold text-slate-800 text-base"></p>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Email</p>
+                    <p id="detail-email" class="text-slate-700"></p>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Số điện thoại</p>
+                    <p id="detail-phone" class="text-slate-700"></p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Họ và tên</p>
+                    <p id="detail-fullname" class="text-slate-700"></p>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Trạng thái</p>
+                    <p id="detail-status" class="font-semibold"></p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Ngày tham gia</p>
+                    <p id="detail-date-joined" class="text-slate-700 text-sm"></p>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Đăng nhập lần cuối</p>
+                    <p id="detail-last-login" class="text-slate-700 text-sm"></p>
+                </div>
+            </div>
+        </div>
+        <div class="p-6 bg-slate-50 flex justify-end">
+            <button type="button" onclick="document.getElementById('user-detail-modal').classList.add('hidden')" class="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl transition-colors shadow-sm hover:bg-slate-50">Đóng</button>
+        </div>
+    </div>
+</div>
+
 <script>
+function openUserDetailModal(username, email, firstName, lastName, dateJoined, lastLogin, status, phone) {
+    document.getElementById('detail-username').textContent = username;
+    document.getElementById('detail-email').textContent = email;
+    document.getElementById('detail-phone').textContent = phone || 'Chưa cập nhật';
+    
+    const fullName = [lastName, firstName].filter(Boolean).join(' ').trim();
+    document.getElementById('detail-fullname').textContent = fullName || 'Chưa cập nhật';
+    
+    document.getElementById('detail-date-joined').textContent = dateJoined;
+    document.getElementById('detail-last-login').textContent = lastLogin;
+    
+    const statusEl = document.getElementById('detail-status');
+    statusEl.textContent = status;
+    if (status === 'Hoạt động') {
+        statusEl.className = 'text-emerald-600 font-bold';
+    } else {
+        statusEl.className = 'text-red-600 font-bold';
+    }
+    
+    document.getElementById('user-detail-modal').classList.remove('hidden');
+}
+
 function openAssignGroupsModal(userId, username, userGroupIds) {
     const modal = document.getElementById('assign-groups-modal');
     const form = document.getElementById('assign-groups-form');
@@ -179,9 +262,13 @@ function openAssignGroupsModal(userId, username, userGroupIds) {
 
 // Close modal when clicking outside
 window.onclick = function(event) {
-    const modal = document.getElementById('assign-groups-modal');
-    if (event.target == modal) {
-        modal.classList.add('hidden');
+    const assignModal = document.getElementById('assign-groups-modal');
+    if (event.target == assignModal) {
+        assignModal.classList.add('hidden');
+    }
+    const detailModal = document.getElementById('user-detail-modal');
+    if (event.target == detailModal) {
+        detailModal.classList.add('hidden');
     }
 }
 </script>

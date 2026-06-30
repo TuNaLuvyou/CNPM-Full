@@ -53,7 +53,7 @@ class Event(models.Model):
     recurrence_rule = models.CharField(max_length=255, blank=True, null=True)
     
     # Reminder settings (in minutes before event)
-    reminder_minutes = models.IntegerField(default=15, help_text="Minutes before event to send reminder")
+    reminder_minutes = models.IntegerField(default=10, help_text="Minutes before event to send reminder")
     reminder_sent = models.BooleanField(default=False)
 
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -99,6 +99,7 @@ class Notification(models.Model):
         ('security', 'Security Alert'),
         ('system', 'System Announcement'),
         ('reminder', 'Event Reminder'),
+        ('task_reminder', 'Task Reminder'),
     ]
     
     user = models.ForeignKey(User, related_name='notifications', on_delete=models.CASCADE)

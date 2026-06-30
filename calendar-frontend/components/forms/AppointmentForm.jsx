@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Clock, MapPin, AlignLeft, Paperclip, Palette, Tag, X } from 'lucide-react';
 import { FieldRow, InputBase, TextareaBase, EVENT_COLORS, toDateInputVal, toTimeInputVal, DateTimeSelector } from './FormHelpers';

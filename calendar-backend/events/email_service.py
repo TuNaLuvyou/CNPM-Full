@@ -30,11 +30,11 @@ def should_send_email_notification(user):
     return pref in ['email', 'both']
 
 def get_user_notification_minutes(user):
-    """Get user's notification_minutes from UserSettings (defaults to 15 if not set)"""
+    """Get user's notification_minutes from UserSettings (defaults to 10 if not set)"""
     try:
         return user.settings.notification_minutes
-    except UserSettings.DoesNotExist:
-        return 15
+    except Exception:
+        return 10
 
 def create_reminder_notification(event):
     """Create a reminder notification in the system"""
@@ -50,8 +50,11 @@ def create_reminder_notification(event):
         local_start = timezone.localtime(event.start_time)
         event_time = local_start.strftime('%H:%M ngày %d/%m/%Y')
         
+        # Dùng từ đúng với loại (Sự kiện hay Lịch hẹn)
+        type_str = 'sự kiện' if event.event_type == 'event' else 'lịch hẹn'
+        
         # Create notification content
-        content = f"Sắp đến giờ của sự kiện '{event.title}' lúc {event_time}"
+        content = f"Sắp đến giờ của {type_str} '{event.title}' lúc {event_time}"
         
         # Create notification
         notification = Notification.objects.create(
@@ -91,9 +94,14 @@ def send_event_reminder_email(event):
         # Get reminder minutes from user settings (not from event model default)
         reminder_minutes = get_user_notification_minutes(user)
 
+        # Dùng từ đúng với loại (Sự kiện hay Lịch hẹn)
+        type_str = 'Sự kiện' if event.event_type == 'event' else 'Lịch hẹn'
+        
         # Email context
         context = {
             'username': user.first_name or user.username,
+            'event_type_str': type_str,
+            'event_type_str_lower': type_str.lower(),
             'event_title': event.title,
             'event_time': event_time,
             'event_location': event.location or 'Không xác định',
@@ -102,7 +110,7 @@ def send_event_reminder_email(event):
         }
         
         # Create email content
-        subject = f'📅 Nhắc nhở: {event.title} sắp bắt đầu'
+        subject = f'📅 Nhắc nhở: {type_str} {event.title} sắp bắt đầu'
         html_message = render_to_string('emails/event_reminder.html', context)
         plain_message = strip_tags(html_message)
         

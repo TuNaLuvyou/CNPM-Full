@@ -667,21 +667,28 @@ export default function CalendarApp() {
     const regularFiltered = events.filter(ev => {
         const cat = ev.category || 'Mặc định';
         const isMyEvent = ev.user === currentUser?.id;
-        
-        let involvedFriends = [];
-        if (isMyEvent && ev.invitations) {
-            involvedFriends = ev.invitations.filter(i => i.status === 'accepted').map(i => i.invitee);
-        } else if (!isMyEvent) {
-            involvedFriends = [ev.user]; // Người mời tôi
+
+        // Sự kiện được người khác mời: KHÔNG lọc theo category của mình
+        // (vì category đó thuộc về chủ sự kiện, không phải người được mời)
+        if (!isMyEvent) {
+            if (!appSettings.showFriendsCalendars) {
+                return true; // Luôn hiện nếu tắt lịch kết nối
+            }
+            // Khi bật lịch kết nối: chỉ lọc theo friend checkbox
+            const isFriendChecked = visibleFriends.includes(ev.user);
+            return isFriendChecked;
         }
 
+        // Sự kiện của chính mình: lọc theo category
+        let involvedFriends = [];
+        if (ev.invitations) {
+            involvedFriends = ev.invitations.filter(i => i.status === 'accepted').map(i => i.invitee);
+        }
         const isPersonalEvent = involvedFriends.length === 0;
 
         if (isPersonalEvent || !appSettings.showFriendsCalendars) {
-            // Sự kiện cá nhân (hoặc khi tắt tính năng Lịch kết nối): chỉ lọc theo Category
             return visibleCategories.includes(cat);
         } else {
-            // Sự kiện dùng chung: Lọc theo Category VÀ Lịch kết nối
             const isFriendChecked = involvedFriends.some(fid => visibleFriends.includes(fid));
             return visibleCategories.includes(cat) && isFriendChecked;
         }
@@ -1122,6 +1129,7 @@ export default function CalendarApp() {
         onLoginSuccess={(user) => {
           setCurrentUser(user);
           setAuthModal({ isOpen: false, type: "login" });
+          window.location.reload();
         }}
       />
 

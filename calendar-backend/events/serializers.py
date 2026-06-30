@@ -102,6 +102,13 @@ class EventSerializer(serializers.ModelSerializer):
         return None
 
     def _handle_guests(self, event, guests_data):
+        # Khi gửi qua FormData (multipart/form-data), guests bị JSON.stringify thành chuỗi → parse lại
+        if isinstance(guests_data, str):
+            import json
+            try:
+                guests_data = json.loads(guests_data)
+            except (json.JSONDecodeError, ValueError):
+                guests_data = []
         if not isinstance(guests_data, list): return
 
         request = self.context.get('request')
@@ -145,10 +152,31 @@ class EventSerializer(serializers.ModelSerializer):
                         content=f"{request.user.username} đã mời bạn tham gia sự kiện: {event.title} vào lúc {st_str} ngày {dt_str}"
                     )
         
-        # Xóa những lời mời không còn trong danh sách (uninvite) và dọn dẹp thông báo tương ứng
+        # Xóa những lời mời không còn trong danh sách (uninvite) và gửi thông báo bị xoá
         removed_invites = event.invitations.exclude(invitee_id__in=new_guest_ids)
         removed_user_ids = list(removed_invites.values_list('invitee_id', flat=True))
-        Notification.objects.filter(event=event, user_id__in=removed_user_ids).delete()
+
+        if removed_user_ids and request:
+            from django.utils import timezone as tz
+            local_start = tz.localtime(event.start_time)
+            st_str = local_start.strftime('%H:%M')
+            dt_str = local_start.strftime('%d/%m/%Y')
+
+            # Xoá thông báo cũ (invite/accepted/...) rồi gửi thông báo bị xoá khỏi sự kiện
+            Notification.objects.filter(event=event, user_id__in=removed_user_ids).delete()
+            for uid in removed_user_ids:
+                Notification.objects.create(
+                    user_id=uid,
+                    ntype='canceled',
+                    event=event,
+                    content=(
+                        f"{request.user.username} đã xoá bạn khỏi sự kiện: "
+                        f"\"{event.title}\" ({st_str} ngày {dt_str})"
+                    )
+                )
+        else:
+            Notification.objects.filter(event=event, user_id__in=removed_user_ids).delete()
+
         removed_invites.delete()
 
     def create(self, validated_data):
@@ -208,6 +236,8 @@ class NotificationSerializer(serializers.ModelSerializer):
             return obj.event.event_type
         if 'friend' in obj.ntype:
             return 'friend'
+        if obj.ntype == 'task_reminder':
+            return 'task'
         return 'event'
 
     def get_desc(self, obj):
@@ -226,6 +256,10 @@ class NotificationSerializer(serializers.ModelSerializer):
                 owner = obj.event.user.username
                 return f"{owner} đã mời bạn tham gia sự kiện: {title} ({st_str} - {et_str}) ngày {dt_str}"
             elif obj.ntype == 'canceled':
+                # Phân biệt: bị xoá khỏi danh sách (uninvite) vs sự kiện bị hủy hoàn toàn
+                if 'đã xoá bạn khỏi sự kiện' in obj.content:
+                    owner = obj.event.user.username
+                    return f"{owner} đã xoá bạn khỏi sự kiện: {title} ({st_str} - {et_str}) ngày {dt_str}"
                 return f"Sự kiện {title} ({st_str} - {et_str} ngày {dt_str}) đã bị hủy bởi người tạo."
         
         return obj.content

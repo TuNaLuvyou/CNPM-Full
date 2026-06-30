@@ -1,8 +1,8 @@
-import { Users, Calendar as CalendarIcon, CheckCircle, Circle, Clock, MapPin } from 'lucide-react';
+import { Users, Calendar as CalendarIcon, CheckCircle, Circle, Clock, MapPin, Tag } from 'lucide-react';
 import { t } from '@/lib/i18n';
 
 export default function Event({ 
-    title, time, color = 'blue', type, top, height, location, description,
+    title, time, color = 'blue', type, top, height, location, description, category,
     event_type, is_completed, onToggleComplete, is_clamped, is_ghost,
     onClick, onMouseDown, onResizeMouseDown, lang = 'vi',
     my_permission = 'edit', owner_name, owner_email, is_owner = true,
@@ -64,7 +64,7 @@ export default function Event({
                         {is_completed ? <CheckCircle className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
                     </button>
                 ) : isAppointment ? (
-                    <CalendarIcon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${finalTheme.text}`} />
+                    <Clock className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${finalTheme.text}`} />
                 ) : (
                     <CalendarIcon className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${finalTheme.text}`} />
                 )
@@ -92,9 +92,14 @@ export default function Event({
 
         {showDetails && (
             <div className="mt-1.5 space-y-1">
+                {category && (
+                    <p className={`text-[9px] flex items-center ${finalTheme.text} truncate`}>
+                        <Tag className="w-2.5 h-2.5 mr-1 flex-shrink-0" /> {category}
+                    </p>
+                )}
                 {location && (
                     <p className={`text-[9px] flex items-center ${finalTheme.text} truncate`}>
-                        <MapPin className="w-2.5 h-2.5 mr-1" /> {location}
+                        <MapPin className="w-2.5 h-2.5 mr-1 flex-shrink-0" /> {location}
                     </p>
                 )}
                 {showDescription && (

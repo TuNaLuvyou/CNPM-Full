@@ -219,9 +219,9 @@ export default function MonthView({
                                 {ev.event_type === 'task' ? (
                                     ev.is_completed ? <CheckCircle className="w-2.5 h-2.5" /> : <Circle className="w-2.5 h-2.5" />
                                 ) : ev.event_type === 'appointment' ? (
-                                    <CalendarIcon className="w-2.5 h-2.5" />
-                                ) : (
                                     <Clock className="w-2.5 h-2.5" />
+                                ) : (
+                                    <CalendarIcon className="w-2.5 h-2.5" />
                                 )}
                             </span>
                             <span className="opacity-70 text-[8px] whitespace-nowrap">{startStr}-{endStr}</span>

@@ -1,24 +1,38 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { SectionLabel, Card } from "./SharedUI";
+import { saveCustomCategories } from "@/lib/api";
 
 export default function CategoryManagement({ s, set, lang }) {
     const [newCat, setNewCat] = useState("");
     const categories = s.customCategories || [];
 
-    const addCategory = () => {
+    const addCategory = async () => {
         const name = newCat.trim();
         if (!name || categories.includes(name)) return;
         const updated = [...categories, name];
         set("customCategories", updated);
         setNewCat("");
+        // Lưu ngay lên server mà không cần chờ nút Lưu
+        try {
+            await saveCustomCategories(updated);
+        } catch (e) {
+            console.error("Lỗi lưu danh mục:", e);
+        }
     };
 
-    const removeCategory = (name) => {
+    const removeCategory = async (name) => {
         const updated = categories.filter((c) => c !== name);
         set("customCategories", updated);
+        // Lưu ngay lên server mà không cần chờ nút Lưu
+        try {
+            await saveCustomCategories(updated);
+        } catch (e) {
+            console.error("Lỗi lưu danh mục:", e);
+        }
     };
+
 
     return (
         <div id="section-categories" className="space-y-6 scroll-mt-6 pb-20">

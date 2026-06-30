@@ -52,6 +52,13 @@ class UserSettings(models.Model):
     dim_past_events      = models.BooleanField(default=True)
     week_start_day       = models.CharField(max_length=10, default='monday')
 
+    # Nhóm 7 — Danh mục tuỳ chỉnh
+    custom_categories    = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Danh sách danh mục tuỳ chỉnh của người dùng, ví dụ: ["TTCS", "CNPM"]'
+    )
+
     def __str__(self):
         return f"Settings for {self.user.email}"
 
