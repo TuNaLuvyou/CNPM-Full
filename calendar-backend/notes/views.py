@@ -10,10 +10,13 @@ class NoteViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        user = self.request.user
+        if self.action in ['trash', 'restore', 'permanent_delete']:
+            return Note.objects.filter(user=user).select_related('user').order_by('-is_pinned', '-updated_at')
+
         is_deleted_qs = self.request.query_params.get('trash', 'false') == 'true'
-        if self.action in ['restore', 'permanent_delete']:
-            is_deleted_qs = True
-        return Note.objects.filter(user=self.request.user, deleted_at__isnull=not is_deleted_qs).order_by('-is_pinned', '-updated_at')
+        return Note.objects.filter(user=user, deleted_at__isnull=not is_deleted_qs).select_related('user').order_by('-is_pinned', '-updated_at')
+
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

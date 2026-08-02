@@ -11,11 +11,13 @@ class TaskViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        is_deleted_qs = self.request.query_params.get('trash', 'false') == 'true'
-        if self.action in ['restore', 'permanent_delete']:
-            is_deleted_qs = True
+        user = self.request.user
+        if self.action in ['trash', 'restore', 'permanent_delete']:
+            return Task.objects.filter(user=user).select_related('user').order_by('created_at')
 
-        qs = Task.objects.filter(user=self.request.user, deleted_at__isnull=not is_deleted_qs).order_by('created_at')
+        is_deleted_qs = self.request.query_params.get('trash', 'false') == 'true'
+        qs = Task.objects.filter(user=user, deleted_at__isnull=not is_deleted_qs).select_related('user').order_by('created_at')
+
 
         # Filter theo trạng thái: ?done=true hoặc ?done=false
         done_param = self.request.query_params.get('done')

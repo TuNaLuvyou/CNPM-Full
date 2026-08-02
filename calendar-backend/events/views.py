@@ -19,22 +19,28 @@ class EventViewSet(viewsets.ModelViewSet):
         if self.action in ['trash', 'restore', 'permanent_delete', 'leave']:
              return Event.objects.filter(
                 (Q(user=user) | Q(invitations__invitee=user, invitations__status__in=['accepted', 'pending']))
-             ).distinct().order_by('start_time')
+             ).select_related('user', 'calendar_group').prefetch_related('invitations', 'invitations__invitee').distinct().order_by('start_time')
 
         # Xây dựng filter cơ bản: sự kiện của mình hoặc mình được mời
         base_filter = (Q(user=user) | Q(invitations__invitee=user, invitations__status='accepted'))
         
-        qs = Event.objects.filter(base_filter & Q(deleted_at__isnull=not is_deleted_qs)).distinct()
+        qs = Event.objects.filter(
+            base_filter & Q(deleted_at__isnull=not is_deleted_qs)
+        ).select_related('user', 'calendar_group').prefetch_related('invitations', 'invitations__invitee').distinct()
         
         # Filter theo thời gian nếu có
         date_from = self.request.query_params.get('date_from')
         date_to = self.request.query_params.get('date_to')
         if date_from:
-            qs = qs.filter(Q(end_time__date__gte=date_from) | Q(recurrence_rule__in=['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']))
+            qs = qs.filter(
+                Q(end_time__date__gte=date_from) |
+                (Q(recurrence_rule__in=['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']) & Q(start_time__date__lte=date_to if date_to else '9999-12-31'))
+            )
         if date_to:
-            qs = qs.filter(Q(start_time__date__lte=date_to) | Q(recurrence_rule__in=['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']))
+            qs = qs.filter(Q(start_time__date__lte=date_to))
         
         return qs.order_by('start_time')
+
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -252,7 +258,7 @@ class CalendarGroupViewSet(viewsets.ModelViewSet):
         # Own calendars and calendars shared with user
         return CalendarGroup.objects.filter(
             Q(owner=user) | Q(shares__user=user)
-        ).distinct()
+        ).select_related('owner').prefetch_related('shares', 'shares__user').distinct()
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)

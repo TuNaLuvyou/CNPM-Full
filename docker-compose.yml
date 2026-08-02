@@ -6,14 +6,15 @@ services:
     container_name: cnpm_mysql
     restart: always
     environment:
-      MYSQL_DATABASE: cnpm_db
-      MYSQL_USER: calendar
-      MYSQL_PASSWORD: 123
-      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: ${DB_NAME:-cnpm_db}
+      MYSQL_USER: ${DB_USER:-calendar}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-123}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
     ports:
-      - "3306:3306"
+      - "${DB_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
 
 volumes:
   mysql_data:
+

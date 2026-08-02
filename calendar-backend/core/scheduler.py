@@ -2,12 +2,19 @@ import threading
 from datetime import timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from django.conf import settings
 from django.utils import timezone
 
-scheduler = BackgroundScheduler(timezone="Asia/Ho_Chi_Minh")
-
+scheduler = None
 _start_lock = threading.Lock()
 _started = False
+
+
+def get_scheduler():
+    global scheduler
+    if scheduler is None:
+        scheduler = BackgroundScheduler(timezone="Asia/Ho_Chi_Minh")
+    return scheduler
 
 
 def cleanup_expired_unverified_users():
@@ -27,10 +34,14 @@ def cleanup_expired_unverified_users():
 
 def schedule_cleanup(user_id):
     """Lên lịch xoá tài khoản chưa xác thực sau khi token hết hạn."""
+    if getattr(settings, 'TESTING', False):
+        return
+
     from accounts.models import EmailVerificationToken
 
     run_at = timezone.now() + timedelta(seconds=EmailVerificationToken.EXPIRE_SECONDS + 5)
-    scheduler.add_job(
+    s = get_scheduler()
+    s.add_job(
         cleanup_expired_unverified_users,
         'date',
         run_date=run_at,
@@ -43,12 +54,16 @@ def schedule_cleanup(user_id):
 
 def start_scheduler():
     """Khởi động scheduler nếu chưa chạy. An toàn khi gọi nhiều lần (autoreload, multi-worker)."""
+    if getattr(settings, 'TESTING', False):
+        return
+
     global _started
     with _start_lock:
         if _started:
             return
         try:
-            scheduler.add_job(
+            s = get_scheduler()
+            s.add_job(
                 cleanup_expired_unverified_users,
                 'interval',
                 minutes=1,
@@ -57,7 +72,9 @@ def start_scheduler():
                 coalesce=True,
                 max_instances=1,
             )
-            scheduler.start()
+            s.start()
             _started = True
         except Exception:
             _started = False
+
+

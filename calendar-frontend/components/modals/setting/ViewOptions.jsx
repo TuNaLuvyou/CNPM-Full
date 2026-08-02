@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { t } from "@/lib/i18n";
 import { SectionLabel, Card, Row, Toggle, Select } from "./SharedUI";
 
@@ -12,15 +12,7 @@ const WEEK_DAYS = [
     { value: "sunday",    label: "Chủ Nhật" },
 ];
 
-const THEME_ICONS = { light: "☀️", dark: "🌙", system: "💻" };
-
 export default function ViewOptions({ s, set, lang }) {
-    const THEME_OPTIONS = [
-        { value: "light",  label: t('view_options.theme_light',  lang) },
-        { value: "dark",   label: t('view_options.theme_dark',   lang) },
-        { value: "system", label: t('view_options.theme_system', lang) },
-    ];
-
     const TOGGLES = [
         { key: "showWeekends",       label: t('view_options.show_weekends', lang),   desc: t('view_options.show_weekends_desc', lang) },
         { key: "showCompletedTasks", label: t('view_options.show_completed', lang),  desc: t('view_options.show_completed_desc', lang) },
@@ -32,28 +24,6 @@ export default function ViewOptions({ s, set, lang }) {
         <div id="section-view" className="space-y-6 scroll-mt-6">
             <SectionLabel>{t('view_options.title', lang)}</SectionLabel>
 
-            {/* Theme selector */}
-            <Card>
-                <Row label={t('view_options.theme', lang)} desc={t('view_options.theme_desc', lang)}>
-                    <div className="flex gap-2">
-                        {THEME_OPTIONS.map((opt) => (
-                            <button
-                                key={opt.value}
-                                type="button"
-                                onClick={() => set("theme", opt.value)}
-                                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition cursor-pointer
-                                    ${s.theme === opt.value
-                                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                                        : "bg-white dark:bg-[#2d2d2d] text-slate-600 dark:text-white border-slate-200 dark:border-[#484848] hover:border-blue-300 hover:text-blue-600"
-                                    }`}
-                            >
-                                <span>{THEME_ICONS[opt.value]}</span>
-                                <span>{opt.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </Row>
-            </Card>
 
             {/* Toggle group */}
             <Card>

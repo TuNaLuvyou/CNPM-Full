@@ -2,25 +2,13 @@
 import { useEffect } from "react";
 
 /**
- * Reads `appSettings.theme` ("light" | "dark" | "system") and
- * toggles the `dark` class on <html> so Tailwind dark: variants work.
+ * Ensures light mode is always applied by removing any `dark` class from <html>.
  */
-export default function ThemeProvider({ appSettings }) {
+export default function ThemeProvider() {
   useEffect(() => {
-    const theme = appSettings?.theme || "light";
-    const root = document.documentElement;
-
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else if (theme === "light") {
-      root.classList.remove("dark");
-    } else {
-      // "system"
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      if (prefersDark) root.classList.add("dark");
-      else root.classList.remove("dark");
-    }
-  }, [appSettings?.theme]);
+    document.documentElement.classList.remove("dark");
+  }, []);
 
   return null;
 }
+

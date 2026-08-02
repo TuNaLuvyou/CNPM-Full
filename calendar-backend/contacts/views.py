@@ -44,7 +44,8 @@ class ConnectionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        return Connection.objects.filter(Q(sender=user) | Q(receiver=user)).exclude(status='blocked')
+        return Connection.objects.filter(Q(sender=user) | Q(receiver=user)).select_related('sender', 'receiver').exclude(status='blocked')
+
 
     def create(self, request, *args, **kwargs):
         # 1. Kiểm tra receiver_id có hợp lệ không

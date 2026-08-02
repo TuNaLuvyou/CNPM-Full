@@ -116,8 +116,20 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
-    ]
+    ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/min',
+        'user': '300/min',
+        'auth': '10/min',
+    },
+    'DEFAULT_PAGINATION_CLASS': 'core.pagination.OptionalPageNumberPagination',
+    'PAGE_SIZE': 50,
 }
+
 
 # Cấu hình chuyển hướng đăng nhập quản trị tùy chỉnh
 LOGIN_URL = '/admin/login/'

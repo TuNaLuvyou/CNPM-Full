@@ -50,6 +50,11 @@ def build_verification_email(user, verify_url, resend=False):
     return subject, html_message
 
 
+from rest_framework.throttling import ScopedRateThrottle
+
+AUTH_THROTTLE_CLASSES = [] if getattr(settings, 'TESTING', False) else [ScopedRateThrottle]
+
+
 class RegisterView(APIView):
     """
     POST /api/accounts/register/
@@ -58,6 +63,10 @@ class RegisterView(APIView):
     gửi email xác nhận và tự động xóa tài khoản sau 5 phút nếu chưa xác thực.
     """
     permission_classes = [AllowAny]
+    throttle_classes = AUTH_THROTTLE_CLASSES
+    throttle_scope = 'auth'
+
+
 
     def _send_verification_email(self, user, verify_token):
         """Gửi email HTML chứa link xác nhận."""
@@ -122,8 +131,9 @@ class RegisterView(APIView):
         return Response({
             'status': 'pending_verification',
             'email': user.email,
-            'message': 'Đầng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản trong vòng 5 phút.'
+            'message': 'Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản trong vòng 5 phút.'
         }, status=status.HTTP_201_CREATED)
+
 
 
 class LoginView(APIView):
@@ -133,6 +143,9 @@ class LoginView(APIView):
     Trả về 403 + error='email_not_verified' nếu tài khoản chưa xác thực email.
     """
     permission_classes = [AllowAny]
+    throttle_classes = AUTH_THROTTLE_CLASSES
+    throttle_scope = 'auth'
+
 
     def post(self, request):
         email = request.data.get('email', '')
@@ -187,6 +200,9 @@ class ForgotPasswordView(APIView):
     Body: { email }
     """
     permission_classes = [AllowAny]
+    throttle_classes = AUTH_THROTTLE_CLASSES
+    throttle_scope = 'auth'
+
 
     def post(self, request):
         email = request.data.get('email')
@@ -367,6 +383,9 @@ class ResendVerificationView(APIView):
     Reset lại timer 5 phút.
     """
     permission_classes = [AllowAny]
+    throttle_classes = AUTH_THROTTLE_CLASSES
+    throttle_scope = 'auth'
+
 
     def post(self, request):
         email = request.data.get('email')
