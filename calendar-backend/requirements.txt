@@ -1,7 +1,7 @@
-django
-pymysql
-cryptography
-djangorestframework
-django-cors-headers
-python-dotenv
-apscheduler
+Django==6.0.5
+PyMySQL==1.2.0
+cryptography==48.0.0
+djangorestframework==3.17.1
+django-cors-headers==4.9.0
+python-dotenv==1.2.2
+APScheduler==3.11.2

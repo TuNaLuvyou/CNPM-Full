@@ -6,8 +6,8 @@ class UnverifiedSSLEmailBackend(DjangoEmailBackend):
         if self.connection:
             return False
         try:
-            # Tạo SSL context không kiểm duyệt chứng chỉ để bỏ qua lỗi macOS local issuer certificate
-            self.ssl_context = ssl._create_unverified_context()
+            # Dùng SSL context mặc định (xác thực chứng chỉ theo CA bundle của hệ thống)
+            self.ssl_context = ssl.create_default_context()
         except AttributeError:
             pass
         return super().open()

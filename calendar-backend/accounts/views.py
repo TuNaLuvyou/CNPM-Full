@@ -14,8 +14,9 @@ from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.contrib.auth.models import Group
 from django.conf import settings
-import threading
+from django.core.exceptions import ValidationError
 from .models import EmailVerificationToken
+from core.scheduler import schedule_cleanup
 
 
 def build_verification_email(user, verify_url, resend=False):
@@ -47,23 +48,6 @@ def build_verification_email(user, verify_url, resend=False):
     </div>
     """
     return subject, html_message
-
-
-def schedule_cleanup(user_id):
-    """Lên lịch xóa tài khoản nếu chưa xác thực sau 5 phút."""
-    def cleanup():
-        try:
-            u = User.objects.get(pk=user_id, is_active=False)
-            # Chỉ xóa nếu vẫn chưa active và token đã hết hạn
-            if hasattr(u, 'email_verification_token') and u.email_verification_token.is_expired():
-                u.delete()
-        except User.DoesNotExist:
-            pass  # Đã được xác thực hoặc xóa thủ công
-
-    timer = threading.Timer(EmailVerificationToken.EXPIRE_SECONDS + 5, cleanup)
-    timer.daemon = True
-    timer.start()
-
 
 
 class RegisterView(APIView):
@@ -348,7 +332,7 @@ class VerifyEmailView(APIView):
 
         try:
             verify_obj = EmailVerificationToken.objects.select_related('user').get(token=token_str)
-        except (EmailVerificationToken.DoesNotExist, ValueError):
+        except (EmailVerificationToken.DoesNotExist, ValueError, ValidationError):
             return Response(
                 {'error': 'Link xác thực không hợp lệ hoặc tài khoản đã bị xóa do quá hạn.'},
                 status=status.HTTP_400_BAD_REQUEST

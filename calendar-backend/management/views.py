@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth import authenticate, login as auth_login
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_POST
 from django.contrib.auth.models import User, Group
 from django.contrib import messages
 from .models import SupportRequest
@@ -87,6 +88,7 @@ def user_list(request):
         'current_role': role_id
     })
 
+@require_POST
 @staff_member_required(login_url='admin_login')
 def toggle_user_status(request, user_id):
     user = get_object_or_404(User, id=user_id)
@@ -99,23 +101,23 @@ def toggle_user_status(request, user_id):
         messages.success(request, f"Đã {status_str} tài khoản {user.username}")
     return redirect('admin_users')
 
+@require_POST
 @staff_member_required(login_url='admin_login')
 def assign_user_groups(request, user_id):
-    if request.method == 'POST':
-        user = get_object_or_404(User, id=user_id)
-        if user == request.user:
-            messages.error(request, "Bạn không thể tự cấu hình nhóm của chính mình!")
-        else:
-            group_ids = request.POST.getlist('groups')
-            selected_groups = Group.objects.filter(id__in=group_ids)
-            user.groups.set(selected_groups)
-            
-            # Đồng bộ is_staff với nhóm "Quản trị viên"
-            user.is_staff = selected_groups.filter(name='Quản trị viên').exists()
-            user.save()
-            
-            role_name = selected_groups.first().name if selected_groups.exists() else "Người dùng"
-            messages.success(request, f"Đã cập nhật vai trò của {user.username} thành {role_name}")
+    user = get_object_or_404(User, id=user_id)
+    if user == request.user:
+        messages.error(request, "Bạn không thể tự cấu hình nhóm của chính mình!")
+    else:
+        group_ids = request.POST.getlist('groups')
+        selected_groups = Group.objects.filter(id__in=group_ids)
+        user.groups.set(selected_groups)
+        
+        # Đồng bộ is_staff với nhóm "Quản trị viên"
+        user.is_staff = selected_groups.filter(name='Quản trị viên').exists()
+        user.save()
+        
+        role_name = selected_groups.first().name if selected_groups.exists() else "Người dùng"
+        messages.success(request, f"Đã cập nhật vai trò của {user.username} thành {role_name}")
     return redirect('admin_users')
 
 @staff_member_required(login_url='admin_login')
@@ -123,6 +125,7 @@ def support_list(request):
     requests = SupportRequest.objects.all().order_by('-created_at')
     return render(request, 'management/support.html', {'requests': requests})
 
+@require_POST
 @staff_member_required(login_url='admin_login')
 def resolve_request(request, req_id):
     sr = get_object_or_404(SupportRequest, id=req_id)
@@ -131,6 +134,7 @@ def resolve_request(request, req_id):
     messages.success(request, f"Đã đánh dấu hoàn thành yêu cầu #{sr.id}")
     return redirect('admin_support')
 
+@require_POST
 @staff_member_required(login_url='admin_login')
 def delete_support_request(request, req_id):
     sr = get_object_or_404(SupportRequest, id=req_id)
@@ -144,21 +148,22 @@ def role_list(request):
     groups = Group.objects.all().annotate(user_count=Count('user'))
     return render(request, 'management/roles.html', {'groups': groups})
 
+@require_POST
 @staff_member_required(login_url='admin_login')
 def add_group(request):
-    if request.method == 'POST':
-        name = request.POST.get('name')
-        if name:
-            if Group.objects.filter(name=name).exists():
-                messages.error(request, f"Nhóm '{name}' đã tồn tại!")
-            else:
-                Group.objects.create(name=name)
-                messages.success(request, f"Đã tạo nhóm '{name}' thành công.")
+    name = request.POST.get('name')
+    if name:
+        if Group.objects.filter(name=name).exists():
+            messages.error(request, f"Nhóm '{name}' đã tồn tại!")
         else:
-            messages.error(request, "Tên nhóm không được để trống!")
+            Group.objects.create(name=name)
+            messages.success(request, f"Đã tạo nhóm '{name}' thành công.")
+    else:
+        messages.error(request, "Tên nhóm không được để trống!")
     return redirect('admin_roles')
 
-@staff_member_required
+@require_POST
+@staff_member_required(login_url='admin_login')
 def delete_group(request, group_id):
     group = get_object_or_404(Group, id=group_id)
     if group.name in ['Quản trị viên', 'Người dùng']:
