@@ -106,8 +106,8 @@ DB_HOST=127.0.0.1
 DB_PORT=3306
 
 # Email Config (SMTP)
-EMAIL_HOST_USER=n23dccn009@student.ptithcm.edu.vn
-EMAIL_HOST_PASSWORD=ysdxjwcgvixtrava
+EMAIL_HOST_USER=youremail
+EMAIL_HOST_PASSWORD=yourpassword
 ```
 
 ### 2. Khởi chạy Backend (Django)
