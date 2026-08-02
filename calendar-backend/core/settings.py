@@ -8,9 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(exist_ok=True)
 
-# Load environment variables from .env in the root workspace folder
-load_dotenv(BASE_DIR.parent / '.env')
-# Fallback to local .env in backend folder if present
+# Load environment variables from .env in the backend folder
 load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-thay-bang-key-cua-ban')
@@ -72,15 +70,12 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.environ.get('DB_NAME', 'cnpm_db'),
-        'USER': os.environ.get('DB_USER', 'calendar'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', '123'),
+        'USER': os.environ.get('DB_USER', 'postgres'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),
         'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-        'PORT': os.environ.get('DB_PORT', '3306'),
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 

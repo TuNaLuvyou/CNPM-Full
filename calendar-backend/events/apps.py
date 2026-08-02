@@ -8,8 +8,8 @@ class EventsConfig(AppConfig):
     def ready(self):
         if getattr(settings, 'TESTING', False):
             return
-        # Tránh việc scheduler chạy 2 lần nếu sử dụng Django runserver (có reload_run)
-        if os.environ.get('RUN_MAIN', None) != 'true':
+        # Tránh khởi động 2 lần khi dev autoreload (RUN_MAIN chỉ set ở process chính)
+        if os.environ.get('RUN_MAIN') == 'true' or not settings.DEBUG:
             from . import scheduler
             scheduler.start()
 

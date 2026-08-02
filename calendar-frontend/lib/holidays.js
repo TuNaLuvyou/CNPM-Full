@@ -153,26 +153,32 @@ function getLeapMonthOffset(a11, timeZone) {
  */
 function lunarToSolar(lunarDay, lunarMonth, lunarYear, lunarLeap = false) {
   const timeZone = 7; // GMT+7
-  const k = INT(
-    (jdFromDate(1, 1, lunarYear) - 2415021.076998695) / 29.530588853
-  );
-  let monthStart = getNewMoonDay(k + lunarMonth - 1, timeZone);
-  let a11 = getLunarMonth11(lunarYear, timeZone);
-  let b11 = a11;
-  if (a11 >= monthStart) {
+
+  let a11, off, monthStart;
+
+  if (lunarMonth < 11) {
     a11 = getLunarMonth11(lunarYear - 1, timeZone);
+    const b11 = getLunarMonth11(lunarYear, timeZone);
+    off = lunarMonth + 1;
+    // Năm âm lịch có tháng nhuận: cộng thêm 1 tháng nếu tháng cần tính
+    // nằm sau tháng nhuận (hoặc đúng là tháng nhuận khi lunarLeap = true)
+    if (b11 - a11 > 365) {
+      const leapOff = getLeapMonthOffset(a11, timeZone);
+      const leapMonth = leapOff - 2;
+      if (lunarMonth > leapMonth || (lunarLeap && lunarMonth === leapMonth)) {
+        off += 1;
+      }
+    }
   } else {
-    b11 = getLunarMonth11(lunarYear + 1, timeZone);
+    // Lưu ý: trường hợp hiếm có tháng nhuận 11/12 (vd. năm 2033 nhuận tháng 11)
+    // không được hiệu chỉnh ở đây — giống hạn chế của thuật toán chuẩn gốc.
+    // Feature ngày lễ chỉ dùng tháng 1–8 nên không bị ảnh hưởng.
+    a11 = getLunarMonth11(lunarYear, timeZone);
+    off = lunarMonth - 11;
   }
-  const off = monthStart - a11;
-  const leapOff = getLeapMonthOffset(a11, timeZone);
-  let leapMonth = leapOff - 1;
-  if (leapOff < lunarMonth) {
-    monthStart = getNewMoonDay(k + lunarMonth, timeZone);
-  }
-  if (lunarLeap && lunarMonth !== leapMonth) {
-    monthStart = getNewMoonDay(k + lunarMonth, timeZone);
-  }
+
+  const k = INT(0.5 + (a11 - 2415021.076998695) / 29.530588853);
+  monthStart = getNewMoonDay(k + off, timeZone);
   const jd = monthStart + lunarDay - 1;
   const [d, m, y] = jdToDate(jd);
   return new Date(y, m - 1, d);
@@ -226,7 +232,7 @@ function getSolarVNHolidays(year) {
 function getLunarVNHolidays(year) {
   const holidays = [];
 
-  // Tết Nguyên Đán: 1/1 âm lịch (5 ngày nghỉ: 29/12 âm đến 3/1 âm+1)
+  // Tết Nguyên Đán: 1/1 âm lịch (gồm Giao thừa + mùng 1 → mùng 5)
   const tetStart = lunarToSolar(1, 1, year);
   const tetNames = [
     "Giao thừa Tết Nguyên Đán",
@@ -245,8 +251,10 @@ function getLunarVNHolidays(year) {
     "Lunar New Year Day 5",
   ];
 
-  // 29/12 âm năm trước = giao thừa
-  const giaothua = lunarToSolar(29, 12, year - 1);
+  // Giao thừa = ngày liền trước mùng 1 Tết
+  // (đúng cả khi tháng 12 âm có 29 hoặc 30 ngày)
+  const giaothua = new Date(tetStart);
+  giaothua.setDate(giaothua.getDate() - 1);
   holidays.push({
     key: `giao_thua_${year}`,
     title: tetNames[0],
@@ -589,43 +597,3 @@ export function getHolidayEventsForRange(
     .filter(Boolean);
 }
 
-/**
- * Lấy tên ngày lễ cho một ngày cụ thể (để hiển thị badge)
- * @param {Date} date
- * @param {string} lang
- * @returns {string|null}
- */
-export function getHolidayNameForDate(date, lang = "vi") {
-  if (!date) return null;
-  const year = date.getFullYear();
-  const allHolidays = [
-    ...getVNHolidays(year),
-    ...getWorldHolidays(year),
-  ];
-
-  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
-  const found = allHolidays.find((h) => {
-    if (!h.date || isNaN(h.date.getTime())) return false;
-    const hStr = `${h.date.getFullYear()}-${String(h.date.getMonth() + 1).padStart(2, "0")}-${String(h.date.getDate()).padStart(2, "0")}`;
-    return hStr === dateStr;
-  });
-
-  if (!found) return null;
-  return lang === "en" ? found.titleEn : found.title;
-}
-
-/**
- * Kiểm tra một ngày có phải ngày lễ VN không
- */
-export function isVNHoliday(date) {
-  if (!date) return false;
-  const year = date.getFullYear();
-  const allVN = getVNHolidays(year);
-  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-  return allVN.some((h) => {
-    if (!h.date || isNaN(h.date.getTime())) return false;
-    const hStr = `${h.date.getFullYear()}-${String(h.date.getMonth() + 1).padStart(2, "0")}-${String(h.date.getDate()).padStart(2, "0")}`;
-    return hStr === dateStr;
-  });
-}

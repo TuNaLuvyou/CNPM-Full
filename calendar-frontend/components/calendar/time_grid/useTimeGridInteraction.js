@@ -69,6 +69,9 @@ export function useTimeGridInteraction({
 
   const handleInteractionStart = (e, type, existingEvent = null) => {
     e.stopPropagation();
+    e.preventDefault();
+
+    if (existingEvent?.is_optimistic) return; // Prevent drag/resize for optimistic events
 
     isInteractingRef.current = true;
     didMoveRef.current = false;
@@ -85,28 +88,29 @@ export function useTimeGridInteraction({
     const SNAP_1MIN = 64 / 60;
     const clickTop = Math.max(0, Math.round(grabOffsetY / SNAP_1MIN) * SNAP_1MIN);
 
-    let startTop = freshEvent 
-      ? getEventStyle(freshEvent).top 
-      : (baseItem 
-          ? (baseItem.type === 'now' ? nowOffset : (baseItem.top || 0)) 
-          : clickTop);
-    let startHeight = freshEvent ? getEventStyle(freshEvent).height : (baseItem?.height || 64);
     const targetCol = e.currentTarget.closest('.day-column');
     const colDateStr = targetCol?.dataset.columnDate;
     const colDate = colDateStr ? new Date(colDateStr) : (displayWeekDays[0]?.fullDate || new Date());
 
-    let itemDate = freshEvent ? new Date(freshEvent.start_time) : (baseItem?.fullDate || colDate);
+    let startTop;
+    let startHeight;
+    let itemDate;
 
-    const lr = lastResultRef.current;
-    if (lr && (Date.now() - lr.ts < 2000)) {
-      const isSameEvent = freshEvent && lr.id === freshEvent.id;
-      const isSamePreview = !freshEvent && !lr.id;
-      if (isSameEvent || isSamePreview) {
-        startTop = lr.topOffset ?? startTop;
-        startHeight = lr.height ?? startHeight;
-        itemDate = lr.fullDate ?? itemDate;
-      }
+    if (type === 'create') {
+      startTop = clickTop;
+      startHeight = 64;
+      itemDate = colDate;
+    } else {
+      startTop = freshEvent 
+        ? getEventStyle(freshEvent).top 
+        : (baseItem 
+            ? (baseItem.type === 'now' ? nowOffset : (baseItem.top || 0)) 
+            : clickTop);
+      startHeight = freshEvent ? getEventStyle(freshEvent).height : (baseItem?.height || 64);
+      itemDate = freshEvent ? new Date(freshEvent.start_time) : (baseItem?.fullDate || colDate);
     }
+
+    // Removed the 2000ms debounce logic that forced new clicks to restore old positions
 
     const currentDayStr = formatDateLocal(itemDate);
     const sortedEvents = events

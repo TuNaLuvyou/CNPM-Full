@@ -5,8 +5,8 @@ import { FieldRow, InputBase, TextareaBase, EVENT_COLORS, toDateInputVal, toTime
 import { t } from '@/lib/i18n';
 
 // ── Extracted Components ──
-import { useAppointmentGuests } from './appointment/useAppointmentGuests';
-import AppointmentGuests from './appointment/AppointmentGuests';
+import { useEventGuests } from './event/useEventGuests';
+import EventGuests from './event/EventGuests';
 
 export default function AppointmentForm({ now, duration, isInteracting, onSave, initialData = null, appSettings, currentUser }) {
     const lang = appSettings?.language || "vi";
@@ -30,7 +30,7 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
         guests, showGuestPicker, setShowGuestPicker,
         guestSearch, setGuestSearch, filteredFriends,
         toggleGuest, togglePermission
-    } = useAppointmentGuests({ initialData, currentUser });
+    } = useEventGuests({ initialData, currentUser });
 
     // Đồng bộ ngày/giờ theo vị trí thả khi tạo mới hoặc đang kéo (giữ nguyên khi người dùng tự sửa)
     const [timeSyncKey, setTimeSyncKey] = useState(null);
@@ -76,7 +76,6 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
     };
 
     const isTitleEmpty = submitted && !form.title.trim();
-    const canEdit = !initialData || initialData.is_owner || initialData.my_permission === 'edit';
     const isOwner = !initialData || initialData.is_owner;
 
     return (
@@ -175,7 +174,7 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
                 </div>
             </FieldRow>
 
-            <AppointmentGuests
+            <EventGuests
                 guests={guests}
                 showGuestPicker={showGuestPicker}
                 setShowGuestPicker={setShowGuestPicker}

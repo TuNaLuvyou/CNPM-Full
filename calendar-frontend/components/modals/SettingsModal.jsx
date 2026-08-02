@@ -1,10 +1,17 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
     X, Globe, Clock, Calendar, Bell, Eye, Heart,
-    Plus, Video, MapPin, Check, Settings, Tag,
+    Check, Tag, Loader2, AlertCircle, RefreshCw,
 } from "lucide-react";
 import { t } from "@/lib/i18n";
+import LanguageRegion from "./setting/LanguageRegion";
+import Timezone from "./setting/Timezone";
+import EventSettings from "./setting/EventSettings";
+import Notification from "./setting/Notification";
+import ViewOptions from "./setting/ViewOptions";
+import FavoriteCalendars from "./setting/FavoriteCalendars";
+import CategoryManagement from "./setting/CategoryManagement";
 
 // ── Nav sections ──────────────────────────────────────────────────────────────
 const SECTIONS = [
@@ -15,59 +22,6 @@ const SECTIONS = [
     { key: "view", labelKey: "sections.view", Icon: Eye },
     { key: "calendars", labelKey: "sections.calendars", Icon: Heart },
     { key: "categories", labelKey: "sections.categories", Icon: Tag },
-];
-
-// ── Static data ───────────────────────────────────────────────────────────────
-const LANGUAGES = [
-    { value: "vi", label: "Tiếng Việt" },
-    { value: "en", label: "English" },
-    { value: "ja", label: "日本語" },
-    { value: "zh", label: "中文" },
-    { value: "ko", label: "한국어" },
-    { value: "fr", label: "Français" },
-    { value: "de", label: "Deutsch" },
-];
-
-const COUNTRIES = [
-    { value: "VN", label: "Việt Nam" },
-    { value: "US", label: "United States" },
-    { value: "GB", label: "United Kingdom" },
-    { value: "JP", label: "Japan" },
-    { value: "KR", label: "South Korea" },
-    { value: "FR", label: "France" },
-    { value: "DE", label: "Germany" },
-    { value: "AU", label: "Australia" },
-];
-
-const DATE_FORMATS = [
-    { value: "DD/MM/YYYY", label: "DD/MM/YYYY  →  31/12/2026" },
-    { value: "MM/DD/YYYY", label: "MM/DD/YYYY  →  12/31/2026" },
-    { value: "YYYY-MM-DD", label: "YYYY-MM-DD  →  2026-12-31" },
-    { value: "D MMMM YYYY", label: "D MMMM YYYY  →  31 Tháng 12, 2026" },
-];
-
-const TIMEZONES = [
-    { value: "Asia/Ho_Chi_Minh", label: "(GMT+7) Hồ Chí Minh" },
-    { value: "Asia/Bangkok", label: "(GMT+7) Bangkok" },
-    { value: "Asia/Singapore", label: "(GMT+8) Singapore" },
-    { value: "Asia/Tokyo", label: "(GMT+9) Tokyo" },
-    { value: "Asia/Seoul", label: "(GMT+9) Seoul" },
-    { value: "Europe/London", label: "(GMT+0) London" },
-    { value: "Europe/Paris", label: "(GMT+1) Paris" },
-    { value: "America/New_York", label: "(GMT-5) New York" },
-    { value: "America/Chicago", label: "(GMT-6) Chicago" },
-    { value: "America/Los_Angeles", label: "(GMT-8) Los Angeles" },
-    { value: "Australia/Sydney", label: "(GMT+11) Sydney" },
-];
-
-const WEEK_DAYS = [
-    { value: "monday", label: "Thứ Hai" },
-    { value: "tuesday", label: "Thứ Ba" },
-    { value: "wednesday", label: "Thứ Tư" },
-    { value: "thursday", label: "Thứ Năm" },
-    { value: "friday", label: "Thứ Sáu" },
-    { value: "saturday", label: "Thứ Bảy" },
-    { value: "sunday", label: "Chủ Nhật" },
 ];
 
 // ── Default settings ──────────────────────────────────────────────────────────
@@ -99,21 +53,24 @@ const DEFAULT_SETTINGS = {
     customCategories: ["M\u1eb7c \u0111\u1ecbnh", "C\u00f4ng vi\u1ec7c", "Gia \u0111\u00ecnh", "C\u00e1 nh\u00e2n"],
 };
 
-// ── Implemented Sections ────────────────────────────────────────────────────────
-import LanguageRegion from "./setting/LanguageRegion";
-import Timezone from "./setting/Timezone";
-import EventSettings from "./setting/EventSettings";
-import Notification from "./setting/Notification";
-import ViewOptions from "./setting/ViewOptions";
-import FavoriteCalendars from "./setting/FavoriteCalendars";
-import CategoryManagement from "./setting/CategoryManagement";
-
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function SettingsModal({ isOpen, onClose, onSave, settings: initialSettings }) {
     const [activeSection, setActiveSection] = useState("language");
     const [settings, setSettings] = useState(initialSettings || DEFAULT_SETTINGS);
-    const [saveState, setSaveState] = useState("idle"); // "idle" | "saved"
+    const [saveState, setSaveState] = useState("idle"); // "idle" | "saving" | "saved" | "error"
     const scrollContainerRef = useRef(null);
+    const settingsRef = useRef(settings);
+    const saveTimerRef = useRef(null);
+
+    // ── Optimistic UI: luôn giữ bản mới nhất để debounce auto-save đọc đúng state ──
+    useEffect(() => {
+        settingsRef.current = settings;
+    }, [settings]);
+
+    // Dọn timer khi unmount
+    useEffect(() => {
+        return () => clearTimeout(saveTimerRef.current);
+    }, []);
 
     // Scroll Spy mechanism
     useEffect(() => {
@@ -151,14 +108,16 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
         return () => container.removeEventListener('scroll', handleScroll);
     }, [isOpen, activeSection]);
 
+    // Chỉ đồng bộ lại settings từ props khi modal được mở lại.
+    // (Không reset khi initialSettings đổi lúc đang mở — tránh xung đột với optimistic updates)
     const [prevOpen, setPrevOpen] = useState(isOpen);
-    const [prevInitial, setPrevInitial] = useState(initialSettings);
-    if (prevOpen !== isOpen || prevInitial !== initialSettings) {
+    if (prevOpen !== isOpen) {
         setPrevOpen(isOpen);
-        setPrevInitial(initialSettings);
         if (isOpen) {
             setSettings(initialSettings || DEFAULT_SETTINGS);
+            settingsRef.current = initialSettings || DEFAULT_SETTINGS;
             setActiveSection("language");
+            setSaveState("idle");
         }
     }
 
@@ -169,48 +128,110 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
         }
     }, [isOpen]);
 
-    // Live theme preview
+    // Live theme preview — khôi phục theme đã lưu khi đóng modal (không lưu preview)
     useEffect(() => {
-        if (!isOpen) return;
         const root = document.documentElement;
-        if (settings.theme === "dark") {
-            root.classList.add("dark");
-        } else if (settings.theme === "light") {
-            root.classList.remove("dark");
-        } else {
-            if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        const applyTheme = (theme) => {
+            if (theme === "dark") {
                 root.classList.add("dark");
-            } else {
+            } else if (theme === "light") {
                 root.classList.remove("dark");
+            } else {
+                if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+                    root.classList.add("dark");
+                } else {
+                    root.classList.remove("dark");
+                }
             }
+        };
+
+        if (!isOpen) {
+            // Đóng modal → trả về theme đã lưu (đề phòng người dùng preview rồi huỷ)
+            applyTheme(initialSettings?.theme || "light");
+            return;
         }
-    }, [settings.theme, isOpen]);
+        applyTheme(settings.theme);
+    }, [settings.theme, isOpen, initialSettings]);
+
+    // Cập nhật state nội bộ của SettingsModal (không tự động lưu / không áp dụng ngay vào app)
+    const set = (key, value) => {
+        const next = { ...settingsRef.current, [key]: value };
+        settingsRef.current = next;
+        setSettings(next);
+    };
+
+    const handleFavoriteCalendarsChange = useCallback((customHolidays) => {
+        const curr = settingsRef.current;
+        if (JSON.stringify(curr.customHolidays) === JSON.stringify(customHolidays)) return;
+        const next = { ...curr, customHolidays };
+        settingsRef.current = next;
+        setSettings(next);
+    }, []);
+
+    const handleFavoritePresetChange = useCallback(({ vietnamHolidays, worldHolidays, otherHolidays }) => {
+        const curr = settingsRef.current;
+        if (
+            curr.vietnamHolidays === vietnamHolidays &&
+            curr.worldHolidays === worldHolidays &&
+            curr.otherHolidays === otherHolidays
+        ) return;
+        const next = { ...curr, vietnamHolidays, worldHolidays, otherHolidays };
+        settingsRef.current = next;
+        setSettings(next);
+    }, []);
 
     if (!isOpen) return null;
 
-    const set = (key, value) =>
-        setSettings((prev) => ({ ...prev, [key]: value }));
+    const handleSave = async () => {
+        if (saveState === "saving") return;
+        setSaveState("saving");
 
-    const handleFavoriteCalendarsChange = (customHolidays) => {
-        setSettings((prev) => ({
-            ...prev,
-            customHolidays,
-        }));
-    };
+        const snapshot = settingsRef.current;
+        const languageChanged = snapshot.language !== (initialSettings?.language || "vi");
 
-    const handleFavoritePresetChange = ({ vietnamHolidays, worldHolidays, otherHolidays }) => {
-        setSettings((prev) => ({
-            ...prev,
-            vietnamHolidays,
-            worldHolidays,
-            otherHolidays,
-        }));
-    };
+        if (languageChanged) {
+            // 1. Lưu cài đặt mới vào localStorage & sessionStorage trước khi reload
+            if (typeof window !== 'undefined') {
+                localStorage.setItem("appSettings", JSON.stringify(snapshot));
+                sessionStorage.setItem("reopenSettingsModal", "true");
+            }
 
-    const handleSave = () => {
-        onSave?.(settings);
+            // 2. Đồng bộ lên backend ngầm
+            const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+            if (token) {
+                try {
+                    const { updateSettings } = await import('@/lib/api');
+                    await updateSettings(snapshot);
+                } catch (e) {
+                    console.error("Lỗi đồng bộ cài đặt:", e);
+                }
+            }
+
+            // 3. Reload ngay lập tức -> trình duyệt hiển thị màn hình Loading trước
+            if (typeof window !== 'undefined') {
+                window.location.reload();
+            }
+            return;
+        }
+
+        // Không đổi ngôn ngữ -> Cập nhật bình thường và đóng modal
+        onSave?.(snapshot);
+
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        if (token) {
+            try {
+                const { updateSettings } = await import('@/lib/api');
+                await updateSettings(snapshot);
+            } catch (e) {
+                console.error("Lỗi đồng bộ cài đặt:", e);
+            }
+        }
+
         setSaveState("saved");
-        setTimeout(() => setSaveState("idle"), 2200);
+        setTimeout(() => {
+            setSaveState("idle");
+            onClose?.();
+        }, 500);
     };
 
     const scrollToSection = (key) => {
@@ -220,6 +241,8 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
             setActiveSection(key);
         }
     };
+
+    const displayLang = initialSettings?.language || "vi";
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -237,13 +260,13 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
                 <div className="flex items-center justify-between px-8 py-5 bg-white dark:bg-[#2d2d2d] border-b border-slate-200 dark:border-[#3c3c3c] flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <div>
-                            <h2 className="text-lg font-bold text-slate-800 dark:text-white leading-tight">{t('settings', settings.language)}</h2>
-                            <p className="text-xs text-slate-400 dark:text-white">{t('settings_desc', settings.language)}</p>
+                            <h2 className="text-lg font-bold text-slate-800 dark:text-white leading-tight">{t('settings', displayLang)}</h2>
+                            <p className="text-xs text-slate-400 dark:text-[#9e9e9e]">{t('settings_desc', displayLang)}</p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-slate-100 dark:hover:bg-[#353535] rounded-full transition text-slate-400 dark:text-white hover:text-slate-600 dark:hover:text-[#bdbdbd] dark:text-white"
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-[#353535] rounded-full transition text-slate-400 dark:text-[#9e9e9e] hover:text-slate-600 dark:hover:text-[#bdbdbd]"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -264,10 +287,10 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
                                     className={`w-full flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all text-left border-r-[3px]
                                         ${active
                                             ? "text-blue-600 bg-blue-50 border-blue-600 dark:bg-[#484848] dark:text-white dark:border-blue-400"
-                                            : "text-slate-600 dark:text-white hover:bg-slate-50 dark:hover:bg-[#2d2d2d] hover:text-slate-800 dark:hover:text-[#f5f5f5] dark:text-white border-transparent"
+                                            : "text-slate-600 dark:text-[#bdbdbd] hover:bg-slate-50 dark:hover:bg-[#2d2d2d] hover:text-slate-800 dark:hover:text-[#f5f5f5] border-transparent"
                                         }`}
                                 >
-                                    <span className="truncate">{t(labelKey, settings.language)}</span>
+                                    <span className="truncate">{t(labelKey, displayLang)}</span>
                                 </button>
                             );
                         })}
@@ -278,52 +301,84 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
                         ref={scrollContainerRef}
                         className="flex-1 min-h-0 overflow-y-auto p-8 custom-scrollbar space-y-12 bg-slate-50 dark:bg-[#1f1f1f]"
                     >
-                        <LanguageRegion s={settings} set={set} lang={settings.language} />
+                        <LanguageRegion s={settings} set={set} lang={displayLang} />
                         <hr className="border-slate-200 dark:border-[#484848]/60" />
-                        <Timezone s={settings} set={set} lang={settings.language} />
+                        <Timezone s={settings} set={set} lang={displayLang} />
                         <hr className="border-slate-200 dark:border-[#484848]/60" />
-                        <EventSettings s={settings} set={set} lang={settings.language} />
+                        <EventSettings s={settings} set={set} lang={displayLang} />
                         <hr className="border-slate-200 dark:border-[#484848]/60" />
-                        <Notification s={settings} set={set} lang={settings.language} />
+                        <Notification s={settings} set={set} lang={displayLang} />
                         <hr className="border-slate-200 dark:border-[#484848]/60" />
-                        <ViewOptions s={settings} set={set} lang={settings.language} />
+                        <ViewOptions s={settings} set={set} lang={displayLang} />
                         <hr className="border-slate-200 dark:border-[#484848]/60" />
                         <FavoriteCalendars
-                            lang={settings.language}
+                            lang={displayLang}
                             onChange={handleFavoriteCalendarsChange}
                             onPresetChange={handleFavoritePresetChange}
                         />
                         <hr className="border-slate-200 dark:border-[#484848]/60" />
-                        <CategoryManagement s={settings} set={set} lang={settings.language} />
+                        <CategoryManagement s={settings} set={set} lang={displayLang} />
                     </div>
                 </div>
 
                 {/* ── Footer ── */}
                 <div className="flex items-center justify-between px-8 py-4 bg-white dark:bg-[#2d2d2d] border-t border-slate-200 dark:border-[#3c3c3c] flex-shrink-0">
-                    <p className="text-xs text-slate-400 dark:text-white">
-                        {settings.language === 'en' ? 'Settings apply to the current session' : 'Cài đặt áp dụng cho phiên hiện tại'}
-                    </p>
-                    <div className="flex gap-2">
+                    <div className="min-w-0 flex-1">
+                        {saveState === "saving" && (
+                            <p className="text-xs text-slate-400 dark:text-[#9e9e9e] flex items-center gap-1.5">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                {t('saving', displayLang)}
+                            </p>
+                        )}
+                        {saveState === "saved" && (
+                            <p className="text-xs text-emerald-500 dark:text-emerald-400 flex items-center gap-1.5">
+                                <Check className="w-3.5 h-3.5" />
+                                {t('settings_synced', displayLang)}
+                            </p>
+                        )}
+                        {saveState === "error" && (
+                            <p className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1.5">
+                                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                                {t('settings_sync_error', displayLang)}
+                            </p>
+                        )}
+                        {saveState === "idle" && (
+                            <p className="text-xs text-slate-400 dark:text-[#9e9e9e]">
+                                {displayLang === 'en' ? 'Click "Save" to apply changes.' : 'Nhấn "Lưu" để áp dụng các thay đổi.'}
+                            </p>
+                        )}
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-5 py-2 text-sm font-medium text-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-[#353535] rounded-xl transition"
+                            className="px-5 py-2 text-sm font-medium text-slate-600 dark:text-[#e3e3e3] hover:bg-slate-100 dark:hover:bg-[#353535] rounded-xl transition"
                         >
-                            {t('cancel', settings.language)}
+                            {t('cancel', displayLang)}
                         </button>
                         <button
                             type="button"
                             onClick={handleSave}
-                            className={`px-6 py-2 text-sm font-semibold rounded-xl transition-all flex items-center gap-2
+                            disabled={saveState === "saving"}
+                            className={`px-6 py-2 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed
                 ${saveState === "saved"
                                     ? "bg-emerald-500 text-white shadow-sm shadow-emerald-200 dark:shadow-none"
-                                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-200 dark:shadow-none"
+                                    : saveState === "error"
+                                        ? "bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-200 dark:shadow-none"
+                                        : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-200 dark:shadow-none"
                                 }`}
                         >
-                            {saveState === "saved" ? (
-                                <><Check className="w-4 h-4" /> {t('saved', settings.language)}</>
-                            ) : (
-                                t('save_settings', settings.language)
+                            {saveState === "saving" && (
+                                <><Loader2 className="w-4 h-4 animate-spin" /> {t('saving', displayLang)}</>
+                            )}
+                            {saveState === "saved" && (
+                                <><Check className="w-4 h-4" /> {t('saved', displayLang)}</>
+                            )}
+                            {saveState === "error" && (
+                                <><RefreshCw className="w-4 h-4" /> {t('retry', displayLang)}</>
+                            )}
+                            {saveState === "idle" && (
+                                <><Check className="w-4 h-4" /> {t('save', displayLang)}</>
                             )}
                         </button>
                     </div>

@@ -100,7 +100,7 @@ export default function TimeGrid({
     >
       <div className="flex min-h-full" ref={gridContainerRef}>
         {/* Cột thời gian */}
-        <div className="flex bg-white dark:bg-[#2a2a2a] border-r border-slate-200 dark:border-[#3c3c3c] relative z-10 flex-shrink-0">
+        <div className="flex bg-white dark:bg-[#2a2a2a] relative z-10 flex-shrink-0">
           {showSecondary && (
             <div className="w-14 flex flex-col border-r border-slate-100 dark:border-[#3c3c3c] bg-slate-50/30">
               {displayHours.map((hour) => {
@@ -127,7 +127,7 @@ export default function TimeGrid({
             </div>
           )}
 
-          <div className="w-16 flex flex-col">
+          <div className="w-16 flex flex-col border-r border-slate-200 dark:border-[#3c3c3c]">
             {displayHours.map((hour) => (
               <div key={hour} className="h-16 flex items-start justify-end pr-3">
                 <span className="text-[11px] font-semibold text-slate-400 dark:text-[#9e9e9e] -mt-2 leading-none text-right">
@@ -160,7 +160,7 @@ export default function TimeGrid({
               <div
                 key={idx}
                 data-column-date={day.fullDate?.toDateString()}
-                className="border-l border-slate-200 dark:border-[#3c3c3c] relative min-h-full hover:bg-slate-50 dark:hover:bg-[#2d2d2d]/50 dark:hover:bg-[#2d2d2d]/60 transition-colors cursor-pointer day-column"
+                className="border-l border-slate-200 dark:border-[#3c3c3c] relative min-h-full hover:bg-slate-50 dark:hover:bg-[#2d2d2d]/60 transition-colors cursor-pointer day-column"
                 onMouseDown={(e) => handleInteractionStart(e, 'create')}
                 onClick={(e) => handleColumnClick(e, day)}
               >

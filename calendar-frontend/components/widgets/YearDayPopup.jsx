@@ -109,7 +109,7 @@ export default function YearDayPopup({
                 >
                   <div className="flex-shrink-0 mt-1">
                     {ev.is_holiday ? (
-                      <span className="text-sm">🎉</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
                     ) : ev.event_type === 'task' ? (
                       ev.is_completed ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> : <Circle className="w-3.5 h-3.5 text-slate-400 dark:text-[#9e9e9e]" />
                     ) : ev.event_type === 'appointment' ? (
@@ -119,7 +119,7 @@ export default function YearDayPopup({
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold truncate ${ev.is_holiday ? 'text-red-500 dark:text-red-400' : 'text-slate-700 dark:text-[#e3e3e3]'}`}>
+                    <p className={`text-sm font-semibold truncate ${ev.is_holiday ? 'text-red-600 dark:text-red-400' : 'text-slate-700 dark:text-[#e3e3e3]'}`}>
                       {ev.title}
                     </p>
                     <p className="text-[11px] text-slate-400 dark:text-[#9e9e9e] font-medium">

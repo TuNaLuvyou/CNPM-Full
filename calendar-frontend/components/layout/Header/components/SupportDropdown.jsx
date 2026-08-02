@@ -42,7 +42,7 @@ export default function SupportDropdown({
           setIsNotifOpen(false);
           setIsSettingsOpen(false);
         }}
-        className={`p-2 rounded-full transition ${isHelpOpen ? "bg-blue-50 text-blue-600 dark:text-blue-400 dark:bg-[#484848] dark:text-white" : "hover:text-slate-700 dark:hover:text-[#e3e3e3] dark:text-white hover:bg-slate-100 dark:hover:bg-[#353535]"}`}
+        className={`p-2 rounded-full transition ${isHelpOpen ? "bg-blue-50 text-blue-600 dark:bg-[#484848] dark:text-white" : "hover:text-slate-700 dark:hover:text-[#e3e3e3] dark:text-white hover:bg-slate-100 dark:hover:bg-[#353535]"}`}
         title={t('help', lang)}
       >
         <HelpCircle className="w-5 h-5" />
@@ -68,7 +68,7 @@ export default function SupportDropdown({
               <select
                 value={helpFormData.type}
                 onChange={(e) => setHelpFormData({ ...helpFormData, type: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#484848] text-xs focus:ring-2 focus:ring-blue-500/20 outline-none bg-slate-50/50 dark:placeholder-white dark:bg-[#1f1f1f] dark:text-white"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#484848] text-xs focus:ring-2 focus:ring-blue-500/20 outline-none bg-slate-50/50 dark:placeholder-[#757575] dark:bg-[#1f1f1f] dark:text-white"
               >
                 {['bug_report', 'feedback', 'feature_request', 'password_reset', 'other'].map(type => (
                   <option key={type} value={type}>{t(`support.types.${type}`, lang)}</option>
@@ -80,7 +80,7 @@ export default function SupportDropdown({
                 placeholder={t('support.subject_placeholder', lang)}
                 value={helpFormData.subject}
                 onChange={(e) => setHelpFormData({ ...helpFormData, subject: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#484848] text-xs focus:ring-2 focus:ring-blue-500/20 outline-none bg-slate-50/50 dark:placeholder-white dark:bg-[#1f1f1f] dark:text-white"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#484848] text-xs focus:ring-2 focus:ring-blue-500/20 outline-none bg-slate-50/50 dark:placeholder-[#757575] dark:bg-[#1f1f1f] dark:text-white"
                 required
               />
 
@@ -88,7 +88,7 @@ export default function SupportDropdown({
                 placeholder={t('support.message_placeholder', lang)}
                 value={helpFormData.message}
                 onChange={(e) => setHelpFormData({ ...helpFormData, message: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#484848] text-xs focus:ring-2 focus:ring-blue-500/20 outline-none bg-slate-50/50 dark:placeholder-white dark:bg-[#1f1f1f] dark:text-white resize-none h-20"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-[#484848] text-xs focus:ring-2 focus:ring-blue-500/20 outline-none bg-slate-50/50 dark:placeholder-[#757575] dark:bg-[#1f1f1f] dark:text-white resize-none h-20"
                 required
               />
 

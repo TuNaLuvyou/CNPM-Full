@@ -1,8 +1,10 @@
 import React from "react";
+import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { t } from "@/lib/i18n";
 
 export function SectionLabel({ children }) {
     return (
-        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-white mb-3 px-1">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-[#9e9e9e] mb-3 px-1">
             {children}
         </p>
     );
@@ -22,7 +24,7 @@ export function Row({ label, desc, children, disabled }) {
       ${disabled ? "opacity-40 pointer-events-none" : ""}`}>
             <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-slate-700 dark:text-white leading-tight">{label}</p>
-                {desc && <p className="text-xs text-slate-400 dark:text-white mt-0.5 leading-snug">{desc}</p>}
+                {desc && <p className="text-xs text-slate-400 dark:text-[#9e9e9e] mt-0.5 leading-snug">{desc}</p>}
             </div>
             <div className="flex-shrink-0">{children}</div>
         </div>
@@ -66,7 +68,7 @@ export function Select({ value, onChange, options, className = "" }) {
 export function Input({ value, onChange, placeholder, icon: Icon, className = "" }) {
     return (
         <div className="flex items-center gap-2">
-            {Icon && <Icon className="w-4 h-4 text-slate-400 dark:text-white flex-shrink-0" />}
+            {Icon && <Icon className="w-4 h-4 text-slate-400 dark:text-[#9e9e9e] flex-shrink-0" />}
             <input
                 type="text"
                 value={value ?? ""}
@@ -78,4 +80,36 @@ export function Input({ value, onChange, placeholder, icon: Icon, className = ""
             />
         </div>
     );
+}
+
+/**
+ * Inline sync status indicator used across settings sections.
+ * state: "saving" | "saved" | "error" | null
+ */
+export function SyncIndicator({ state, lang = "vi", error, className = "" }) {
+    if (state === "saving") {
+        return (
+            <span className={`inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-[#9e9e9e] animate-pulse ${className}`}>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                {t('saving', lang)}
+            </span>
+        );
+    }
+    if (state === "saved") {
+        return (
+            <span className={`inline-flex items-center gap-1.5 text-xs text-emerald-500 ${className}`}>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {t('saved', lang)}
+            </span>
+        );
+    }
+    if (state === "error") {
+        return (
+            <span className={`inline-flex items-center gap-1.5 text-xs text-red-500 dark:text-red-400 ${className}`}>
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                {error || t('settings_sync_error', lang)}
+            </span>
+        );
+    }
+    return null;
 }

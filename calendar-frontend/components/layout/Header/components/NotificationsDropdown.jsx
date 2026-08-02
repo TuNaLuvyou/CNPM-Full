@@ -102,8 +102,8 @@ export default function NotificationsDropdown({
           </div>
           <div className="max-h-80 overflow-y-auto custom-scrollbar">
             {notifications.length === 0 ? (
-              <div className="py-8 flex flex-col items-center gap-2 text-slate-400 dark:text-white">
-                <Bell className="w-8 h-8 text-slate-200 dark:text-white" />
+              <div className="py-8 flex flex-col items-center gap-2 text-slate-400 dark:text-[#9e9e9e]">
+                <Bell className="w-8 h-8 text-slate-200 dark:text-[#484848]" />
                 <p className="text-sm">{t('contacts_panel.no_notifications', lang)}</p>
               </div>
             ) : (
@@ -130,7 +130,7 @@ export default function NotificationsDropdown({
                           <p className={`text-[13px] leading-relaxed ${!notif.is_read ? "font-semibold text-slate-800 dark:text-white" : "text-slate-600 dark:text-white"}`}>
                             {notif.desc}
                           </p>
-                          <p className="text-[10px] text-slate-400 dark:text-white mt-1 uppercase font-bold tracking-wider flex items-center gap-2">
+                          <p className="text-[10px] text-slate-400 dark:text-[#9e9e9e] mt-1 uppercase font-bold tracking-wider flex items-center gap-2">
                               {new Date(notif.time).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US')}
                               {isInvite && notif.is_read && (
                                   <span className="text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded text-[9px] normal-case">
@@ -164,7 +164,7 @@ export default function NotificationsDropdown({
             )}
           </div>
           <div className="px-4 py-3 border-t border-slate-100 dark:border-[#3c3c3c] bg-slate-50/50 dark:bg-[#2d2d2d]">
-            <button className="w-full text-[11px] text-center text-slate-400 dark:text-white uppercase tracking-widest font-bold py-1">
+            <button className="w-full text-[11px] text-center text-slate-400 dark:text-[#9e9e9e] hover:text-slate-600 dark:hover:text-[#e3e3e3] uppercase tracking-widest font-bold py-1 transition-colors">
               {t('view_all_notifications', lang)}
             </button>
           </div>

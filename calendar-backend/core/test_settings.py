@@ -2,7 +2,7 @@ from .settings import *  # noqa: F401,F403
 
 TESTING = True
 
-# Chạy test bằng SQLite để không cần khởi động MySQL
+# Chạy test bằng SQLite in-memory để không cần khởi động database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',

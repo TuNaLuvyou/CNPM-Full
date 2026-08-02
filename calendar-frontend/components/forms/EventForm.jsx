@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { Calendar as CalendarIcon, Clock, Link, MapPin, AlignLeft, Paperclip, Palette, Tag, X, Repeat, Layers } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Link, MapPin, AlignLeft, Paperclip, Palette, Tag, X, Repeat } from 'lucide-react';
 import { FieldRow, InputBase, TextareaBase, EVENT_COLORS, toDateInputVal, toTimeInputVal, DateTimeSelector } from './FormHelpers';
 import { t } from '@/lib/i18n';
 
@@ -99,7 +99,6 @@ export default function EventForm({ now, duration, isInteracting, onSave, initia
     };
 
     const isTitleEmpty = submitted && !form.title.trim();
-    const canEdit = !initialData || initialData.is_owner || initialData.my_permission === 'edit';
     const isOwner = !initialData || initialData.is_owner;
 
     return (

@@ -1,7 +1,7 @@
 "use client";
 import { useState } from 'react';
 import { CheckSquare, Clock, Calendar as CalendarIcon, AlignLeft, Palette, Tag, X, Paperclip } from 'lucide-react';
-import { FieldRow, InputBase, TextareaBase, toDateInputVal, toTimeInputVal, DateTimeSelector, EVENT_COLORS, CALENDAR_CATEGORIES } from './FormHelpers';
+import { FieldRow, InputBase, TextareaBase, toDateInputVal, toTimeInputVal, DateTimeSelector, EVENT_COLORS } from './FormHelpers';
 import { t } from '@/lib/i18n';
 
 export default function TaskForm({ now, duration, isInteracting, onSave, initialData = null, appSettings }) {

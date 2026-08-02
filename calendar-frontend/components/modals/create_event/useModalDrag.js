@@ -42,7 +42,16 @@ export function useModalDrag({ isOpen }) {
     if (e.button !== 0) return;
     setIsDragging(true);
     startDragPos.current = { x: e.clientX, y: e.clientY };
-    initialOffset.current = { ...dragOffset };
+    
+    // Get the exact CURRENT rendered position of the modal to prevent jumping
+    const modalEl = e.currentTarget.closest('.create-modal-root');
+    if (modalEl) {
+      const rect = modalEl.getBoundingClientRect();
+      initialOffset.current = { x: rect.left, y: rect.top };
+      setDragOffset({ x: rect.left, y: rect.top });
+    } else {
+      initialOffset.current = { ...dragOffset };
+    }
   };
 
   return { dragOffset, isDragging, handleHeaderMouseDown };

@@ -17,7 +17,7 @@ export default function NoteCard({ note, onDelete, onTogglePin }) {
           className={`shrink-0 p-1 rounded-lg transition ${
             note.pinned
               ? "text-slate-800 dark:text-[#f5f5f5] opacity-100 bg-black/5"
-              : "text-slate-500 dark:text-[#9e9e9e] opacity-0 group-hover:opacity-100 hover:bg-black/5 hover:text-slate-800 dark:hover:text-[#f5f5f5] dark:text-[#f5f5f5]"
+              : "text-slate-500 dark:text-[#9e9e9e] opacity-0 group-hover:opacity-100 hover:bg-black/5 hover:text-slate-800 dark:hover:text-[#f5f5f5]"
           }`}
         >
           <Pin className="w-3.5 h-3.5" />

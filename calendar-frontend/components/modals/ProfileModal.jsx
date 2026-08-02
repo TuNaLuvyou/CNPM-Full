@@ -128,7 +128,7 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 dark:hover:bg-[#353535] rounded-full transition-colors text-slate-400 dark:text-white"
+            className="p-2 hover:bg-slate-100 dark:hover:bg-[#353535] rounded-full transition-colors text-slate-400 dark:text-[#9e9e9e] hover:text-slate-600 dark:hover:text-[#e3e3e3]"
           >
             <X className="w-5 h-5" />
           </button>
@@ -306,7 +306,7 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
                   <button
                     type="button"
                     onClick={() => setShowPassword(p => ({ ...p, current: !p.current }))}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white hover:text-slate-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#9e9e9e] hover:text-slate-600 dark:hover:text-[#e3e3e3] transition-colors"
                   >
                     {showPassword.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -329,7 +329,7 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
                   <button
                     type="button"
                     onClick={() => setShowPassword(p => ({ ...p, new: !p.new }))}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white hover:text-slate-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#9e9e9e] hover:text-slate-600 dark:hover:text-[#e3e3e3] transition-colors"
                   >
                     {showPassword.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>

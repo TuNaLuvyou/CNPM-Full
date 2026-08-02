@@ -2,19 +2,18 @@ version: '3.8'
 
 services:
   db:
-    image: mysql:8.0
-    container_name: cnpm_mysql
+    image: postgres:16-alpine
+    container_name: cnpm_postgres
     restart: always
     environment:
-      MYSQL_DATABASE: ${DB_NAME:-cnpm_db}
-      MYSQL_USER: ${DB_USER:-calendar}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-123}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
+      POSTGRES_DB: ${DB_NAME:-cnpm_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
-      - "${DB_PORT:-3306}:3306"
+      - "${DB_PORT:-5432}:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
-  mysql_data:
+  postgres_data:
 

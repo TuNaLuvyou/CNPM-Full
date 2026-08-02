@@ -91,14 +91,14 @@ export default function TrashModal({
                         </div>
                         <div>
                             <h2 className="text-base font-bold text-slate-800 dark:text-white">Thùng rác</h2>
-                            <p className="text-xs text-slate-400 dark:text-white">
+                            <p className="text-xs text-slate-400 dark:text-[#9e9e9e]">
                                 {deletedItems.length} mục đã xóa
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-slate-100 dark:hover:bg-[#353535] rounded-full transition text-slate-400 dark:text-white hover:text-slate-600 dark:hover:text-[#bdbdbd] dark:text-white"
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-[#353535] rounded-full transition text-slate-400 dark:text-[#9e9e9e] hover:text-slate-600 dark:hover:text-[#bdbdbd]"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -113,7 +113,7 @@ export default function TrashModal({
                             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full transition-all
                 ${filter === tab.key
                                     ? "bg-slate-800 dark:bg-[#484848] text-white shadow-sm dark:shadow-none"
-                                    : "text-slate-500 dark:text-white hover:bg-slate-200 dark:hover:bg-[#484848] hover:text-slate-700 dark:hover:text-[#e3e3e3] dark:text-white"
+                                    : "text-slate-500 dark:text-[#9e9e9e] hover:bg-slate-200 dark:hover:bg-[#484848] hover:text-slate-700 dark:hover:text-[#e3e3e3]"
                                 }`}
                         >
                             {tab.label}
@@ -137,10 +137,10 @@ export default function TrashModal({
                                 <Trash2 className="w-9 h-9 text-slate-200 dark:text-[#484848]" />
                             </div>
                             <div className="text-center">
-                                <p className="text-sm font-semibold text-slate-500 dark:text-white">
+                                <p className="text-sm font-semibold text-slate-500 dark:text-[#e3e3e3]">
                                     Thùng rác trống
                                 </p>
-                                <p className="text-xs text-slate-400 dark:text-white mt-1 leading-relaxed">
+                                <p className="text-xs text-slate-400 dark:text-[#9e9e9e] mt-1 leading-relaxed">
                                     Khi bạn xóa sự kiện, việc làm hoặc lịch hẹn,
                                     <br />
                                     chúng sẽ xuất hiện ở đây
@@ -175,7 +175,7 @@ export default function TrashModal({
                                                 >
                                                     {cfg.label}
                                                 </span>
-                                                <span className="text-xs text-slate-400 dark:text-white">
+                                                <span className="text-xs text-slate-400 dark:text-[#9e9e9e]">
                                                     Xóa{" "}
                                                     {item.deletedAt
                                                         ? new Date(item.deletedAt).toLocaleDateString(
@@ -185,7 +185,7 @@ export default function TrashModal({
                                                 </span>
                                             </div>
                                             {item.date && (
-                                                <p className="text-xs text-slate-400 dark:text-white mt-0.5">
+                                                <p className="text-xs text-slate-400 dark:text-[#9e9e9e] mt-0.5">
                                                     📅 {item.date}
                                                 </p>
                                             )}
@@ -196,7 +196,7 @@ export default function TrashModal({
                                             <button
                                                 onClick={() => onRestore?.(item.id)}
                                                 title="Khôi phục"
-                                                className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-slate-300 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 transition"
+                                                className="p-1.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-slate-300 dark:text-[#757575] hover:text-emerald-600 dark:hover:text-emerald-400 transition"
                                             >
                                                 <RotateCcw className="w-4 h-4" />
                                             </button>
@@ -218,7 +218,7 @@ export default function TrashModal({
                 {/* ── Footer ── */}
                 {deletedItems.length > 0 && (
                     <div className="px-6 py-4 border-t border-slate-100 dark:border-[#484848] bg-slate-50/50 dark:bg-[#2d2d2d]/50 flex-shrink-0">
-                        <p className="text-xs text-slate-400 dark:text-white mb-3 flex items-center gap-1.5">
+                        <p className="text-xs text-slate-400 dark:text-[#9e9e9e] mb-3 flex items-center gap-1.5">
                             <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
                             Các mục trong thùng rác sẽ bị xóa vĩnh viễn sau 30 ngày
                         </p>

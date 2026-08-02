@@ -10,7 +10,7 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    default-libmysqlclient-dev \
+    libpq-dev \
     gcc \
     pkg-config \
     netcat-traditional \
@@ -23,8 +23,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY . /app/
 
-# Make entrypoint script executable
-RUN chmod +x /app/entrypoint.sh
-
-# Run the entrypoint script
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Run migrations and start the server
+CMD ["sh", "-c", "if [ -n \"$DB_HOST\" ]; then while ! nc -z \"$DB_HOST\" \"${DB_PORT:-5432}\"; do sleep 1; done; fi; python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"]

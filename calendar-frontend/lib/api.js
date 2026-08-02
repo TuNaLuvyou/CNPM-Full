@@ -40,6 +40,9 @@ export async function login(email, password) {
   });
   if (data.token) {
     localStorage.setItem('token', data.token);
+    if (data.user) {
+      localStorage.setItem('user', JSON.stringify(data.user));
+    }
   }
   return data;
 }
@@ -51,14 +54,11 @@ export async function register(fullName, email, password) {
   });
   if (data.token) {
     localStorage.setItem('token', data.token);
+    if (data.user) {
+      localStorage.setItem('user', JSON.stringify(data.user));
+    }
   }
   return data;
-}
-
-export async function logout() {
-  await request('/accounts/logout/', { method: 'POST' }).catch(() => {});
-  localStorage.removeItem('token');
-  localStorage.removeItem('appSettings');
 }
 
 export async function getMe() {
@@ -168,10 +168,6 @@ export async function updateEvent(id, data) {
   });
 }
 
-export async function deleteEvent(id) {
-  return request(`/events/${id}/`, { method: 'DELETE' });
-}
-
 export async function getEvent(id) {
   return request(`/events/${id}/`);
 }
@@ -240,29 +236,6 @@ export async function permanentDeleteTask(id) {
 
 export async function getTrashedTasks() {
   return request('/tasks/trashed/');
-}
-
-// ─── CONTACTS ──────────────────────────────────────────────────────────────
-export async function getContacts() {
-  return request('/contacts/');
-}
-
-export async function createContact(data) {
-  return request('/contacts/', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateContact(id, data) {
-  return request(`/contacts/${id}/`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function deleteContact(id) {
-  return request(`/contacts/${id}/`, { method: 'DELETE' });
 }
 
 // ─── CONNECTIONS (Social) ──────────────────────────────────────────────────

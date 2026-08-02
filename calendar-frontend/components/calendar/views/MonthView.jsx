@@ -1,6 +1,7 @@
 import React from "react";
 import { Circle, CheckCircle, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { t } from "@/lib/i18n";
+import HolidayChip from "@/components/ui/HolidayChip";
 import { DAY_NAMES, formatDateLocal, getOrderedDayLabels, getWeekNumber } from "../../../lib/CalendarHelper";
 
 export default function MonthView({ 
@@ -29,17 +30,6 @@ export default function MonthView({
     const dStr = formatDateLocal(fullDate);
     return events.filter(ev => !ev.is_holiday && formatDateLocal(new Date(ev.start_time)) === dStr);
   }
-
-  // Colour pill cho holiday
-  const holidayColors = {
-    red: 'bg-red-100 border-red-200 text-red-700 hover:bg-red-200',
-    amber: 'bg-amber-100 border-amber-200 text-amber-700 hover:bg-amber-200',
-    purple: 'bg-purple-100 border-purple-200 text-purple-700 hover:bg-purple-200',
-    pink: 'bg-pink-100 border-pink-200 text-pink-700 hover:bg-pink-200',
-    green: 'bg-green-100 border-green-200 text-green-700 hover:bg-green-200',
-    orange: 'bg-orange-100 border-orange-200 text-orange-700 hover:bg-orange-200',
-    teal: 'bg-teal-100 border-teal-200 text-teal-700 hover:bg-teal-200',
-  };
 
   const [draggingId, setDraggingId] = React.useState(null);
 
@@ -89,18 +79,17 @@ export default function MonthView({
         return d !== 0 && d !== 6;
       });
 
-  // Số lượng cột dựa trên settings
-  const columnCount = (showWeekends ? 7 : 5) + (showWeekNum ? 1 : 0);
-  const gridStyle = { gridTemplateColumns: `repeat(${columnCount}, 1fr)` };
-  // Nếu hiện số tuần thì cột đầu tiên hẹp hơn
-  const gridClass = showWeekNum 
-    ? `grid-cols-[40px_repeat(${showWeekends ? 7 : 5},1fr)]` 
-    : `grid-cols-${showWeekends ? 7 : 5}`;
+  // Số lượng cột dựa trên settings — dùng inline style để Tailwind không bỏ sót class động
+  const gridStyle = {
+    gridTemplateColumns: showWeekNum
+      ? `40px repeat(${showWeekends ? 7 : 5}, 1fr)`
+      : `repeat(${showWeekends ? 7 : 5}, 1fr)`,
+  };
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-slate-200 dark:bg-[#1f1f1f]">
       <div className="flex shadow-sm flex-shrink-0 sticky top-0 z-20 bg-slate-200 dark:bg-[#1f1f1f]">
-        <div className={`flex-1 grid ${gridClass} gap-px`}>
+        <div className="flex-1 grid gap-px" style={gridStyle}>
           {showWeekNum && (
             <div className="bg-white dark:bg-[#2a2a2a] text-center py-3 text-[10px] font-bold text-slate-300 dark:text-[#616161] uppercase">
               {lang === 'vi' ? 'Tuần' : 'Wk'}
@@ -113,7 +102,7 @@ export default function MonthView({
           ))}
         </div>
       </div>
-      <div className={`grid ${gridClass} flex-1 gap-px bg-slate-200 dark:bg-[#3c3c3c] mt-px`}>
+      <div className="grid flex-1 gap-px bg-slate-200 dark:bg-[#3c3c3c] mt-px" style={gridStyle}>
         {filteredCells.map((cell, idx) => {
           const cellEvents = getEventsForCell(cell.fullDate);
           const isHovered = hoverCellIdx === idx;
@@ -173,28 +162,21 @@ export default function MonthView({
                 )}
 
                 {/* Holiday events — hiển thị ở đầu ô ngày */}
-                {getHolidaysForCell(cell.fullDate).map((ev) => {
-                    const hColor = holidayColors[ev.color] || holidayColors.red;
-                    return (
-                        <div
-                            key={ev.id}
-                            className={`text-[9px] px-1 py-0.5 rounded border truncate leading-tight cursor-default flex items-center gap-1 ${hColor}`}
-                        >
-                            <span className="flex-shrink-0">🎉</span>
-                            <span className="font-semibold truncate">{ev.title}</span>
-                        </div>
-                    );
-                })}
+                {getHolidaysForCell(cell.fullDate).map((ev) => (
+                    <div key={ev.id} className="flex items-center">
+                        <HolidayChip ev={ev} variant="cell" />
+                    </div>
+                ))}
 
                 {/* Regular events */}
                 {getRegularEventsForCell(cell.fullDate).map((ev) => {
                     const colors = {
-                        blue: 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100',
-                        purple: 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100',
-                        emerald: 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100',
-                        pink: 'bg-pink-50 border-pink-200 text-pink-700 hover:bg-pink-100',
-                        yellow: 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100',
-                        red: 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100',
+                        blue: 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/40 dark:border-blue-800/50 dark:text-blue-300 dark:hover:bg-blue-900/60',
+                        purple: 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/40 dark:border-purple-800/50 dark:text-purple-300 dark:hover:bg-purple-900/60',
+                        emerald: 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/40 dark:border-emerald-800/50 dark:text-emerald-300 dark:hover:bg-emerald-900/60',
+                        pink: 'bg-pink-50 border-pink-200 text-pink-700 hover:bg-pink-100 dark:bg-pink-900/40 dark:border-pink-800/50 dark:text-pink-300 dark:hover:bg-pink-900/60',
+                        yellow: 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/40 dark:border-yellow-800/50 dark:text-yellow-300 dark:hover:bg-yellow-900/60',
+                        red: 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100 dark:bg-red-900/40 dark:border-red-800/50 dark:text-red-300 dark:hover:bg-red-900/60',
                     };
                     const colorClass = colors[ev.color] || colors.blue;
                     

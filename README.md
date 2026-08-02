@@ -8,7 +8,7 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![Django](https://img.shields.io/badge/Django-5+-092E20?style=for-the-badge&logo=django)](https://www.djangoproject.com/)
 [![DRF](https://img.shields.io/badge/DRF-REST_API-red?style=for-the-badge)](https://www.django-rest-framework.org/)
-[![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql)](https://www.mysql.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?style=for-the-badge&logo=postgresql)](https://www.postgresql.org/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-v4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 
 [![Tests](https://img.shields.io/badge/Tests-47%20passing-brightgreen?style=for-the-badge&logo=checkmarx)](./calendar-backend)
@@ -63,7 +63,7 @@
 |---|---|
 | **Frontend** | Next.js 16 (App Router), React 19, TailwindCSS v4, Vanilla CSS |
 | **Backend** | Django 5+, Django REST Framework, APScheduler |
-| **Database** | MySQL 8.0 (Docker), PyMySQL driver |
+| **Database** | PostgreSQL 16 (Docker local / Supabase cloud), psycopg2 |
 | **Auth** | DRF Token Authentication, UUID Email Verification |
 | **Security** | ScopedRateThrottle, CORS, SSL SMTP, Single-use tokens |
 | **Testing** | Django `unittest` — 47 test cases (accounts, events, tasks, notes, contacts) |
@@ -88,8 +88,9 @@
 │   ├── app/                    # App Router pages
 │   ├── components/             # UI Components (Calendar, Panels, Modals, Forms)
 │   └── lib/                    # API Client, i18n, helpers
-├── docker-compose.yml          # MySQL container (env-var based)
-└── env.example                 # Mẫu cấu hình biến môi trường
+├── docker-compose.yml          # PostgreSQL container (env-var based)
+├── calendar-backend/env.example   # Mẫu cấu hình biến môi trường Backend
+└── calendar-frontend/env.example  # Mẫu cấu hình biến môi trường Frontend
 ```
 
 ---
@@ -101,7 +102,7 @@
 
 ### 1. Cấu hình biến môi trường
 
-Sao chép `env.example` → `.env` ở thư mục gốc:
+Sao chép `calendar-backend/env.example` → `calendar-backend/.env` và `calendar-frontend/env.example` → `calendar-frontend/.env.local`:
 
 ```env
 SECRET_KEY=your_secret_key_here
@@ -109,10 +110,10 @@ DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 
 DB_NAME=cnpm_db
-DB_USER=calendar
-DB_PASSWORD=your_db_password
+DB_USER=postgres
+DB_PASSWORD=postgres
 DB_HOST=127.0.0.1
-DB_PORT=3306
+DB_PORT=5432
 
 FRONTEND_URL=http://localhost:3000
 CORS_ALLOWED_ORIGINS=http://localhost:3000
@@ -121,7 +122,7 @@ EMAIL_HOST_USER=your_email@example.com
 EMAIL_HOST_PASSWORD=your_app_password
 ```
 
-### 2. Khởi chạy Database (MySQL via Docker)
+### 2. Khởi chạy Database (PostgreSQL via Docker)
 
 ```bash
 docker-compose up -d

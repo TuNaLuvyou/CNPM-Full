@@ -13,7 +13,7 @@ export default function UserMenu({ currentUser, setCurrentUser, setAuthModal, ap
           {displayName.charAt(0).toUpperCase()}
         </div>
         <span 
-          className="text-sm text-slate-600 dark:text-[#9e9e9e] cursor-pointer hover:bg-slate-50 dark:hover:bg-[#2d2d2d] dark:hover:bg-[#353535] px-1 rounded transition-colors"
+          className="text-sm text-slate-600 dark:text-[#9e9e9e] cursor-pointer hover:bg-slate-50 dark:hover:bg-[#353535] px-1 rounded transition-colors"
           onClick={() => setIsProfileModalOpen(true)}
           title={t('user.edit_profile', lang) || "Chỉnh sửa thông tin cá nhân"}
         >

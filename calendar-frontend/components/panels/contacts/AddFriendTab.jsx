@@ -16,7 +16,7 @@ export default function AddFriendTab({
   return (
     <div className="p-4 space-y-4">
       <form onSubmit={handleSearch} className="flex gap-2">
-        <div className="flex-1 flex items-center gap-2 bg-slate-50 dark:bg-[#1f1f1f] rounded-xl px-3 py-2 border border-slate-100 dark:border-[#3c3c3c] focus-within:border-blue-300 focus-within:bg-white dark:bg-[#2d2d2d] transition-all">
+        <div className="flex-1 flex items-center gap-2 bg-slate-50 dark:bg-[#1f1f1f] rounded-xl px-3 py-2 border border-slate-100 dark:border-[#3c3c3c] focus-within:border-blue-300 focus-within:bg-white dark:focus-within:bg-[#2d2d2d] transition-all">
           <Search className="w-4 h-4 text-slate-400 dark:text-[#9e9e9e] flex-shrink-0" />
           <input
             value={searchEmail}

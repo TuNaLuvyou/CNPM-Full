@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { getFriends } from '@/lib/api';
 
 export function useEventGuests({ initialData, currentUser }) {
@@ -16,11 +16,12 @@ export function useEventGuests({ initialData, currentUser }) {
     }
 
     useEffect(() => {
+        if (!showGuestPicker) return;
         const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-        if (token) {
+        if (token && friends.length === 0) {
             getFriends().then(setFriends).catch(console.error);
         }
-    }, []);
+    }, [showGuestPicker, friends.length]);
 
     const filteredFriends = friends.map(conn => {
         const isSender = conn.sender === currentUser?.id;
@@ -40,11 +41,11 @@ export function useEventGuests({ initialData, currentUser }) {
 
     const toggleGuest = (friend) => {
         setGuests(prev => {
-            const exists = prev.find(g => g.invitee === friend.id);
-            if (exists) return prev.filter(g => g.invitee !== friend.id);
+            const exists = prev.find(g => (g.invitee_details?.id || g.invitee) === friend.id);
+            if (exists) return prev.filter(g => (g.invitee_details?.id || g.invitee) !== friend.id);
             return [...prev, { 
                 invitee: friend.id, 
-                invitee_details: { username: friend.username, name: friend.first_name || friend.username, email: friend.email },
+                invitee_details: { id: friend.id, username: friend.username, name: friend.first_name || friend.username, email: friend.email },
                 permission: 'view',
                 status: 'pending' 
             }];
@@ -53,7 +54,7 @@ export function useEventGuests({ initialData, currentUser }) {
 
     const togglePermission = (uid) => {
         setGuests(prev => prev.map(g => 
-            g.invitee === uid 
+            (g.invitee_details?.id || g.invitee) === uid 
                 ? { ...g, permission: g.permission === 'view' ? 'edit' : 'view' } 
                 : g
         ));

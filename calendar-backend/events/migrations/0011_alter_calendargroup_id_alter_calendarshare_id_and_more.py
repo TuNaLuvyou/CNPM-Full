@@ -10,29 +10,34 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterField(
-            model_name='calendargroup',
-            name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
-        ),
-        migrations.AlterField(
-            model_name='calendarshare',
-            name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
-        ),
-        migrations.AlterField(
-            model_name='event',
-            name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
-        ),
-        migrations.AlterField(
-            model_name='eventinvitation',
-            name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
-        ),
-        migrations.AlterField(
-            model_name='notification',
-            name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AlterField(
+                    model_name='calendargroup',
+                    name='id',
+                    field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+                ),
+                migrations.AlterField(
+                    model_name='calendarshare',
+                    name='id',
+                    field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+                ),
+                migrations.AlterField(
+                    model_name='event',
+                    name='id',
+                    field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+                ),
+                migrations.AlterField(
+                    model_name='eventinvitation',
+                    name='id',
+                    field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+                ),
+                migrations.AlterField(
+                    model_name='notification',
+                    name='id',
+                    field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+                ),
+            ],
+            database_operations=[],
         ),
     ]

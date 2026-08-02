@@ -17,14 +17,15 @@ import { getEvents, getTasks, updateEvent, updateTask, toggleTask, trashEvent, t
   getMe, getTrashedEvents, getTrashedTasks, restoreEvent, permanentDeleteEvent, restoreTask, permanentDeleteTask,
   getNotifications, getFavoriteCalendars
 } from "@/lib/api";
-import { CALENDAR_CATEGORIES } from "@/components/forms/FormHelpers";
 import AuthModal from "@/components/modals/AuthModal";
 import TrashModal from "@/components/modals/TrashModal";
 import SettingsModal from "@/components/modals/SettingsModal";
+import PageLoader from "@/components/ui/PageLoader";
 import { t } from "@/lib/i18n";
 
 export default function CalendarApp() {
   const [mounted, setMounted] = React.useState(false);
+  const [isPageLoading, setIsPageLoading] = React.useState(true);
 
   // ── visible categories ──
   const [visibleCategories, setVisibleCategories] = useState([]);
@@ -39,14 +40,34 @@ export default function CalendarApp() {
   const [events, setEvents] = React.useState([]);
 
   // ── Global UI state (Lifted from Calendar.jsx) ──
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("user");
+      if (cached) {
+        try {
+          return JSON.parse(cached);
+        } catch (e) {}
+      }
+    }
+    return null;
+  });
   const [authModal, setAuthModal] = useState({ isOpen: false, type: "login" });
   const [isTrashOpen, setIsTrashOpen] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      const reopen = sessionStorage.getItem("reopenSettingsModal");
+      if (reopen === "true") {
+        sessionStorage.removeItem("reopenSettingsModal");
+        return true;
+      }
+    }
+    return false;
+  });
   const [deletedItems, setDeletedItems] = useState([]);
 
   // ── Global App Settings ──
   const [appSettings, setAppSettings] = useState({
+    theme: "light",
     language: "vi",
     country: "VN",
     dateFormat: "DD/MM/YYYY",
@@ -130,26 +151,17 @@ export default function CalendarApp() {
 
   const lastUpdateRef = useRef(0);
 
-  const handleSaveSettings = async (newSettings) => {
+  // Optimistic: áp dụng cài đặt ngay lập tức vào app + localStorage.
+  // Việc đồng bộ lên backend được SettingsModal tự quản lý (debounced auto-save).
+  const handleSaveSettings = (newSettings) => {
     setAppSettings(newSettings);
     localStorage.setItem("appSettings", JSON.stringify(newSettings));
     if (!newSettings.showFriendsCalendars) {
         setVisibleFriends([]);
     }
-    
-    // Đồng bộ lên backend nếu đã login
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (token) {
-       try {
-           const { updateSettings } = await import('@/lib/api');
-           await updateSettings(newSettings);
-       } catch(e) {
-           console.error("Lỗi đồng bộ cấu hình:", e);
-       }
-    }
   };
 
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = useCallback(async (targetType = 'all') => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) return;
 
@@ -180,10 +192,22 @@ export default function CalendarApp() {
       if (appSettings.showFriendsCalendars) {
         params.include_friends = true;
       }
-      const [eventsResponse, tasksResponse] = await Promise.all([
-        getEvents(params),
-        getTasks(params)
-      ]);
+
+      let eventsResponse = [];
+      let tasksResponse = [];
+
+      if (targetType === 'event') {
+        eventsResponse = await getEvents(params);
+      } else if (targetType === 'task') {
+        tasksResponse = await getTasks(params);
+      } else {
+        const [eRes, tRes] = await Promise.all([
+          getEvents(params),
+          getTasks(params)
+        ]);
+        eventsResponse = eRes;
+        tasksResponse = tRes;
+      }
 
       const viewStart = params.date_from ? new Date(params.date_from + 'T00:00:00') : new Date('2000-01-01');
       const viewEnd = params.date_to ? new Date(params.date_to + 'T23:59:59') : new Date('2100-01-01');
@@ -259,7 +283,7 @@ export default function CalendarApp() {
             is_owner: true,
             my_permission: 'edit',
             event_type: 'task',
-            start_time: effectiveStart, // Đồng bộ start_time để hiển thị trên grid
+            start_time: effectiveStart,
             duration_minutes: duration,
             end_time: t.end_time || t.deadline_time || effectiveStart,
             deadline: deadlineRaw,
@@ -267,7 +291,16 @@ export default function CalendarApp() {
           };
         });
 
-      setEvents([...formattedEvents, ...formattedTasks]);
+      setEvents(prev => {
+        if (targetType === 'event') {
+          const existingTasks = prev.filter(item => item.event_type === 'task');
+          return [...formattedEvents, ...existingTasks];
+        } else if (targetType === 'task') {
+          const existingEvents = prev.filter(item => item.event_type !== 'task');
+          return [...existingEvents, ...formattedTasks];
+        }
+        return [...formattedEvents, ...formattedTasks];
+      });
     } catch (e) {
       console.error("Không thể tải events:", e);
     }
@@ -277,62 +310,82 @@ export default function CalendarApp() {
     fetchEvents();
   }, [fetchEvents, eventSavedTick, appSettings.showFriendsCalendars]);
 
-  // Separate effect to handle selectedDate changes only in "Ngày" view
-  React.useEffect(() => {
-    // Nếu vừa mới cập nhật (kéo thả) xong thì bỏ qua lần fetch này để tránh snap-back
-    if (view === "Ngày" && (Date.now() - lastUpdateRef.current > 2000)) {
-      fetchEvents();
-    }
-  }, [selectedDate, view, fetchEvents]);
 
-  // ── Khôi phục session & Trash logic (Lifted from Calendar.jsx) ──
+
+  // ── Khôi phục session & Trash logic ──
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (token) {
-      getMe()
-        .then(async user => {
-          setCurrentUser(user);
-          try {
-            const { getSettings } = await import('@/lib/api');
-            const dbSettings = await getSettings();
-            if (dbSettings && Object.keys(dbSettings).length > 0) {
-              setAppSettings(prev => {
-                const merged = { ...prev, ...dbSettings };
-                localStorage.setItem("appSettings", JSON.stringify(merged));
-                return merged;
-              });
-            }
-          } catch(e) {
-            console.error("Lỗi lấy cấu hình:", e);
-          }
-        })
-        .catch(() => {
-          if (typeof window !== "undefined") localStorage.removeItem("token");
-        });
-    }
+    const initSession = async () => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) {
+        if (typeof window !== "undefined") localStorage.removeItem("user");
+        setCurrentUser(null);
+        setIsPageLoading(false);
+        return;
+      }
+
+      try {
+        const { getSettings } = await import('@/lib/api');
+        const [userRes, settingsRes] = await Promise.allSettled([
+          getMe(),
+          getSettings(),
+        ]);
+
+        if (userRes.status === "fulfilled" && userRes.value) {
+          setCurrentUser(userRes.value);
+          localStorage.setItem("user", JSON.stringify(userRes.value));
+        } else if (userRes.status === "rejected") {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          setCurrentUser(null);
+        }
+
+        if (settingsRes.status === "fulfilled" && settingsRes.value && Object.keys(settingsRes.value).length > 0) {
+          setAppSettings(prev => {
+            const merged = { ...prev, ...settingsRes.value };
+            localStorage.setItem("appSettings", JSON.stringify(merged));
+            return merged;
+          });
+        }
+      } catch (e) {
+        console.error("Lỗi khởi tạo session:", e);
+      } finally {
+        setIsPageLoading(false);
+      }
+    };
+
+    initSession();
   }, []);
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser?.id) return;
 
     const syncFavoriteCalendarState = async () => {
-      try {
-        const favorites = await getFavoriteCalendars();
-        const favoriteList = Array.isArray(favorites) ? favorites : [];
-        const presetKeys = new Set(["vn_holidays", "world_holidays", "other_holidays"]);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) return;
 
+      try {
+        const { getFavoriteCalendars } = await import('@/lib/api');
+        const backendFavorites = await getFavoriteCalendars();
+        const favoriteList = Array.isArray(backendFavorites) ? backendFavorites : [];
+        
+        const hasVietnamesePreset = favoriteList.some(item => item.calendar_key === "vietnam_holidays");
+        const hasWorldPreset = favoriteList.some(item => item.calendar_key === "world_holidays");
+        const hasOtherPreset = favoriteList.some(item => item.calendar_key === "other_holidays");
+        
         const customHolidayItems = favoriteList
-          .filter(item => !presetKeys.has(item.calendar_key))
-          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+          .filter(item => item.calendar_type === 'custom_holiday')
+          .map(item => ({
+             id: item.id,
+             name: item.name,
+             date: item.date,
+             color: item.color,
+             is_active: item.is_active
+          }));
 
         setAppSettings(prev => {
-          const hasVietnamPreset = favoriteList.some(item => item.calendar_key === "vn_holidays");
-          const hasWorldPreset = favoriteList.some(item => item.calendar_key === "world_holidays");
-          const hasOtherPreset = favoriteList.some(item => item.calendar_key === "other_holidays");
-
           const nextSettings = {
             ...prev,
-            vietnamHolidays: hasVietnamPreset ? favoriteList.some(item => item.calendar_key === "vn_holidays" && item.is_active) : prev.vietnamHolidays,
+            vietnamHolidays: hasVietnamesePreset ? favoriteList.some(item => item.calendar_key === "vietnam_holidays" && item.is_active) : prev.vietnamHolidays,
             worldHolidays: hasWorldPreset ? favoriteList.some(item => item.calendar_key === "world_holidays" && item.is_active) : prev.worldHolidays,
             otherHolidays: hasOtherPreset ? favoriteList.some(item => item.calendar_key === "other_holidays" && item.is_active) : prev.otherHolidays,
             customHolidays: customHolidayItems,
@@ -346,7 +399,7 @@ export default function CalendarApp() {
     };
 
     syncFavoriteCalendarState();
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   const fetchFriends = useCallback(async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -369,6 +422,9 @@ export default function CalendarApp() {
   }, [fetchFriends]);
 
   const fetchTrash = useCallback(async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) return;
+
     try {
       const [trashedEvents, trashedTasks] = await Promise.all([
         getTrashedEvents(),
@@ -396,7 +452,8 @@ export default function CalendarApp() {
   };
 
   const fetchNotifs = useCallback(async () => {
-    if (!currentUser) return;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!currentUser || !token) return;
     try {
       const data = await getNotifications();
       // Chuyển đổi format BE -> FE nếu cần
@@ -415,17 +472,14 @@ export default function CalendarApp() {
     } catch (e) {
       console.error("Lỗi lấy thông báo:", e);
     }
-  }, [currentUser, appSettings.language]);
+  }, [currentUser?.id]);
 
   useEffect(() => {
-    fetchNotifs();
-    fetchEvents();
-    const id = setInterval(() => {
+    if (currentUser?.id) {
       fetchNotifs();
-      fetchEvents();
-    }, 30000); 
-    return () => clearInterval(id);
-  }, [fetchNotifs, fetchEvents]);
+      fetchTrash();
+    }
+  }, [currentUser?.id]);
 
   const handleRestore = async (compositeId) => {
     const item = deletedItems.find(i => i.id === compositeId);
@@ -467,21 +521,49 @@ export default function CalendarApp() {
     }
   };
 
-  const handleEventSaved = useCallback(() => {
-    setEventSavedTick(t => t + 1);
+  const handleEventSaved = useCallback((optimisticEvent = null, action = null, targetType = 'all') => {
+    if (optimisticEvent) {
+      if (action === 'create') {
+        setEvents(prev => [...prev, optimisticEvent]);
+      } else if (action === 'update') {
+        setEvents(prev => prev.map(e => e.id === optimisticEvent.id ? optimisticEvent : e));
+      } else if (action === 'delete') {
+        setEvents(prev => prev.filter(e => e.id !== optimisticEvent.id));
+        setDeletedItems(prev => [...prev, {
+            id: optimisticEvent.id,
+            _id: optimisticEvent.id.toString().replace('event-', '').replace('task-', ''),
+            type: optimisticEvent.event_type || (optimisticEvent.id.toString().startsWith('task-') ? 'task' : 'event'),
+            title: optimisticEvent.title || '(Không có tiêu đề)',
+            date: optimisticEvent.date_display || optimisticEvent.start_time,
+            deletedAt: new Date().toISOString()
+        }]);
+      }
+    } else {
+      // Refresh from server specifically for the targetType
+      fetchEvents(targetType);
+    }
     setPreviewEvent(null);
     setClickPosition(null);
-  }, []);
+  }, [fetchEvents, fetchTrash]);
 
-  const handleToggleTask = async (compositeId) => {
-    try {
-      let cleanId = compositeId.toString().replace('task-', '');
-      cleanId = cleanId.split('_')[0];
-      await toggleTask(cleanId);
-      handleEventSaved(); // Refresh UI
-    } catch (e) {
-      console.error("Lỗi toggle task:", e);
-    }
+  const handleToggleTask = (compositeId) => {
+    // 1. Giao diện đi trước (Optimistic UI)
+    setEvents(prev => prev.map(e => 
+      e.id === compositeId ? { ...e, is_completed: !e.is_completed } : e
+    ));
+
+    // 2. API chạy ngầm
+    (async () => {
+      try {
+        let cleanId = compositeId.toString().replace('task-', '');
+        cleanId = cleanId.split('_')[0];
+        await toggleTask(cleanId);
+      } catch (e) {
+        console.error("Lỗi toggle task:", e);
+        // Revert lại trạng thái cũ nếu lỗi bằng cách refresh
+        handleEventSaved(null, null, 'task'); 
+      }
+    })();
   };
 
   const handleGlobalEventUpdate = useCallback(async (item, newStartTime, newDurationMin) => {
@@ -577,12 +659,12 @@ export default function CalendarApp() {
       // Sau khi API thành công, có thể fetch lại sau 1 khoảng trễ ngắn để đồng bộ triệt để với Server 
       // mà không gây snap-back ngay lập tức.
       setTimeout(() => {
-        handleEventSaved();
+        handleEventSaved(null, null, isEventRelated ? 'event' : 'task');
       }, 1000);
     } catch (e) {
       console.error("Lỗi cập nhật:", e);
       // Chỉ re-fetch ngay khi có lỗi để khôi phục trạng thái đúng từ server
-      handleEventSaved();
+      handleEventSaved(null, null, itemType === 'task' ? 'task' : 'event');
       alert("Không thể cập nhật sự kiện. Đang đồng bộ lại...");
     }
   }, [handleEventSaved, editingItem]);
@@ -631,9 +713,6 @@ export default function CalendarApp() {
 
   React.useEffect(() => {
     setMounted(true);
-    const now = getVNTime();
-    setViewDate(now);
-    setSelectedDate(now);
   }, []);
 
   // ── Holiday events (thuần frontend, tính theo viewDate range) ──────────────
@@ -716,11 +795,7 @@ export default function CalendarApp() {
   }, []);
 
   if (!mounted) {
-    return (
-      <div className="flex h-screen bg-white dark:bg-[#1f1f1f] items-center justify-center">
-        <div className="animate-pulse text-slate-400 dark:text-[#9e9e9e] font-medium text-sm">Đang tải lịch...</div>
-      </div>
-    );
+    return <PageLoader isLoading={true} text={t('loading', appSettings.language)} />;
   }
 
   const handleMiniDayClick = (clickedDate) => {
@@ -814,6 +889,7 @@ export default function CalendarApp() {
   };
 
   const handleEventClick = (ev, position) => {
+      if (ev.is_optimistic) return; // Prevent interaction with optimistic events while they are saving
       openCreate(ev.event_type || 'event', ev, position);
   };
 
@@ -884,7 +960,7 @@ export default function CalendarApp() {
       cleanId = cleanId.split('_')[0];
       if (isTask) await trashTask(cleanId);
       else await trashEvent(cleanId);
-      handleEventSaved();
+      handleEventSaved(null, null, isTask ? 'task' : 'event');
       handleCloseModal();
     } catch (e) {
       console.error("Lỗi xóa:", e);
@@ -920,8 +996,12 @@ export default function CalendarApp() {
           className="absolute inset-0 z-40 bg-slate-900/[0.02] backdrop-blur-[0.5px] cursor-pointer flex flex-col items-center justify-center transition-all duration-300"
         >
           <div className="bg-white dark:bg-[#2d2d2d]/95 px-6 py-4 rounded-2xl shadow-xl border border-slate-100 dark:border-[#3c3c3c] flex flex-col items-center gap-2 animate-bounce pointer-events-none select-none">
-            <span className="text-sm font-semibold text-slate-700 dark:text-[#e3e3e3]">Vui lòng đăng nhập để sử dụng ứng dụng</span>
-            <span className="text-xs text-slate-400 dark:text-[#9e9e9e]">Nhấp vào bất kỳ đâu để đăng nhập</span>
+            <span className="text-sm font-semibold text-slate-700 dark:text-[#e3e3e3]">
+              {t('user.login_prompt_title', appSettings.language)}
+            </span>
+            <span className="text-xs text-slate-400 dark:text-[#9e9e9e]">
+              {t('user.login_prompt_desc', appSettings.language)}
+            </span>
           </div>
         </div>
       )}
@@ -942,13 +1022,13 @@ export default function CalendarApp() {
             </button>
             {isCreateMenuOpen && (
               <div className="absolute top-14 left-0 w-full bg-white dark:bg-[#2d2d2d] rounded-xl shadow-lg border border-slate-100 dark:border-[#3c3c3c] py-2 z-50">
-                <button onClick={() => openCreate("event")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#2d2d2d] dark:hover:bg-[#353535] flex items-center text-sm text-slate-700 dark:text-[#d4d4d4]">
+                <button onClick={() => openCreate("event")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#353535] flex items-center text-sm text-slate-700 dark:text-[#d4d4d4]">
                   <CalendarIcon className="w-4 h-4 mr-3 text-blue-500" /> {t('event', appSettings.language)}
                 </button>
-                <button onClick={() => openCreate("task")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#2d2d2d] dark:hover:bg-[#353535] flex items-center text-sm text-slate-700 dark:text-[#d4d4d4]">
+                <button onClick={() => openCreate("task")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#353535] flex items-center text-sm text-slate-700 dark:text-[#d4d4d4]">
                   <CheckSquare className="w-4 h-4 mr-3 text-emerald-500" /> {t('task', appSettings.language)}
                 </button>
-                <button onClick={() => openCreate("appointment")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#2d2d2d] dark:hover:bg-[#353535] flex items-center text-sm text-slate-700 dark:text-[#d4d4d4]">
+                <button onClick={() => openCreate("appointment")} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#353535] flex items-center text-sm text-slate-700 dark:text-[#d4d4d4]">
                   <Clock className="w-4 h-4 mr-3 text-purple-500" /> {t('appointment', appSettings.language)}
                 </button>
               </div>
@@ -1131,6 +1211,7 @@ export default function CalendarApp() {
           setAuthModal({ isOpen: false, type: "login" });
           window.location.reload();
         }}
+        lang={appSettings.language}
       />
 
       <TrashModal
@@ -1148,6 +1229,8 @@ export default function CalendarApp() {
         settings={appSettings}
         onSave={handleSaveSettings}
       />
+
+      <PageLoader isLoading={isPageLoading} text={t('loading', appSettings.language)} />
 
       <style dangerouslySetInnerHTML={{ __html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }

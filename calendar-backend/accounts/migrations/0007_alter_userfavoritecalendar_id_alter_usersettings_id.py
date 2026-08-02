@@ -10,14 +10,19 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterField(
-            model_name='userfavoritecalendar',
-            name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
-        ),
-        migrations.AlterField(
-            model_name='usersettings',
-            name='id',
-            field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AlterField(
+                    model_name='userfavoritecalendar',
+                    name='id',
+                    field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+                ),
+                migrations.AlterField(
+                    model_name='usersettings',
+                    name='id',
+                    field=models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'),
+                ),
+            ],
+            database_operations=[],
         ),
     ]

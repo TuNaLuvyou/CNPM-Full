@@ -31,7 +31,7 @@ export default function Notification({ s, set, lang }) {
                                     </div>
                                     <div onClick={() => set("notificationType", opt.value)}>
                                         <p className="text-sm font-medium text-slate-700 dark:text-white">{opt.label}</p>
-                                        <p className="text-xs text-slate-400 dark:text-white mt-0.5">{opt.desc}</p>
+                                        <p className="text-xs text-slate-400 dark:text-[#9e9e9e] mt-0.5">{opt.desc}</p>
                                     </div>
                                 </label>
                             );
@@ -68,7 +68,7 @@ export default function Notification({ s, set, lang }) {
                             className="w-16 text-sm text-center border border-slate-200 dark:border-[#484848] dark:bg-[#1f1f1f] rounded-xl px-2 py-2 text-slate-700 dark:text-white
                 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
                         />
-                        <span className="text-sm text-slate-500 dark:text-white font-medium">{t('notif_settings.minutes', lang)}</span>
+                        <span className="text-sm text-slate-500 dark:text-[#9e9e9e] font-medium">{t('notif_settings.minutes', lang)}</span>
                     </div>
                 </Row>
             </Card>

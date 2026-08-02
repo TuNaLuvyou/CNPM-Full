@@ -37,7 +37,7 @@ export default function EventGuests({
                         <div className="bg-white dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-10 mx-0.5 mt-0.5">
                             <div className="p-2 border-b border-slate-100 dark:border-[#484848] bg-slate-50/50 dark:bg-[#1f1f1f]">
                                 <div className="relative">
-                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-white" />
+                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-[#9e9e9e]" />
                                     <input 
                                         type="text"
                                         autoFocus
@@ -53,11 +53,11 @@ export default function EventGuests({
                                 {filteredFriends.length === 0 ? (
                                     <div className="py-6 text-center">
                                         <Users className="w-8 h-8 text-slate-200 dark:text-[#484848] mx-auto mb-2" />
-                                        <p className="text-[10px] text-slate-400 dark:text-white italic px-4">{t('contacts_panel.no_results', lang)}</p>
+                                        <p className="text-[10px] text-slate-400 dark:text-[#9e9e9e] italic px-4">{t('contacts_panel.no_results', lang)}</p>
                                     </div>
                                 ) : (
                                     filteredFriends.map(f => {
-                                        const guestEntry = guests.find(g => g.invitee === f.id);
+                                        const guestEntry = guests.find(g => (g.invitee_details?.id || g.invitee) === f.id);
                                         const isAdded = !!guestEntry;
                                         const name = f.first_name || f.username || f.email || "User";
                                         const initial = (name ? name[0] : "?").toUpperCase();
@@ -72,7 +72,7 @@ export default function EventGuests({
                                                 </div>
                                                 <div className="flex-1 text-left">
                                                     <p className="text-xs font-bold truncate">{name}</p>
-                                                    <p className="text-[10px] text-slate-400 dark:text-white truncate leading-tight">{f.email}</p>
+                                                    <p className="text-[10px] text-slate-400 dark:text-[#9e9e9e] truncate leading-tight">{f.email}</p>
                                                 </div>
 
                                                 {isAdded && (
@@ -83,8 +83,7 @@ export default function EventGuests({
                                                             onChange={(e) => {
                                                                 e.stopPropagation();
                                                                 togglePermission(f.id);
-                                                            }}
-                                                            className="appearance-none bg-white dark:bg-[#1f1f1f] text-slate-600 dark:text-white text-[9px] font-bold px-7 py-1 rounded-lg border border-slate-200 dark:border-[#484848] hover:border-blue-300 transition-all cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
+                                                            }}                                                                className="appearance-none bg-white dark:bg-[#1f1f1f] text-slate-600 dark:text-[#e3e3e3] text-[9px] font-bold px-7 py-1 rounded-lg border border-slate-200 dark:border-[#484848] hover:border-blue-300 transition-all cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
                                                         >
                                                             <option value="view">{t('contacts_panel.view_only', lang)}</option>
                                                             <option value="edit">{t('contacts_panel.can_edit', lang)}</option>
@@ -92,7 +91,7 @@ export default function EventGuests({
                                                         <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
                                                             {guestEntry.permission === 'edit' ? <ShieldCheck className="w-2.5 h-2.5 text-purple-500" /> : <Shield className="w-2.5 h-2.5 text-slate-400 dark:text-white" />}
                                                         </div>
-                                                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-slate-400 dark:text-white pointer-events-none" />
+                                                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-slate-400 dark:text-[#9e9e9e] pointer-events-none" />
                                                     </div>
                                                 )}
 
@@ -102,7 +101,7 @@ export default function EventGuests({
                                                     </div>
                                                 ) : (
                                                     <div className="w-5 h-5 bg-slate-100 dark:bg-[#353535] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Plus className="w-3 h-3 text-slate-400 dark:text-white" />
+                                                        <Plus className="w-3 h-3 text-slate-400 dark:text-[#9e9e9e]" />
                                                     </div>
                                                 )}
                                             </div>
@@ -118,15 +117,14 @@ export default function EventGuests({
                         <div className="p-1 space-y-1.5 mt-0.5">
                             {guests.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-4 bg-white dark:bg-transparent border border-dashed border-slate-200 dark:border-[#484848] rounded-xl" onClick={() => setShowGuestPicker(true)}>
-                                    <Users className="w-5 h-5 text-slate-300 mb-1" />
-                                    <span className="text-[11px] text-slate-400 dark:text-white italic">{t('contacts_panel.no_invitations', lang)}</span>
+                                    <Users className="w-5 h-5 text-slate-300 mb-1" />                                                    <span className="text-[11px] text-slate-400 dark:text-[#9e9e9e] italic">{t('contacts_panel.no_invitations', lang)}</span>
                                 </div>
                             ) : (
                                 guests.map(g => (
-                                    <div key={g.invitee} className="flex items-center justify-between bg-white dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848]/60 p-2.5 rounded-xl shadow-sm hover:shadow-md transition-all group active:scale-[0.99]">
+                                    <div key={g.invitee_details?.id || g.invitee} className="flex items-center justify-between bg-white dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848]/60 p-2.5 rounded-xl shadow-sm hover:shadow-md transition-all group active:scale-[0.99]">
                                         <div className="flex items-center gap-3">
                                             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white shadow-sm transition-transform group-hover:rotate-3">
-                                                {g.invitee_details?.username?.[0]?.toUpperCase() || '?'}
+                                                {(g.invitee_details?.username?.[0] || '?').toUpperCase()}
                                             </div>
                                             <div className="flex flex-col">
                                                 <div className="flex items-center gap-2">
@@ -144,7 +142,7 @@ export default function EventGuests({
                                                         </span>
                                                     )}
                                                 </div>
-                                                <span className="text-[10px] text-slate-400 dark:text-white leading-none">{g.invitee_details?.email}</span>
+                                                <span className="text-[10px] text-slate-400 dark:text-[#9e9e9e] leading-none">{g.invitee_details?.email}</span>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -154,9 +152,9 @@ export default function EventGuests({
                                                     disabled={!isOwner}
                                                     onChange={(e) => {
                                                         e.stopPropagation();
-                                                        togglePermission(g.invitee);
+                                                        togglePermission(g.invitee_details?.id || g.invitee);
                                                     }}
-                                                    className="appearance-none bg-slate-50 dark:bg-[#1f1f1f] text-slate-800 dark:text-white text-[10px] font-bold px-7 py-1.5 rounded-lg border border-slate-200 dark:border-[#484848] hover:border-blue-300 transition-all cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
+                                                    className="appearance-none bg-slate-50 dark:bg-[#1f1f1f] text-slate-800 dark:text-[#e3e3e3] text-[10px] font-bold px-7 py-1.5 rounded-lg border border-slate-200 dark:border-[#484848] hover:border-blue-300 transition-all cursor-pointer outline-none focus:ring-1 focus:ring-blue-500"
                                                 >
                                                     <option value="view">{t('contacts_panel.view_only', lang)}</option>
                                                     <option value="edit">{t('contacts_panel.can_edit', lang)}</option>
@@ -164,14 +162,14 @@ export default function EventGuests({
                                                 <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
                                                     {g.permission === 'edit' ? <ShieldCheck className="w-3 h-3 text-purple-500" /> : <Shield className="w-3 h-3 text-slate-400 dark:text-white" />}
                                                 </div>
-                                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 dark:text-white pointer-events-none" />
+                                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 dark:text-[#9e9e9e] pointer-events-none" />
                                             </div>
 
                                             {isOwner && (
                                                 <button 
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        toggleGuest({id: g.invitee});
+                                                        toggleGuest({id: g.invitee_details?.id || g.invitee});
                                                     }} 
                                                     title="Gở bỏ" 
                                                     className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"

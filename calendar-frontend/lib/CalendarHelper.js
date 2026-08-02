@@ -8,7 +8,7 @@ export const MONTH_NAMES = {
     en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 };
 
-export const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
 /** Lấy các key ngày (sun, mon...) theo thứ tự bắt đầu tuần */
 export function getOrderedDayKeys(startDay = "monday") {
@@ -115,7 +115,7 @@ export function formatDateLocal(date) {
 }
 
 /** Trả về ngày bắt đầu của tuần chứa ngày d */
-export function getWeekStart(d, startDay = "monday") {
+function getWeekStart(d, startDay = "monday") {
     const date = new Date(d);
     const currentDay = date.getDay(); // 0-6
     const targetDay = DAY_KEYS.indexOf(startDay); // 0-6

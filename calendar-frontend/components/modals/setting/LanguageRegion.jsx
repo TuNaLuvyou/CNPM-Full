@@ -5,11 +5,6 @@ import { SectionLabel, Card, Row, Select } from "./SharedUI";
 const LANGUAGES = [
     { value: "vi", label: "Tiếng Việt" },
     { value: "en", label: "English" },
-    { value: "ja", label: "日本語" },
-    { value: "zh", label: "中文" },
-    { value: "ko", label: "한국어" },
-    { value: "fr", label: "Français" },
-    { value: "de", label: "Deutsch" },
 ];
 
 const COUNTRIES = [
@@ -55,7 +50,7 @@ export default function LanguageRegion({ s, set, lang }) {
                                 type="button"
                                 onClick={() => set("timeFormat", v)}
                                 className={`flex-1 py-2 text-sm font-semibold transition
-                  ${s.timeFormat === v ? "bg-blue-600 text-white" : "bg-white dark:bg-[#1f1f1f] text-slate-500 dark:text-white hover:bg-slate-50 dark:hover:bg-[#2d2d2d]"}`}
+                  ${s.timeFormat === v ? "bg-blue-600 text-white" : "bg-white dark:bg-[#1f1f1f] text-slate-500 dark:text-[#9e9e9e] hover:bg-slate-50 dark:hover:bg-[#2d2d2d]"}`}
                             >
                                 {label}
                             </button>

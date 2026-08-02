@@ -1,6 +1,5 @@
 Django==6.0.5
-PyMySQL==1.2.0
-cryptography==48.0.0
+psycopg2-binary==2.9.12
 djangorestframework==3.17.1
 django-cors-headers==4.9.0
 python-dotenv==1.2.2
