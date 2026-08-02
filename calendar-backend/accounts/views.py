@@ -4,7 +4,6 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth.models import User
-from management.models import SupportRequest
 from django.contrib import auth
 from django.shortcuts import redirect
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
@@ -14,8 +13,56 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.contrib.auth.models import Group
+from django.conf import settings
 import threading
 from .models import EmailVerificationToken
+
+
+def build_verification_email(user, verify_url, resend=False):
+    """Tạo nội dung email xác nhận tài khoản (chung cho lần đầu và gửi lại)."""
+    title = "Xác nhận địa chỉ Email (Gửi lại)" if resend else "Xác nhận địa chỉ Email"
+    intro = (
+        "Bạn đã yêu cầu gửi lại email xác nhận cho tài khoản <strong>Lịch Cá Nhân</strong>."
+        if resend
+        else "Cảm ơn bạn đã đăng ký tài khoản trên hệ thống <strong>Lịch Cá Nhân</strong>."
+    )
+    subject = f"{title} - Lịch Cá Nhân"
+    html_message = f"""
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px;">
+        <h2 style="color: #2563eb; margin-bottom: 20px;">{title}</h2>
+        <p>Xin chào <strong>{user.username}</strong>,</p>
+        <p>{intro}</p>
+        <p>Vui lòng click vào nút bên dưới để xác nhận. <strong>Liên kết có hiệu lực trong 5 phút.</strong></p>
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{verify_url}" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px;
+               text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+               Xác nhận Email
+            </a>
+        </div>
+        <p style="word-break: break-all; font-size: 13px; color: #2563eb;"><a href="{verify_url}">{verify_url}</a></p>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+        <p style="font-size: 12px; color: #64748b;">
+            Nếu bạn không thực hiện yêu cầu này, tài khoản sẽ bị xóa tự động sau 5 phút.
+        </p>
+    </div>
+    """
+    return subject, html_message
+
+
+def schedule_cleanup(user_id):
+    """Lên lịch xóa tài khoản nếu chưa xác thực sau 5 phút."""
+    def cleanup():
+        try:
+            u = User.objects.get(pk=user_id, is_active=False)
+            # Chỉ xóa nếu vẫn chưa active và token đã hết hạn
+            if hasattr(u, 'email_verification_token') and u.email_verification_token.is_expired():
+                u.delete()
+        except User.DoesNotExist:
+            pass  # Đã được xác thực hoặc xóa thủ công
+
+    timer = threading.Timer(EmailVerificationToken.EXPIRE_SECONDS + 5, cleanup)
+    timer.daemon = True
+    timer.start()
 
 
 
@@ -30,29 +77,8 @@ class RegisterView(APIView):
 
     def _send_verification_email(self, user, verify_token):
         """Gửi email HTML chứa link xác nhận."""
-        verify_url = f"http://localhost:3000/verify-email?token={verify_token.token}"
-        subject = "Xác nhận địa chỉ Email - Lịch Cá Nhân"
-        html_message = f"""
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px;">
-            <h2 style="color: #2563eb; margin-bottom: 20px;">Xác nhận địa chỉ Email</h2>
-            <p>Xin chào <strong>{user.username}</strong>,</p>
-            <p>Cảm ơn bạn đã đăng ký tài khoản trên hệ thống <strong>Lịch Cá Nhân</strong>.</p>
-            <p>Vui lòng click vào nút bên dưới để xác nhận địa chỉ email của bạn.
-            <strong>Liên kết này chỉ có hiệu lực trong vòng 5 phút.</strong></p>
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{verify_url}" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px;
-                   text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                   Xác nhận Email
-                </a>
-            </div>
-            <p style="color: #64748b; font-size: 13px;">Nếu nút trên không hoạt động, bạn có thể copy link sau và dán trực tiếp vào thanh địa chỉ trình duyệt:</p>
-            <p style="word-break: break-all; font-size: 13px; color: #2563eb;"><a href="{verify_url}">{verify_url}</a></p>
-            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
-            <p style="font-size: 12px; color: #64748b;">
-                Nếu bạn không thực hiện yêu cầu này, tài khoản của bạn sẽ bị xóa tự động sau 5 phút.
-            </p>
-        </div>
-        """
+        verify_url = f"{settings.FRONTEND_URL}/verify-email?token={verify_token.token}"
+        subject, html_message = build_verification_email(user, verify_url)
         send_mail(
             subject=subject,
             message=f"Xác nhận email của bạn bằng cách truy cập: {verify_url}",
@@ -62,25 +88,19 @@ class RegisterView(APIView):
             fail_silently=False,
         )
 
-    def _schedule_cleanup(self, user_id):
-        """Lên lịch xóa tài khoản nếu chưa xác thực sau 5 phút."""
-        def cleanup():
-            try:
-                u = User.objects.get(pk=user_id, is_active=False)
-                # Kiểm tra lại lần nữa: chỉ xóa nếu vẫn chưa active và vẫn còn token
-                if hasattr(u, 'email_verification_token') and u.email_verification_token.is_expired():
-                    u.delete()
-            except User.DoesNotExist:
-                pass  # Đã được xác thực hoặc xóa thủ công
-
-        timer = threading.Timer(EmailVerificationToken.EXPIRE_SECONDS + 5, cleanup)
-        timer.daemon = True
-        timer.start()
+    def _unique_username(self, base):
+        """Tạo username không trùng lặp (tránh 500 khi 2 email cùng local-part)."""
+        username = base or 'user'
+        n = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base}_{n}"
+            n += 1
+        return username
 
     def post(self, request):
         data = request.data.copy()
         if 'email' in data and 'username' not in data:
-            data['username'] = data['email'].split('@')[0]
+            data['username'] = self._unique_username(data['email'].split('@')[0])
 
         serializer = RegisterSerializer(data=data)
         if not serializer.is_valid():
@@ -113,7 +133,7 @@ class RegisterView(APIView):
             )
 
         # Lên lịch tự động xóa sau 5 phút
-        self._schedule_cleanup(user.pk)
+        schedule_cleanup(user.pk)
 
         return Response({
             'status': 'pending_verification',
@@ -166,9 +186,6 @@ class LogoutView(APIView):
             return redirect('/admin/login/')
         return Response({'status': 'logged out'}, status=status.HTTP_200_OK)
 
-    def get(self, request):
-        return self.post(request)
-
 
 class MeView(APIView):
     """
@@ -200,7 +217,7 @@ class ForgotPasswordView(APIView):
             token = default_token_generator.make_token(user)
             
             # Đường dẫn đổi mật khẩu ở Frontend
-            reset_url = f"http://localhost:3000/reset-password?uid={uid}&token={token}"
+            reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
             
             # Gửi Email
             subject = "Yêu cầu khôi phục mật khẩu - Lịch Cá Nhân"
@@ -383,27 +400,8 @@ class ResendVerificationView(APIView):
         verify_token = EmailVerificationToken.objects.create(user=user)
 
         # Gửi lại email
-        verify_url = f"http://localhost:3000/verify-email?token={verify_token.token}"
-        subject = "Xác nhận địa chỉ Email - Lịch Cá Nhân"
-        html_message = f"""
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px;">
-            <h2 style="color: #2563eb; margin-bottom: 20px;">Xác nhận địa chỉ Email (Gửi lại)</h2>
-            <p>Xin chào <strong>{user.username}</strong>,</p>
-            <p>Bạn đã yêu cầu gửi lại email xác nhận cho tài khoản <strong>Lịch Cá Nhân</strong>.</p>
-            <p>Vui lòng click vào nút bên dưới để xác nhận. <strong>Liên kết có hiệu lực trong 5 phút.</strong></p>
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{verify_url}" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px;
-                   text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                   Xác nhận Email
-                </a>
-            </div>
-            <p style="word-break: break-all; font-size: 13px; color: #2563eb;"><a href="{verify_url}">{verify_url}</a></p>
-            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
-            <p style="font-size: 12px; color: #64748b;">
-                Nếu bạn không thực hiện yêu cầu này, tài khoản sẽ bị xóa tự động sau 5 phút.
-            </p>
-        </div>
-        """
+        verify_url = f"{settings.FRONTEND_URL}/verify-email?token={verify_token.token}"
+        subject, html_message = build_verification_email(user, verify_url, resend=True)
 
         try:
             send_mail(
@@ -421,17 +419,7 @@ class ResendVerificationView(APIView):
             )
 
         # Reset timer cleanup
-        def cleanup():
-            try:
-                u = User.objects.get(pk=user.pk, is_active=False)
-                if hasattr(u, 'email_verification_token') and u.email_verification_token.is_expired():
-                    u.delete()
-            except User.DoesNotExist:
-                pass
-
-        timer = threading.Timer(EmailVerificationToken.EXPIRE_SECONDS + 5, cleanup)
-        timer.daemon = True
-        timer.start()
+        schedule_cleanup(user.pk)
 
         return Response({'status': 'Đã gửi lại email xác nhận. Vui lòng kiểm tra hộp thư (bao gồm cả Spam).'})
 

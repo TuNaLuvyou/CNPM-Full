@@ -166,7 +166,7 @@ export default function SearchBar({ isSearchOpen, setIsSearchOpen, events = [], 
                 <div className="py-10 flex flex-col items-center gap-2 text-slate-400 dark:text-white">
                   <Search className="w-8 h-8 text-slate-200 dark:text-white" />
                   <p className="text-sm font-medium">
-                    Không tìm thấy kết quả cho "{searchQuery}"
+                    Không tìm thấy kết quả cho &quot;{searchQuery}&quot;
                   </p>
                   <p className="text-xs text-slate-300 dark:text-white">
                     Vui lòng thử lại với từ khóa khác.

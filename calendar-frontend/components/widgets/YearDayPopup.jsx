@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { X, Calendar as CalendarIcon, Clock, CheckCircle, Circle } from "lucide-react";
 import { DAY_NAMES, MONTH_NAMES } from "../../lib/CalendarHelper";
 import { t } from "@/lib/i18n";
@@ -15,14 +15,11 @@ export default function YearDayPopup({
 }) {
   const lang = appSettings.language || "vi";
   const popupRef = useRef(null);
-  const [finalStyle, setFinalStyle] = React.useState({ opacity: 0 });
 
-  useEffect(() => {
-    // Reset style ngay khi có date/position mới để tránh bị "nhảy" từ vị trí cũ
-    setFinalStyle({ opacity: 0 });
-
+  useLayoutEffect(() => {
     if (isOpen && popupRef.current && position) {
-      const rect = popupRef.current.getBoundingClientRect();
+      const el = popupRef.current;
+      const rect = el.getBoundingClientRect();
       const padding = 20; // Khoảng cách an toàn với mép màn hình
 
       let top = position.y - rect.height - 10;
@@ -45,11 +42,9 @@ export default function YearDayPopup({
         top = window.innerHeight - rect.height - padding;
       }
 
-      setFinalStyle({
-        top: `${top}px`,
-        left: `${left}px`,
-        opacity: 1,
-      });
+      el.style.top = `${top}px`;
+      el.style.left = `${left}px`;
+      el.style.opacity = "1";
     }
   }, [isOpen, position]);
 
@@ -75,7 +70,7 @@ export default function YearDayPopup({
     <div className="fixed inset-0 z-[100] pointer-events-none">
       <div
         ref={popupRef}
-        style={finalStyle}
+        style={{ opacity: 0 }}
         className="year-day-popup absolute pointer-events-auto w-64 bg-white dark:bg-[#2d2d2d] rounded-2xl shadow-2xl border border-slate-200 dark:border-[#484848] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
       >
         {/* ══ HEADER ══ */}

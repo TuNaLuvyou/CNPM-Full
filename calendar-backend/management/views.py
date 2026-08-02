@@ -1,6 +1,4 @@
 from django.shortcuts import render, get_object_or_404, redirect
-import secrets
-import string
 from django.contrib.auth import authenticate, login as auth_login
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.cache import never_cache
@@ -30,6 +28,9 @@ def admin_login(request):
             if user.is_staff:
                 auth_login(request, user)
                 next_url = request.GET.get('next', 'admin_dashboard')
+                # Chỉ cho phép redirect nội bộ, chặn open redirect
+                if not next_url.startswith('/') or next_url.startswith('//'):
+                    next_url = 'admin_dashboard'
                 return redirect(next_url)
             else:
                 error = "Bạn không có quyền truy cập vào khu vực quản trị!"

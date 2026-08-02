@@ -1,6 +1,5 @@
 import logging
 from django.utils import timezone
-from django.template.loader import render_to_string
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings
 from tasks.models import Task
@@ -12,10 +11,6 @@ logger = logging.getLogger('events')
 def create_task_reminder_notification(task):
     """Create a reminder notification for a task"""
     try:
-        from django.utils import timezone
-        local_time = timezone.localtime(task.reminder_time)
-        dt_str = local_time.strftime('%H:%M %d/%m/%Y')
-        
         notification = Notification.objects.create(
             user=task.user,
             ntype='task_reminder',

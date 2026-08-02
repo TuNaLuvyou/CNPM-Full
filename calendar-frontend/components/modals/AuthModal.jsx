@@ -9,12 +9,11 @@ export default function AuthModal({ isOpen, type, onClose, onSwitchType, onLogin
     const isLogin = type === 'login';
     const isForgot = type === 'forgot';
     const isRegister = type === 'register';
-    const isVerifyPending = type === 'verify_pending';
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
             <div className="relative w-full max-w-md bg-white dark:bg-[#2d2d2d] rounded-2xl shadow-2xl p-8 animate-in fade-in zoom-in duration-200">
-                {canClose && !isVerifyPending && (
+                {canClose && (
                     <button
                         onClick={onClose}
                         className="absolute top-4 right-4 p-2 text-slate-400 dark:text-[#9e9e9e] hover:text-slate-600 dark:hover:text-[#bdbdbd] dark:text-[#bdbdbd] hover:bg-slate-100 dark:hover:bg-[#353535] rounded-full transition"
@@ -27,8 +26,7 @@ export default function AuthModal({ isOpen, type, onClose, onSwitchType, onLogin
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-[#e3e3e3]">
                         {isLogin ? 'Đăng nhập'
                             : isForgot ? 'Khôi phục mật khẩu'
-                            : isRegister ? 'Tạo tài khoản mới'
-                            : 'Xác thực email'}
+                            : 'Tạo tài khoản mới'}
                     </h2>
                     {isForgot && (
                         <p className="text-sm text-slate-500 dark:text-[#9e9e9e] mt-2 px-4">
@@ -45,13 +43,6 @@ export default function AuthModal({ isOpen, type, onClose, onSwitchType, onLogin
                 )}
                 {isForgot && (
                     <ForgotForm onSwitchType={onSwitchType} />
-                )}
-                {isVerifyPending && (
-                    <VerifyPendingPanel
-                        email={type === 'verify_pending' ? undefined : undefined}
-                        onClose={onClose}
-                        onSwitchType={onSwitchType}
-                    />
                 )}
             </div>
         </div>

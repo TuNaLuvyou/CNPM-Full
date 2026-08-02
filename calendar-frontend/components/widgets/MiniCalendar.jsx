@@ -1,5 +1,5 @@
 ﻿"use client";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MONTH_NAMES, buildMonthCells, formatDateLocal, getOrderedDayKeys, getWeekNumber } from "../../lib/CalendarHelper";
 import { t } from "@/lib/i18n";
@@ -21,10 +21,11 @@ export default function MiniCalendar({
   const showWeekends = appSettings.showWeekends !== false;
 
   // Đồng bộ khi main calendar điều hướng
-  useEffect(() => {
-    if (viewDate)
-      setLocalDate(new Date(viewDate.getFullYear(), viewDate.getMonth(), 1));
-  }, [viewDate]);
+  const [prevViewDate, setPrevViewDate] = useState(viewDate);
+  if (viewDate && prevViewDate !== viewDate) {
+    setPrevViewDate(viewDate);
+    setLocalDate(new Date(viewDate.getFullYear(), viewDate.getMonth(), 1));
+  }
 
   const year = localDate.getFullYear();
   const month = localDate.getMonth();

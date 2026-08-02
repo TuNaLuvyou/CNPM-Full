@@ -9,7 +9,6 @@ from events.models import Notification
 
 
 class ContactViewSet(viewsets.ModelViewSet):
-    queryset = Contact.objects.all()
     serializer_class = ContactSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -19,8 +18,7 @@ class ContactViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-class UserSearchViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = User.objects.all()
+class UserSearchViewSet(viewsets.ViewSet):
     serializer_class = UserSearchSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -37,7 +35,7 @@ class UserSearchViewSet(viewsets.ReadOnlyModelViewSet):
         if user == request.user:
             return Response({"error": "You cannot connect with yourself"}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = self.get_serializer(user)
+        serializer = UserSearchSerializer(user)
         return Response(serializer.data)
 
 class ConnectionViewSet(viewsets.ModelViewSet):

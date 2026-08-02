@@ -318,10 +318,6 @@ export default function FavoriteCalendars({ lang, onChange, onPresetChange }) {
                                         onDragEnd();
                                     }}
                                     onDragEnd={onDragEnd}
-                                    onDragOver={(e) => {
-                                        e.preventDefault();
-                                        e.dataTransfer.dropEffect = "move";
-                                    }}
                                     className="flex items-center justify-between px-3 py-2.5 bg-slate-50 dark:bg-[#1f1f1f] hover:bg-slate-100 dark:hover:bg-[#353535]
                                         rounded-xl transition group cursor-grab active:cursor-grabbing border border-transparent
                                         hover:border-slate-200 dark:border-[#484848]"

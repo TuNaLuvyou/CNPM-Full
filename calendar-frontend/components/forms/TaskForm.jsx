@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { CheckSquare, Clock, Calendar as CalendarIcon, AlignLeft, Palette, Tag, X, Paperclip } from 'lucide-react';
 import { FieldRow, InputBase, TextareaBase, toDateInputVal, toTimeInputVal, DateTimeSelector, EVENT_COLORS, CALENDAR_CATEGORIES } from './FormHelpers';
 import { t } from '@/lib/i18n';
@@ -29,8 +29,13 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
     const [submitted, setSubmitted] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
 
-    useEffect(() => {
-        if (initialData && !isInteracting) return;
+    // Đồng bộ ngày/giờ theo vị trí thả khi tạo mới hoặc đang kéo (giữ nguyên khi người dùng tự sửa)
+    const [timeSyncKey, setTimeSyncKey] = useState(null);
+    const syncKey = (initialData && !isInteracting)
+        ? 'stable'
+        : `${toDateInputVal(now)}|${toTimeInputVal(now)}|${duration || 60}`;
+    if (syncKey !== timeSyncKey) {
+        setTimeSyncKey(syncKey);
         const end = new Date(now.getTime() + (duration || 60) * 60 * 1000);
         setForm(p => ({
             ...p,
@@ -42,7 +47,7 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
             reminderDate: toDateInputVal(now),
             reminderTime: '08:00',
         }));
-    }, [now, duration, initialData, isInteracting]);
+    }
 
     const set = (key) => (e) => setForm(p => ({ ...p, [key]: e.target.value }));
 

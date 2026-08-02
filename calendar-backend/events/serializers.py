@@ -156,26 +156,27 @@ class EventSerializer(serializers.ModelSerializer):
         removed_invites = event.invitations.exclude(invitee_id__in=new_guest_ids)
         removed_user_ids = list(removed_invites.values_list('invitee_id', flat=True))
 
-        if removed_user_ids and request:
-            from django.utils import timezone as tz
-            local_start = tz.localtime(event.start_time)
-            st_str = local_start.strftime('%H:%M')
-            dt_str = local_start.strftime('%d/%m/%Y')
+        if removed_user_ids:
+            if request:
+                from django.utils import timezone as tz
+                local_start = tz.localtime(event.start_time)
+                st_str = local_start.strftime('%H:%M')
+                dt_str = local_start.strftime('%d/%m/%Y')
 
-            # Xoá thông báo cũ (invite/accepted/...) rồi gửi thông báo bị xoá khỏi sự kiện
-            Notification.objects.filter(event=event, user_id__in=removed_user_ids).delete()
-            for uid in removed_user_ids:
-                Notification.objects.create(
-                    user_id=uid,
-                    ntype='canceled',
-                    event=event,
-                    content=(
-                        f"{request.user.username} đã xoá bạn khỏi sự kiện: "
-                        f"\"{event.title}\" ({st_str} ngày {dt_str})"
+                # Xoá thông báo cũ (invite/accepted/...) rồi gửi thông báo bị xoá khỏi sự kiện
+                Notification.objects.filter(event=event, user_id__in=removed_user_ids).delete()
+                for uid in removed_user_ids:
+                    Notification.objects.create(
+                        user_id=uid,
+                        ntype='canceled',
+                        event=event,
+                        content=(
+                            f"{request.user.username} đã xoá bạn khỏi sự kiện: "
+                            f"\"{event.title}\" ({st_str} ngày {dt_str})"
+                        )
                     )
-                )
-        else:
-            Notification.objects.filter(event=event, user_id__in=removed_user_ids).delete()
+            else:
+                Notification.objects.filter(event=event, user_id__in=removed_user_ids).delete()
 
         removed_invites.delete()
 

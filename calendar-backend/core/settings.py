@@ -14,8 +14,8 @@ load_dotenv(BASE_DIR.parent / '.env')
 load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-thay-bang-key-cua-ban')
-DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 't')
-ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', '*').split(',') if host.strip()]
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 't')
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -100,8 +100,13 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Cấu hình CORS cho phép Frontend gọi API
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL', 'false').lower() in ('true', '1', 'yes')
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
+    if origin.strip()
+]
+CORS_ALLOW_CREDENTIALS = False
 
 # Cấu hình DRF
 REST_FRAMEWORK = {
@@ -110,7 +115,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny', # Tạm thời AllowAny để test
+        'rest_framework.permissions.IsAuthenticated',
     ]
 }
 
@@ -126,6 +131,9 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '').replace(' ', '')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 PASSWORD_RESET_TIMEOUT = 300
+
+# URL frontend dùng trong email xác thực / khôi phục mật khẩu
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
 
 # Logging configuration for event reminders
 LOGGING = {

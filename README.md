@@ -98,12 +98,23 @@ Hệ thống quản lý lịch trình và công việc cao cấp, được thi�
 ### 1. Cấu hình biến môi trường (`.env`)
 Sao chép nội dung từ `env.example` vào file `.env` ở thư mục gốc và nhập các khóa cấu hình bảo mật:
 ```ini
+# Django Config
+SECRET_KEY=your_secret_key
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1
+
 # Database Config
 DB_NAME=cnpm_db
 DB_USER=root
 DB_PASSWORD=your_password
 DB_HOST=127.0.0.1
 DB_PORT=3306
+
+# Frontend URL (dùng trong email xác thực / khôi phục mật khẩu)
+FRONTEND_URL=http://localhost:3000
+
+# CORS
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 
 # Email Config (SMTP)
 EMAIL_HOST_USER=youremail

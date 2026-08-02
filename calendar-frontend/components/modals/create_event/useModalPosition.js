@@ -15,12 +15,17 @@ export function useModalPosition({
   const [isPositioned, setIsPositioned] = useState(false);
   const [modalStyle, setModalStyle] = useState({ opacity: 0, transition: 'none' });
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(isOpen);
+  if (prevOpen !== isOpen) {
+    setPrevOpen(isOpen);
     if (!isOpen) {
       setIsPositioned(false);
       setModalStyle({ opacity: 0, transition: 'none' });
-      return;
     }
+  }
+
+  useEffect(() => {
+    if (!isOpen) return;
     
     // Nếu đang có tương tác kéo thả và IDs khớp, ưu tiên dùng tọa độ tương tác
     const isSticky = interactionState && (

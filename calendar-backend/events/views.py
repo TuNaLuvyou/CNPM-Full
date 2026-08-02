@@ -39,8 +39,29 @@ class EventViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-    def perform_update(self, serializer):
-        serializer.save()
+    def _can_edit(self, event):
+        """Chỉ chủ sở hữu hoặc khách mời có quyền 'edit' mới được sửa sự kiện."""
+        user = self.request.user
+        if event.user == user:
+            return True
+        invite = event.invitations.filter(invitee=user, status='accepted').first()
+        return invite is not None and invite.permission == 'edit'
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        if not self._can_edit(instance):
+            return Response({"error": "Bạn không có quyền chỉnh sửa sự kiện này."}, status=status.HTTP_403_FORBIDDEN)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        event = self.get_object()
+        if event.user != request.user:
+            return Response({"error": "Chỉ người tạo mới có quyền xoá"}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=False, methods=['get'], url_path='trashed')
     def list_trash(self, request):
@@ -54,7 +75,6 @@ class EventViewSet(viewsets.ModelViewSet):
             return Response({"error": "Chỉ người tạo mới có quyền xoá"}, status=status.HTTP_403_FORBIDDEN)
         
         # Notify participants before deleting
-        from django.utils import timezone
         local_start = timezone.localtime(event.start_time)
         st_str = local_start.strftime('%H:%M')
         dt_str = local_start.strftime('%d/%m/%Y')
@@ -78,6 +98,8 @@ class EventViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def restore(self, request, pk=None):
         event = self.get_object()
+        if event.user != request.user:
+            return Response({"error": "Chỉ người tạo mới có quyền khôi phục"}, status=status.HTTP_403_FORBIDDEN)
         event.deleted_at = None
         event.save()
         return Response({"status": "restored"})
@@ -135,7 +157,6 @@ class InvitationViewSet(viewsets.ViewSet):
             ).exclude(id=invite.event.id).distinct()
 
             if conflicts.exists():
-                from django.utils import timezone
                 conflict_details = []
                 for c in conflicts[:3]: # Trả về tối đa 3 vụ trùng
                     st = timezone.localtime(c.start_time).strftime('%H:%M')
@@ -193,6 +214,18 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Notification.objects.filter(user=self.request.user).order_by('-created_at')
 
+    def create(self, request, *args, **kwargs):
+        return Response({"error": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def update(self, request, *args, **kwargs):
+        return Response({"error": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def partial_update(self, request, *args, **kwargs):
+        return Response({"error": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def destroy(self, request, *args, **kwargs):
+        return Response({"error": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
     @action(detail=True, methods=['post'])
     def mark_read(self, request, pk=None):
         notif = self.get_object()
@@ -223,6 +256,18 @@ class CalendarGroupViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.owner != request.user:
+            return Response({"error": "Chỉ chủ sở hữu mới được chỉnh sửa lịch."}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.owner != request.user:
+            return Response({"error": "Chỉ chủ sở hữu mới được xoá lịch."}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
 class ReminderPreferenceViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
     

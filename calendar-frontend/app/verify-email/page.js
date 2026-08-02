@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { verifyEmail } from "@/lib/api";
 
@@ -34,16 +35,14 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
-  const [state, setState] = useState("loading"); // 'loading' | 'success' | 'error'
+  const [state, setState] = useState(() => (token ? "loading" : "error"));
   const [data, setData] = useState(null);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState(() =>
+    token ? "" : "Link xác thực không hợp lệ (thiếu token)."
+  );
 
   useEffect(() => {
-    if (!token) {
-      setState("error");
-      setErrorMsg("Link xác thực không hợp lệ (thiếu token).");
-      return;
-    }
+    if (!token) return;
 
     verifyEmail(token)
       .then((res) => {
@@ -115,9 +114,9 @@ function SuccessView({ data }) {
         Tài khoản của bạn đã được kích hoạt. Quay lại ứng dụng để đăng nhập và bắt đầu sử dụng.
       </p>
 
-      <a href="http://localhost:3000" style={styles.button}>
+      <Link href="/" style={styles.button}>
         Quay lại ứng dụng để đăng nhập
-      </a>
+      </Link>
 
       <p style={styles.hint}>
         Nếu trang không tự chuyển, hãy nhấn vào nút phía trên.
@@ -156,9 +155,9 @@ function ErrorView({ message }) {
         Nếu link đã hết hạn, hãy quay lại ứng dụng và đăng nhập để yêu cầu gửi lại email xác nhận.
       </p>
 
-      <a href="http://localhost:3000" style={{ ...styles.button, background: "linear-gradient(135deg, #64748b, #475569)" }}>
+      <Link href="/" style={{ ...styles.button, background: "linear-gradient(135deg, #64748b, #475569)" }}>
         Quay lại ứng dụng
-      </a>
+      </Link>
     </>
   );
 }

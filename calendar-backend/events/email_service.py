@@ -1,10 +1,9 @@
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
-from datetime import datetime, timedelta
+from datetime import timedelta
 from django.utils import timezone
 from .models import Event, Notification, ReminderPreference
-from accounts.models import UserSettings
 import logging
 
 logger = logging.getLogger(__name__)

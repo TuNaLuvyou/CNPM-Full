@@ -1,14 +1,11 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React from "react";
 import {
   DAY_NAMES,
   buildWeekDays,
   buildMonthCells,
   getLocalizedTime,
-  getVNTime,
-  formatDateLocal,
 } from "../../lib/CalendarHelper";
-import { getEvents, getTrashedEvents, restoreEvent, permanentDeleteEvent, trashTask, restoreTask, permanentDeleteTask, getTrashedTasks, getMe, updateEvent, updateTask } from "@/lib/api";
 
 // Layout & Components
 import MainLayout from "@/components/layout/MainLayout";

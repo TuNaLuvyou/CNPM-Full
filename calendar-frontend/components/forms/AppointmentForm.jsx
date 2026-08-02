@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Calendar as CalendarIcon, Clock, MapPin, AlignLeft, Paperclip, Palette, Tag, X } from 'lucide-react';
 import { FieldRow, InputBase, TextareaBase, EVENT_COLORS, toDateInputVal, toTimeInputVal, DateTimeSelector } from './FormHelpers';
 import { t } from '@/lib/i18n';
@@ -32,8 +32,13 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
         toggleGuest, togglePermission
     } = useAppointmentGuests({ initialData, currentUser });
 
-    useEffect(() => {
-        if (initialData && !isInteracting) return;
+    // Đồng bộ ngày/giờ theo vị trí thả khi tạo mới hoặc đang kéo (giữ nguyên khi người dùng tự sửa)
+    const [timeSyncKey, setTimeSyncKey] = useState(null);
+    const syncKey = (initialData && !isInteracting)
+        ? 'stable'
+        : `${toDateInputVal(now)}|${toTimeInputVal(now)}|${duration || 60}`;
+    if (syncKey !== timeSyncKey) {
+        setTimeSyncKey(syncKey);
         const end = new Date(now.getTime() + (duration || 60) * 60 * 1000);
         setForm(p => ({
             ...p,
@@ -41,7 +46,7 @@ export default function AppointmentForm({ now, duration, isInteracting, onSave, 
             timeStart: toTimeInputVal(now),
             timeEnd: toTimeInputVal(end),
         }));
-    }, [now, duration, initialData, isInteracting]);
+    }
 
     const set = (key) => (e) => setForm(p => ({ ...p, [key]: e.target.value }));
 

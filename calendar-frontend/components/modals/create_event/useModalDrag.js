@@ -6,12 +6,13 @@ export function useModalDrag({ isOpen }) {
   const startDragPos = useRef({ x: 0, y: 0 });
   const initialOffset = useRef({ x: 0, y: 0 });
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(isOpen);
+  if (prevOpen !== isOpen) {
+    setPrevOpen(isOpen);
     if (!isOpen) {
       setDragOffset({ x: 0, y: 0 });
-      return;
     }
-  }, [isOpen]);
+  }
 
   useEffect(() => {
     if (!isDragging) return;

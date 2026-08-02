@@ -114,7 +114,6 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
     const [settings, setSettings] = useState(initialSettings || DEFAULT_SETTINGS);
     const [saveState, setSaveState] = useState("idle"); // "idle" | "saved"
     const scrollContainerRef = useRef(null);
-    const wasOpenRef = useRef(false);
 
     // Scroll Spy mechanism
     useEffect(() => {
@@ -152,21 +151,23 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
         return () => container.removeEventListener('scroll', handleScroll);
     }, [isOpen, activeSection]);
 
-    useEffect(() => {
-        if (!isOpen) {
-            wasOpenRef.current = false;
-            return;
-        }
-
-        setSettings(initialSettings || DEFAULT_SETTINGS);
-
-        if (!wasOpenRef.current && scrollContainerRef.current) {
-            scrollContainerRef.current.scrollTop = 0;
+    const [prevOpen, setPrevOpen] = useState(isOpen);
+    const [prevInitial, setPrevInitial] = useState(initialSettings);
+    if (prevOpen !== isOpen || prevInitial !== initialSettings) {
+        setPrevOpen(isOpen);
+        setPrevInitial(initialSettings);
+        if (isOpen) {
+            setSettings(initialSettings || DEFAULT_SETTINGS);
             setActiveSection("language");
         }
+    }
 
-        wasOpenRef.current = true;
-    }, [isOpen, initialSettings]);
+    // Reset scroll về đầu mỗi khi mở lại
+    useEffect(() => {
+        if (isOpen && scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = 0;
+        }
+    }, [isOpen]);
 
     // Live theme preview
     useEffect(() => {

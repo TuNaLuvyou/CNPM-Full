@@ -3,15 +3,17 @@ import { getFriends } from '@/lib/api';
 
 export function useAppointmentGuests({ initialData, currentUser }) {
     const [friends, setFriends] = useState([]);
-    const [guests, setGuests] = useState(initialData?.invitations || []);
+    const [guests, setGuests] = useState(
+        (initialData?.invitations || []).filter(inv => inv.status !== 'declined')
+    );
     const [showGuestPicker, setShowGuestPicker] = useState(false);
     const [guestSearch, setGuestSearch] = useState("");
 
-    useEffect(() => {
-        if (initialData?.invitations) {
-            setGuests(initialData.invitations.filter(inv => inv.status !== 'declined'));
-        }
-    }, [initialData?.invitations]);
+    const [prevInvitations, setPrevInvitations] = useState(initialData?.invitations);
+    if (initialData?.invitations && prevInvitations !== initialData.invitations) {
+        setPrevInvitations(initialData.invitations);
+        setGuests(initialData.invitations.filter(inv => inv.status !== 'declined'));
+    }
 
     useEffect(() => {
         const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;

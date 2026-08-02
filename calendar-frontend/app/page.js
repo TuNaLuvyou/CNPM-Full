@@ -155,22 +155,22 @@ export default function CalendarApp() {
 
     try {
       let params = {};
-      if (view === "Ngày") {
+      if (view === "day") {
         const d = formatDateLocal(selectedDateRef.current);
         params = { date_from: d, date_to: d };
-      } else if (view === "Tuần" || view === "Tuần làm việc") {
+      } else if (view === "week" || view === "work_week") {
         const days = buildWeekDays(viewDate);
         params = {
           date_from: formatDateLocal(days[0].fullDate),
           date_to: formatDateLocal(days[days.length - 1].fullDate),
         };
-      } else if (view === "Tháng") {
+      } else if (view === "month") {
         const y = viewDate.getFullYear(), m = viewDate.getMonth();
         params = {
           date_from: formatDateLocal(new Date(y, m, 1)),
           date_to: formatDateLocal(new Date(y, m + 1, 0)),
         };
-      } else if (view === "Năm") {
+      } else if (view === "year") {
         params = {
           date_from: `${viewDate.getFullYear()}-01-01`,
           date_to: `${viewDate.getFullYear()}-12-31`,
