@@ -63,8 +63,7 @@ export default function TimeGrid({
     optimisticUpdates,
     handleInteractionStart,
     handleColumnClick,
-    didMoveRef,
-    isInteractingRef
+    didMoveRef
   } = useTimeGridInteraction({
     events,
     mode,

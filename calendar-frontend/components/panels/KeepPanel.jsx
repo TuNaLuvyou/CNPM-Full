@@ -1,46 +1,18 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
-import { Lightbulb, Plus, Loader2 } from "lucide-react";
+import React, { useState } from "react";
+import { Lightbulb, Plus } from "lucide-react";
 import NoteCard from "@/components/ui/NoteCard";
-import { getNotes, createNote, togglePinNote, deleteNote } from "@/lib/api";
+import { createNote, togglePinNote, deleteNote } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
-export default function KeepPanel({ appSettings }) {
+export default function KeepPanel({ appSettings, currentUser, notes, setNotes }) {
   const lang = appSettings?.language || "vi";
-  const [notes, setNotes] = useState([]);
   const [addingNote, setAddingNote] = useState(false);
   const [newNoteTitle, setNewNoteTitle] = useState("");
   const [newNoteContent, setNewNoteContent] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // ── Tải notes từ API ──
-  const fetchNotes = useCallback(async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const data = await getNotes();
-      setNotes(data);
-      setError(null);
-    } catch (e) {
-      if (!e.isLocalGuard) {
-        setError(t('keep_panel.loading_error', lang) || "Không thể tải ghi chú.");
-        console.error(e);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [lang]);
-
-  useEffect(() => {
-    fetchNotes();
-  }, [fetchNotes]);
-
-  // ── Thêm note ──
+  // ── Thêm note (Optimistic) ──
   const addNote = async () => {
     if (!newNoteContent.trim() && !newNoteTitle.trim()) return;
     const payload = {
@@ -49,37 +21,46 @@ export default function KeepPanel({ appSettings }) {
       color: "#fef9c3",
       is_pinned: false,
     };
+    const tempId = `tmp-note-${Date.now()}`;
+    const optimisticNote = { ...payload, id: tempId, created_at: new Date().toISOString() };
+    setNotes(prev => [optimisticNote, ...prev]);
+    setNewNoteTitle("");
+    setNewNoteContent("");
+    setAddingNote(false);
+    setError(null);
     try {
       const saved = await createNote(payload);
-      setNotes((prev) => [saved, ...prev]);
-      setNewNoteTitle("");
-      setNewNoteContent("");
-      setAddingNote(false);
+      setNotes(prev => prev.map(n => n.id === tempId ? saved : n));
     } catch (e) {
+      setNotes(prev => prev.filter(n => n.id !== tempId));
       alert(t('keep_panel.save_error', lang) || "Không thể lưu ghi chú: " + e.message);
     }
   };
 
-  // ── Xoá note ──
+  // ── Xoá note (Optimistic + rollback) ──
   const handleDelete = async (id) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
+    const prevNotes = notes;
+    setNotes(prev => prev.filter((n) => n.id !== id));
     try {
       await deleteNote(id);
-    } catch (e) {
-      fetchNotes();
+    } catch {
+      setNotes(prev => prevNotes);
+      setError(t('keep_panel.delete_error', lang) || "Không thể xoá ghi chú.");
     }
   };
 
-  // ── Toggle ghim ──
+  // ── Toggle ghim (Optimistic + rollback) ──
   const handleTogglePin = async (id) => {
-    setNotes((prev) =>
+    const prevNotes = notes;
+    setNotes(prev =>
       prev.map((n) => (n.id === id ? { ...n, is_pinned: !n.is_pinned } : n))
     );
     try {
       const updated = await togglePinNote(id);
-      setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)));
-    } catch (e) {
-      fetchNotes();
+      setNotes(prev => prev.map((n) => (n.id === id ? updated : n)));
+    } catch {
+      setNotes(prev => prevNotes);
+      setError(t('keep_panel.pin_error', lang) || "Không thể cập nhật ghim.");
     }
   };
 
@@ -145,10 +126,10 @@ export default function KeepPanel({ appSettings }) {
       <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-2 space-y-3">
         {loading ? (
           <div className="flex items-center justify-center h-32 gap-2 text-slate-400 dark:text-[#9e9e9e]">
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <div className="w-5 h-5 border-2 border-slate-300 dark:border-[#555] border-t-blue-500 rounded-full animate-spin" />
             <span className="text-xs">{t('loading', lang)}</span>
           </div>
-        ) : !localStorage.getItem('token') ? (
+        ) : !currentUser ? (
             <div className="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-[#9e9e9e] gap-2 px-6 text-center">
               <Lightbulb className="w-8 h-8 opacity-20" />
               <p className="text-xs font-bold text-slate-500 dark:text-[#9e9e9e]">{t('user.login_required', lang)}</p>
@@ -157,7 +138,6 @@ export default function KeepPanel({ appSettings }) {
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-32 text-red-400 gap-2 px-4 text-center">
             <p className="text-xs">{error}</p>
-            <button onClick={fetchNotes} className="text-xs text-blue-500 underline">{t('retry', lang)}</button>
           </div>
         ) : (
           <>

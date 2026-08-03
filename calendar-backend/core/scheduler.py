@@ -19,7 +19,6 @@ def get_scheduler():
 
 def cleanup_expired_unverified_users():
     """Xoá các tài khoản chưa xác thực email có token đã hết hạn."""
-    from django.contrib.auth.models import User
     from accounts.models import EmailVerificationToken
 
     expired_at = timezone.now() - timedelta(seconds=EmailVerificationToken.EXPIRE_SECONDS)

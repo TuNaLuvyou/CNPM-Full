@@ -15,12 +15,6 @@ export default function MonthView({
 }) {
   const lang = appSettings.language || "vi";
 
-  // Lấy danh sách events cho từng cell
-  function getEventsForCell(fullDate) {
-    const dStr = formatDateLocal(fullDate);
-    return events.filter(ev => formatDateLocal(new Date(ev.start_time)) === dStr);
-  }
-
   function getHolidaysForCell(fullDate) {
     const dStr = formatDateLocal(fullDate);
     return events.filter(ev => ev.is_holiday && formatDateLocal(new Date(ev.start_time)) === dStr);
@@ -104,7 +98,6 @@ export default function MonthView({
       </div>
       <div className="grid flex-1 gap-px bg-slate-200 dark:bg-[#3c3c3c] mt-px" style={gridStyle}>
         {filteredCells.map((cell, idx) => {
-          const cellEvents = getEventsForCell(cell.fullDate);
           const isHovered = hoverCellIdx === idx;
           const isFirstDayOfRow = idx % (showWeekends ? 7 : 5) === 0;
           

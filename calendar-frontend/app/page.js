@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import ThemeProvider from "@/components/ThemeProvider";
 import {
   Plus,
@@ -11,19 +12,19 @@ import MiniCalendar from "@/components/widgets/MiniCalendar";
 import Calendar from "@/components/widgets/Calendar";
 import CreateModal from "@/components/modals/CreateEventModal";
 import YearDayPopup from "@/components/widgets/YearDayPopup";
-import { getLocalizedTime, getVNTime, formatDateLocal, buildWeekDays, buildMonthCells, DAY_NAMES, MONTH_NAMES } from "@/lib/CalendarHelper";
+import { getVNTime, formatDateLocal, buildWeekDays } from "@/lib/CalendarHelper";
 import { getHolidayEventsForRange } from "@/lib/holidays";
 import { getEvents, getTasks, updateEvent, updateTask, toggleTask, trashEvent, trashTask,
-  getMe, getTrashedEvents, getTrashedTasks, restoreEvent, permanentDeleteEvent, restoreTask, permanentDeleteTask,
-  getNotifications, getFavoriteCalendars
+  getTrashedEvents, getTrashedTasks, restoreEvent, permanentDeleteEvent, restoreTask, permanentDeleteTask,
+  getNotifications
 } from "@/lib/api";
-import AuthModal from "@/components/modals/AuthModal";
 import TrashModal from "@/components/modals/TrashModal";
 import SettingsModal from "@/components/modals/SettingsModal";
 import PageLoader from "@/components/ui/PageLoader";
 import { t } from "@/lib/i18n";
 
 export default function CalendarApp() {
+  const router = useRouter();
   const [mounted, setMounted] = React.useState(false);
   const [isPageLoading, setIsPageLoading] = React.useState(true);
 
@@ -39,6 +40,12 @@ export default function CalendarApp() {
   // ── Events state ──
   const [events, setEvents] = React.useState([]);
 
+  // ── Notes state (shared with KeepPanel) ──
+  const [notes, setNotes] = React.useState([]);
+
+  // ── Tasks state (shared with TasksPanel) ──
+  const [allTasks, setAllTasks] = React.useState([]);
+
   // ── Global UI state (Lifted from Calendar.jsx) ──
   const [currentUser, setCurrentUser] = useState(() => {
     if (typeof window !== "undefined") {
@@ -46,12 +53,11 @@ export default function CalendarApp() {
       if (cached) {
         try {
           return JSON.parse(cached);
-        } catch (e) {}
+        } catch {}
       }
     }
     return null;
   });
-  const [authModal, setAuthModal] = useState({ isOpen: false, type: "login" });
   const [isTrashOpen, setIsTrashOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(() => {
     if (typeof window !== "undefined") {
@@ -113,8 +119,10 @@ export default function CalendarApp() {
     }
   }, [appSettings.customHolidays?.length]);
 
-  // ── Trigger reload Calendar khi save event/task ──
-  const [eventSavedTick, setEventSavedTick] = useState(0);
+   const [sessionReady, setSessionReady] = useState(false);
+
+   // ── Trigger reload Calendar khi save event/task ──
+   const [eventSavedTick, setEventSavedTick] = useState(0);
 
   // ── Notifications state (Lifted from Header) ──
   const [notifications, setNotifications] = useState([]);
@@ -161,9 +169,13 @@ export default function CalendarApp() {
     }
   };
 
-  const fetchEvents = useCallback(async (targetType = 'all') => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) return;
+   const fetchEvents = useCallback(async (targetType = 'all', requestTs = null) => {
+     const { getAccessToken, refreshAccessToken } = await import('@/lib/api');
+     if (!currentUser?.id) return;
+     if (!getAccessToken()) {
+       await refreshAccessToken();
+     }
+     if (!getAccessToken()) return;
 
     try {
       let params = {};
@@ -207,6 +219,12 @@ export default function CalendarApp() {
         ]);
         eventsResponse = eRes;
         tasksResponse = tRes;
+      }
+
+      // Kiểm tra phiên bản (Timestamping): Nếu đã có thao tác kéo thả mới hơn chen ngang, bỏ qua kết quả trả về này
+      if (requestTs && requestTs !== lastUpdateRef.current) {
+        console.log("Stale data discarded. Request TS:", requestTs, "Current TS:", lastUpdateRef.current);
+        return;
       }
 
       const viewStart = params.date_from ? new Date(params.date_from + 'T00:00:00') : new Date('2000-01-01');
@@ -301,67 +319,65 @@ export default function CalendarApp() {
         }
         return [...formattedEvents, ...formattedTasks];
       });
+
+      // Sync allTasks state for TasksPanel
+      if (targetType === 'task' || targetType === 'all') {
+        setAllTasks(Array.isArray(tasksResponse) ? tasksResponse : (tasksResponse.results || []));
+      }
     } catch (e) {
       console.error("Không thể tải events:", e);
     }
-  }, [view, viewDate]); // Decouple from selectedDate
+  }, [view, viewDate, currentUser?.id]);
 
-  React.useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents, eventSavedTick, appSettings.showFriendsCalendars]);
+   React.useEffect(() => {
+     if (currentUser?.id && sessionReady) {
+       fetchEvents();
+     }
+   }, [fetchEvents, eventSavedTick, appSettings.showFriendsCalendars, currentUser?.id, sessionReady]);
 
 
 
   // ── Khôi phục session & Trash logic ──
   useEffect(() => {
     const initSession = async () => {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (!token) {
-        if (typeof window !== "undefined") localStorage.removeItem("user");
-        setCurrentUser(null);
-        setIsPageLoading(false);
-        return;
-      }
-
       try {
-        const { getSettings } = await import('@/lib/api');
-        const [userRes, settingsRes] = await Promise.allSettled([
-          getMe(),
-          getSettings(),
-        ]);
-
-        if (userRes.status === "fulfilled" && userRes.value) {
-          setCurrentUser(userRes.value);
-          localStorage.setItem("user", JSON.stringify(userRes.value));
-        } else if (userRes.status === "rejected") {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
+        const { initAuth, getSettings } = await import('@/lib/api');
+        const user = await initAuth();
+        if (!user) {
+          if (typeof window !== "undefined") localStorage.removeItem("user");
           setCurrentUser(null);
+          setIsPageLoading(false);
+          router.replace("/login");
+          return;
         }
 
-        if (settingsRes.status === "fulfilled" && settingsRes.value && Object.keys(settingsRes.value).length > 0) {
+        setCurrentUser(user);
+
+        const settingsRes = await getSettings().catch(() => null);
+        if (settingsRes && Object.keys(settingsRes).length > 0) {
           setAppSettings(prev => {
-            const merged = { ...prev, ...settingsRes.value };
+            const merged = { ...prev, ...settingsRes };
             localStorage.setItem("appSettings", JSON.stringify(merged));
             return merged;
           });
         }
       } catch (e) {
-        console.error("Lỗi khởi tạo session:", e);
-      } finally {
-        setIsPageLoading(false);
-      }
-    };
+         console.error("Lỗi khởi tạo session:", e);
+       } finally {
+         setIsPageLoading(false);
+         setSessionReady(true);
+       }
+     };
 
-    initSession();
-  }, []);
+     initSession();
+   }, [router]);
 
   useEffect(() => {
     if (!currentUser?.id) return;
 
     const syncFavoriteCalendarState = async () => {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      if (!token) return;
+      const { getAccessToken } = await import('@/lib/api');
+      if (!getAccessToken()) return;
 
       try {
         const { getFavoriteCalendars } = await import('@/lib/api');
@@ -402,8 +418,8 @@ export default function CalendarApp() {
   }, [currentUser?.id]);
 
   const fetchFriends = useCallback(async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token || !appSettings.showFriendsCalendars) return;
+    const { getAccessToken } = await import('@/lib/api');
+    if (!getAccessToken() || !appSettings.showFriendsCalendars) return;
     try {
         const { getFriends } = await import('@/lib/api');
         const data = await getFriends();
@@ -422,8 +438,8 @@ export default function CalendarApp() {
   }, [fetchFriends]);
 
   const fetchTrash = useCallback(async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) return;
+    const { getAccessToken } = await import('@/lib/api');
+    if (!getAccessToken()) return;
 
     try {
       const [trashedEvents, trashedTasks] = await Promise.all([
@@ -452,8 +468,7 @@ export default function CalendarApp() {
   };
 
   const fetchNotifs = useCallback(async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!currentUser || !token) return;
+    if (!currentUser) return;
     try {
       const data = await getNotifications();
       // Chuyển đổi format BE -> FE nếu cần
@@ -478,95 +493,115 @@ export default function CalendarApp() {
     if (currentUser?.id) {
       fetchNotifs();
       fetchTrash();
+      // Fetch notes for KeepPanel
+      import('@/lib/api').then(({ getNotes }) => {
+        getNotes().then(data => setNotes(Array.isArray(data) ? data : [])).catch(() => {});
+      });
     }
   }, [currentUser?.id]);
 
-  const handleRestore = async (compositeId) => {
-    const item = deletedItems.find(i => i.id === compositeId);
-    if (!item) return;
-    try {
-      if (item.type === "event") await restoreEvent(item._id);
-      else if (item.type === "task") await restoreTask(item._id);
-      setDeletedItems(prev => prev.filter(i => i.id !== compositeId));
-      fetchEvents();
-    } catch (e) {
-      alert("Không thể khôi phục: " + e.message);
-    }
-  };
+   const handleRestore = async (compositeId) => {
+     const item = deletedItems.find(i => i.id === compositeId);
+     if (!item) return;
+     const prevDeleted = deletedItems;
+     setDeletedItems(prev => prev.filter(i => i.id !== compositeId));
+     try {
+       if (item.type === "event") await restoreEvent(item._id);
+       else if (item.type === "task") await restoreTask(item._id);
+       fetchEvents();
+     } catch (e) {
+       setDeletedItems(prev => prevDeleted);
+       alert("Không thể khôi phục: " + e.message);
+     }
+   };
 
-  const handlePermanentDelete = async (compositeId) => {
-    const item = deletedItems.find(i => i.id === compositeId);
-    if (!item) return;
-    try {
-      if (item.type === "event") await permanentDeleteEvent(item._id);
-      else if (item.type === "task") await permanentDeleteTask(item._id);
-      setDeletedItems(prev => prev.filter(i => i.id !== compositeId));
-    } catch (e) {
-      alert("Không thể xóa: " + e.message);
-    }
-  };
+   const handlePermanentDelete = async (compositeId) => {
+     const item = deletedItems.find(i => i.id === compositeId);
+     if (!item) return;
+     const prevDeleted = deletedItems;
+     setDeletedItems(prev => prev.filter(i => i.id !== compositeId));
+     try {
+       if (item.type === "event") await permanentDeleteEvent(item._id);
+       else if (item.type === "task") await permanentDeleteTask(item._id);
+     } catch (e) {
+       setDeletedItems(prev => prevDeleted);
+       alert("Không thể xóa: " + e.message);
+     }
+   };
 
-  const handleClearAllTrash = async () => {
-    try {
-      await Promise.all(
-        deletedItems.map(item =>
-          item.type === "event"
-            ? permanentDeleteEvent(item._id)
-            : permanentDeleteTask(item._id)
-        )
-      );
-      setDeletedItems([]);
-    } catch (e) {
-      alert("Không thể xóa tất cả: " + e.message);
-    }
-  };
+   const handleClearAllTrash = async () => {
+     const prevDeleted = deletedItems;
+     setDeletedItems([]);
+     try {
+       await Promise.all(
+         prevDeleted.map(item =>
+           item.type === "event"
+             ? permanentDeleteEvent(item._id)
+             : permanentDeleteTask(item._id)
+         )
+       );
+     } catch {
+       setDeletedItems(prev => prevDeleted);
+     }
+   };
 
-  const handleEventSaved = useCallback((optimisticEvent = null, action = null, targetType = 'all') => {
-    if (optimisticEvent) {
-      if (action === 'create') {
-        setEvents(prev => [...prev, optimisticEvent]);
-      } else if (action === 'update') {
-        setEvents(prev => prev.map(e => e.id === optimisticEvent.id ? optimisticEvent : e));
-      } else if (action === 'delete') {
-        setEvents(prev => prev.filter(e => e.id !== optimisticEvent.id));
-        setDeletedItems(prev => [...prev, {
-            id: optimisticEvent.id,
-            _id: optimisticEvent.id.toString().replace('event-', '').replace('task-', ''),
-            type: optimisticEvent.event_type || (optimisticEvent.id.toString().startsWith('task-') ? 'task' : 'event'),
-            title: optimisticEvent.title || '(Không có tiêu đề)',
-            date: optimisticEvent.date_display || optimisticEvent.start_time,
-            deletedAt: new Date().toISOString()
-        }]);
-      }
-    } else {
-      // Refresh from server specifically for the targetType
-      fetchEvents(targetType);
-    }
-    setPreviewEvent(null);
-    setClickPosition(null);
-  }, [fetchEvents, fetchTrash]);
+   const handleEventSaved = useCallback((optimisticEvent = null, action = null, targetType = 'all', requestTs = null) => {
+     const isTask = optimisticEvent?.event_type === 'task' || optimisticEvent?.id?.toString().startsWith('task-');
+     if (optimisticEvent) {
+       if (action === 'create') {
+         setEvents(prev => [...prev, optimisticEvent]);
+         if (isTask) setAllTasks(prev => [optimisticEvent, ...prev]);
+       } else if (action === 'update') {
+         setEvents(prev => prev.map(e => e.id === optimisticEvent.id ? optimisticEvent : e));
+         if (isTask) setAllTasks(prev => prev.map(t => String(t.id) === String(optimisticEvent.id) ? optimisticEvent : t));
+       } else if (action === 'delete') {
+         setEvents(prev => prev.filter(e => e.id !== optimisticEvent.id));
+         if (isTask) setAllTasks(prev => prev.filter(t => String(t.id) !== String(optimisticEvent.id)));
+         setDeletedItems(prev => [...prev, {
+             id: optimisticEvent.id,
+             _id: optimisticEvent.id.toString().replace('event-', '').replace('task-', ''),
+             type: optimisticEvent.event_type || (optimisticEvent.id.toString().startsWith('task-') ? 'task' : 'event'),
+             title: optimisticEvent.title || '(Không có tiêu đề)',
+             date: optimisticEvent.date_display || optimisticEvent.start_time,
+             deletedAt: new Date().toISOString()
+         }]);
+       }
+     } else {
+       // Refresh from server specifically for the targetType with version timestamp
+       fetchEvents(targetType, requestTs);
+     }
+     setPreviewEvent(null);
+     setClickPosition(null);
+   }, [fetchEvents]);
 
-  const handleToggleTask = (compositeId) => {
-    // 1. Giao diện đi trước (Optimistic UI)
-    setEvents(prev => prev.map(e => 
-      e.id === compositeId ? { ...e, is_completed: !e.is_completed } : e
-    ));
+   const handleToggleTask = (compositeId) => {
+     const taskId = compositeId.toString().replace('task-', '').split('_')[0];
+     const prevEvents = events;
+     const prevAllTasks = allTasks;
+     // 1. Giao diện đi trước (Optimistic UI)
+     setEvents(prev => prev.map(e =>
+       e.id === compositeId ? { ...e, is_completed: !e.is_completed } : e
+     ));
+     setAllTasks(prev => prev.map(t =>
+       String(t.id) === taskId ? { ...t, is_completed: !t.is_completed } : t
+     ));
 
-    // 2. API chạy ngầm
-    (async () => {
-      try {
-        let cleanId = compositeId.toString().replace('task-', '');
-        cleanId = cleanId.split('_')[0];
-        await toggleTask(cleanId);
-      } catch (e) {
-        console.error("Lỗi toggle task:", e);
-        // Revert lại trạng thái cũ nếu lỗi bằng cách refresh
-        handleEventSaved(null, null, 'task'); 
-      }
-    })();
-  };
+     // 2. API chạy ngầm
+     (async () => {
+       try {
+         await toggleTask(taskId);
+       } catch (e) {
+         console.error("Lỗi toggle task:", e);
+         setEvents(prev => prevEvents);
+         setAllTasks(prev => prevAllTasks);
+       }
+     })();
+   };
 
   const handleGlobalEventUpdate = useCallback(async (item, newStartTime, newDurationMin) => {
+    const currentTs = Date.now();
+    lastUpdateRef.current = currentTs;
+
     const itemType = item.event_type || 'event';
     
     // Sử dụng độ dài mới (từ resize) hoặc độ dài cũ (từ item) hoặc mặc định 1h
@@ -587,26 +622,43 @@ export default function CalendarApp() {
         }
     }
 
-    setEvents(prev => prev.map(ev => {
-        if (String(ev.id) === String(item.id)) {
-            const isTask = itemType === 'task';
-            return {
-                ...ev,
-                start_time: newStartTime.toISOString(),
-                end_time: newEndTime.toISOString(),
-                deadline: isTask ? newEndTime.toISOString() : ev.deadline,
-                duration_minutes: finalDurationMin,
-                date: formatDateLocal(newStartTime),
-                // Update display strings for forms if they exist
-                time_display: newStartTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false }),
-                time_start_display: newStartTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false }),
-                time_end_display: newEndTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false }),
-                deadline_display: `${formatDateLocal(newEndTime)} ${newEndTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}`,
-                date_display: formatDateLocal(newStartTime),
-            };
-        }
-        return ev;
-    }));
+     setEvents(prev => prev.map(ev => {
+         if (String(ev.id) === String(item.id)) {
+             return {
+                 ...ev,
+                 start_time: newStartTime.toISOString(),
+                 end_time: newEndTime.toISOString(),
+                 deadline: ev.deadline,
+                 deadline_display: ev.deadline_display,
+                 duration_minutes: finalDurationMin,
+                 date: formatDateLocal(newStartTime),
+                 time_display: newStartTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false }),
+                 time_start_display: newStartTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false }),
+                 time_end_display: newEndTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false }),
+                 date_display: formatDateLocal(newStartTime),
+             };
+         }
+         return ev;
+     }));
+
+     setAllTasks(prev => prev.map(t => {
+         if (String(t.id) === String(item.id)) {
+             return {
+                 ...t,
+                 start_time: newStartTime.toISOString(),
+                 end_time: newEndTime.toISOString(),
+                 deadline: t.deadline,
+                 deadline_display: t.deadline_display,
+                 duration_minutes: finalDurationMin,
+                 date: formatDateLocal(newStartTime),
+                 time_display: newStartTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false }),
+                 time_start_display: newStartTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false }),
+                 time_end_display: newEndTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false }),
+                 date_display: formatDateLocal(newStartTime),
+             };
+         }
+         return t;
+     }));
 
     // Đồng bộ hóa bảng chỉnh sửa nếu đang mở cho chính item này
     if (editingItem && String(editingItem.id) === String(item.id)) {
@@ -614,14 +666,14 @@ export default function CalendarApp() {
         ...prev,
         start_time: newStartTime.toISOString(),
         end_time: newEndTime.toISOString(),
-        deadline: itemType === 'task' ? newEndTime.toISOString() : (prev.deadline),
+        deadline: prev.deadline,
+        deadline_display: prev.deadline_display,
         date: formatDateLocal(newStartTime),
         duration_minutes: finalDurationMin,
         // Update display strings for forms
         time_display: newStartTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false }),
         time_start_display: newStartTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false }),
         time_end_display: newEndTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false }),
-        deadline_display: `${formatDateLocal(newEndTime)} ${newEndTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}`,
         date_display: formatDateLocal(newStartTime),
       }));
     }
@@ -651,23 +703,16 @@ export default function CalendarApp() {
         await updateTask(itemId, payload);
       }
       
-      lastUpdateRef.current = Date.now();
-      
-      // KHÔNG gọi handleEventSaved() ở đây để tránh re-fetch ghi đè optimistic update ngay lập tức.
-      // Dữ liệu đã được cập nhật trên UI optimistically ở trên.
-      
-      // Sau khi API thành công, có thể fetch lại sau 1 khoảng trễ ngắn để đồng bộ triệt để với Server 
-      // mà không gây snap-back ngay lập tức.
-      setTimeout(() => {
-        handleEventSaved(null, null, isEventRelated ? 'event' : 'task');
-      }, 1000);
+      // Sử dụng Request Versioning: Gọi fetch đồng bộ kèm theo timestamp của thao tác này.
+      // Nếu có thao tác kéo thả tiếp theo chen ngang trước khi fetch về, kết quả fetch này sẽ bị bỏ qua.
+      handleEventSaved(null, null, isEventRelated ? 'event' : 'task', currentTs);
     } catch (e) {
       console.error("Lỗi cập nhật:", e);
       // Chỉ re-fetch ngay khi có lỗi để khôi phục trạng thái đúng từ server
-      handleEventSaved(null, null, itemType === 'task' ? 'task' : 'event');
+      handleEventSaved(null, null, itemType === 'task' ? 'task' : 'event', currentTs);
       alert("Không thể cập nhật sự kiện. Đang đồng bộ lại...");
     }
-  }, [handleEventSaved, editingItem]);
+  }, [handleEventSaved, editingItem, allTasks, events]);
 
   // ── Notification Reminder Engine ──
   useEffect(() => {
@@ -795,7 +840,7 @@ export default function CalendarApp() {
   }, []);
 
   if (!mounted) {
-    return <PageLoader isLoading={true} text={t('loading', appSettings.language)} />;
+    return <PageLoader isLoading={true} />;
   }
 
   const handleMiniDayClick = (clickedDate) => {
@@ -886,11 +931,6 @@ export default function CalendarApp() {
     setPreviewEvent({ fullDate: baseDate, top: finalTop, height: 64, type: createType, ts });
     setIsCreateMenuOpen(false);
     setCreateModal({ isOpen: true, tab });
-  };
-
-  const handleEventClick = (ev, position) => {
-      if (ev.is_optimistic) return; // Prevent interaction with optimistic events while they are saving
-      openCreate(ev.event_type || 'event', ev, position);
   };
 
   const handleNotificationClick = async (eventId) => {
@@ -984,29 +1024,16 @@ export default function CalendarApp() {
     ...holidayEvents,
   ];
 
+  if (!currentUser) {
+    return <PageLoader isLoading={true} />;
+  }
+
   return (
     <>
       <ThemeProvider appSettings={appSettings} />
       <div className="flex h-screen bg-white dark:bg-[#1f1f1f] text-slate-800 dark:text-[#e3e3e3] font-sans overflow-hidden relative">
-        {!currentUser && (
-        <div 
-          onClick={() => {
-            setAuthModal({ isOpen: true, type: "login" });
-          }}
-          className="absolute inset-0 z-40 bg-slate-900/[0.02] backdrop-blur-[0.5px] cursor-pointer flex flex-col items-center justify-center transition-all duration-300"
-        >
-          <div className="bg-white dark:bg-[#2d2d2d]/95 px-6 py-4 rounded-2xl shadow-xl border border-slate-100 dark:border-[#3c3c3c] flex flex-col items-center gap-2 animate-bounce pointer-events-none select-none">
-            <span className="text-sm font-semibold text-slate-700 dark:text-[#e3e3e3]">
-              {t('user.login_prompt_title', appSettings.language)}
-            </span>
-            <span className="text-xs text-slate-400 dark:text-[#9e9e9e]">
-              {t('user.login_prompt_desc', appSettings.language)}
-            </span>
-          </div>
-        </div>
-      )}
-      <aside className="w-80 flex-shrink-0 bg-slate-50 dark:bg-[#2a2a2a] border-r border-slate-200 dark:border-[#3c3c3c] flex flex-col relative shadow-sm">
-        <div className="h-16 flex items-center px-6 border-b border-slate-200 dark:border-[#3c3c3c]">
+      <aside className="w-80 flex-shrink-0 bg-slate-50 dark:bg-[#2a2a2a] border-r border-slate-200 dark:border-[#3c3c3c] flex flex-col relative shadow-sm h-screen overflow-hidden">
+        <div className="h-16 flex items-center px-6 border-b border-slate-200 dark:border-[#3c3c3c] flex-shrink-0">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 shadow-sm">
             <CalendarIcon className="w-5 h-5 text-white" />
           </div>
@@ -1015,8 +1042,9 @@ export default function CalendarApp() {
           </span>
         </div>
 
-        <div className="p-5 flex-1 overflow-y-auto custom-scrollbar">
-          <div className="relative mb-8">
+        {/* Khối cố định phía trên: Nút tạo mới & MiniCalendar */}
+        <div className="p-5 pb-3 flex-shrink-0">
+          <div className="relative mb-6">
             <button onClick={() => setIsCreateMenuOpen(v => !v)} className="flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl font-medium transition-all shadow-sm active:scale-95">
               <Plus className="w-5 h-5 mr-2" /> {t('create', appSettings.language)}
             </button>
@@ -1042,12 +1070,18 @@ export default function CalendarApp() {
             events={filteredEventsForComponents}
             appSettings={appSettings}
           />
-          <hr className="border-slate-200 dark:border-[#484848] my-4" />
+        </div>
 
-          <div className="">
-            <h3 className="text-xs font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-wider mb-3 px-1">{t('my_calendars_title', appSettings.language)}</h3>
-            <div className="space-y-2">
-              {/* Dynamic Categories */}
+        <hr className="border-slate-200 dark:border-[#484848] mx-5" />
+
+        {/* Khối các phần riêng biệt: Mỗi phần tự cuộn độc lập */}
+        <div className="p-5 flex-1 flex flex-col min-h-0 space-y-4 overflow-hidden">
+          {/* Phần 1: Lịch của tôi (Tự cuộn độc lập) */}
+          <div className="flex flex-col min-h-0 flex-1 max-h-[180px] xl:max-h-[220px]">
+            <h3 className="text-xs font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-wider mb-2 px-1 flex-shrink-0">
+              {t('my_calendars_title', appSettings.language)}
+            </h3>
+            <div className="space-y-1.5 overflow-y-auto custom-scrollbar pr-1 flex-1">
               {(appSettings.customCategories || []).map(catName => (
                 <label key={catName} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
                   <input 
@@ -1056,102 +1090,108 @@ export default function CalendarApp() {
                     onChange={() => setVisibleCategories(prev => prev.includes(catName) ? prev.filter(v => v !== catName) : [...prev, catName])} 
                     className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
                   />
-                  <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
+                  <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors truncate">
                     {catName}
                   </span>
                 </label>
               ))}
-
-              <hr className="border-slate-200 dark:border-[#484848] my-4" />
-              <h3 className="text-xs font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-wider mb-3 px-1">{t('holidays_title', appSettings.language)}</h3>
-
-              {/* Holiday Calendars (Conditional on Settings) */}
-              <div className="space-y-2">
-                {appSettings.vietnamHolidays && (
-                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
-                    <input 
-                      type="checkbox" 
-                      checked={visibleHolidays.includes("vietnam")} 
-                      onChange={() => setVisibleHolidays(prev => prev.includes("vietnam") ? prev.filter(v => v !== "vietnam") : [...prev, "vietnam"])} 
-                      className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
-                    />
-                    <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
-                      {t('fav_calendars.vn_holidays', appSettings.language)}
-                    </span>
-                  </label>
-                )}
-
-                {appSettings.worldHolidays && (
-                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
-                    <input 
-                      type="checkbox" 
-                      checked={visibleHolidays.includes("world")} 
-                      onChange={() => setVisibleHolidays(prev => prev.includes("world") ? prev.filter(v => v !== "world") : [...prev, "world"])} 
-                      className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
-                    />
-                    <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
-                      {t('fav_calendars.world_holidays', appSettings.language)}
-                    </span>
-                  </label>
-                )}
-
-                {appSettings.otherHolidays && (
-                  <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
-                    <input 
-                      type="checkbox" 
-                      checked={visibleHolidays.includes("other")} 
-                      onChange={() => setVisibleHolidays(prev => prev.includes("other") ? prev.filter(v => v !== "other") : [...prev, "other"])} 
-                      className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
-                    />
-                    <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
-                      {t('fav_calendars.other_holidays', appSettings.language)}
-                    </span>
-                  </label>
-                )}
-
-                {appSettings.customHolidays?.map(h => (
-                  <label key={h.id} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
-                    <input 
-                      type="checkbox" 
-                      checked={visibleHolidays.includes(h.id)} 
-                      onChange={() => setVisibleHolidays(prev => prev.includes(h.id) ? prev.filter(v => v !== h.id) : [...prev, h.id])} 
-                      className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
-                    />
-                    <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors">
-                      {h.name}
-                    </span>
-                  </label>
-                ))}
-              </div>
-
-              {/* Connected People's Calendars Section */}
-              {appSettings.showFriendsCalendars && friends.length > 0 && (
-                <>
-                  <hr className="border-slate-200 dark:border-[#484848] my-4" />
-                  <h3 className="text-xs font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-wider mb-3 px-1">
-                    {t('connected_calendars_title', appSettings.language)}
-                  </h3>
-                  <div className="space-y-2">
-                    {friends.map(friend => (
-                      <label key={friend.friend_id} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
-                        <input 
-                          type="checkbox" 
-                          checked={visibleFriends.includes(friend.friend_id)} 
-                          onChange={() => setVisibleFriends(prev => prev.includes(friend.friend_id) ? prev.filter(v => v !== friend.friend_id) : [...prev, friend.friend_id])} 
-                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
-                        />
-                        <div className="flex items-center overflow-hidden">
-                          <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors truncate">
-                            {friend.friend_email}
-                          </span>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </>
-              )}
             </div>
           </div>
+
+          <hr className="border-slate-200 dark:border-[#484848] flex-shrink-0" />
+
+          {/* Phần 2: Ngày nghỉ (Tự cuộn độc lập) */}
+          <div className="flex flex-col min-h-0 flex-1 max-h-[180px] xl:max-h-[220px]">
+            <h3 className="text-xs font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-wider mb-2 px-1 flex-shrink-0">
+              {t('holidays_title', appSettings.language)}
+            </h3>
+            <div className="space-y-1.5 overflow-y-auto custom-scrollbar pr-1 flex-1">
+              {appSettings.vietnamHolidays && (
+                <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
+                  <input 
+                    type="checkbox" 
+                    checked={visibleHolidays.includes("vietnam")} 
+                    onChange={() => setVisibleHolidays(prev => prev.includes("vietnam") ? prev.filter(v => v !== "vietnam") : [...prev, "vietnam"])} 
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
+                  />
+                  <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors truncate">
+                    {t('fav_calendars.vn_holidays', appSettings.language)}
+                  </span>
+                </label>
+              )}
+
+              {appSettings.worldHolidays && (
+                <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
+                  <input 
+                    type="checkbox" 
+                    checked={visibleHolidays.includes("world")} 
+                    onChange={() => setVisibleHolidays(prev => prev.includes("world") ? prev.filter(v => v !== "world") : [...prev, "world"])} 
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
+                  />
+                  <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors truncate">
+                    {t('fav_calendars.world_holidays', appSettings.language)}
+                  </span>
+                </label>
+              )}
+
+              {appSettings.otherHolidays && (
+                <label className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
+                  <input 
+                    type="checkbox" 
+                    checked={visibleHolidays.includes("other")} 
+                    onChange={() => setVisibleHolidays(prev => prev.includes("other") ? prev.filter(v => v !== "other") : [...prev, "other"])} 
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
+                  />
+                  <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors truncate">
+                    {t('fav_calendars.other_holidays', appSettings.language)}
+                  </span>
+                </label>
+              )}
+
+              {appSettings.customHolidays?.map(h => (
+                <label key={h.id} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
+                  <input 
+                    type="checkbox" 
+                    checked={visibleHolidays.includes(h.id)} 
+                    onChange={() => setVisibleHolidays(prev => prev.includes(h.id) ? prev.filter(v => v !== h.id) : [...prev, h.id])} 
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
+                  />
+                  <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors truncate">
+                    {h.name}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Phần 3: Lịch kết nối (nếu có) */}
+          {appSettings.showFriendsCalendars && friends.length > 0 && (
+            <>
+              <hr className="border-slate-200 dark:border-[#484848] flex-shrink-0" />
+              <div className="flex flex-col min-h-0 flex-1 max-h-[140px]">
+                <h3 className="text-xs font-bold text-slate-400 dark:text-[#9e9e9e] uppercase tracking-wider mb-2 px-1 flex-shrink-0">
+                  {t('connected_calendars_title', appSettings.language)}
+                </h3>
+                <div className="space-y-1.5 overflow-y-auto custom-scrollbar pr-1 flex-1">
+                  {friends.map(friend => (
+                    <label key={friend.friend_id} className="flex items-center space-x-3 cursor-pointer group px-1 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-[#353535] transition-colors">
+                      <input 
+                        type="checkbox" 
+                        checked={visibleFriends.includes(friend.friend_id)} 
+                        onChange={() => setVisibleFriends(prev => prev.includes(friend.friend_id) ? prev.filter(v => v !== friend.friend_id) : [...prev, friend.friend_id])} 
+                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" 
+                      />
+                      <div className="flex items-center overflow-hidden">
+                        <span className="text-sm text-slate-600 dark:text-[#bdbdbd] group-hover:text-slate-900 dark:hover:text-[#ffffff] dark:text-white transition-colors truncate">
+                          {friend.friend_email}
+                        </span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </aside>
 
@@ -1166,7 +1206,7 @@ export default function CalendarApp() {
           onInteractionEnd={handleInteractionEnd}
           onYearDayClick={handleYearDayClick} events={filteredEvents} onEventUpdate={handleGlobalEventUpdate}
           onToggleTask={handleToggleTask}
-          currentUser={currentUser} setCurrentUser={setCurrentUser} setAuthModal={setAuthModal}
+          currentUser={currentUser} setCurrentUser={setCurrentUser}
           setIsSettingsModalOpen={setIsSettingsModalOpen} setIsTrashOpen={handleOpenTrash}
           deletedItems={deletedItems}
           notifications={notifications} setNotifications={setNotifications}
@@ -1174,6 +1214,8 @@ export default function CalendarApp() {
           setEventSavedTick={setEventSavedTick}
           onNotificationClick={handleNotificationClick}
           onSearchItemClick={handleSearchItemClick}
+          notes={notes} setNotes={setNotes}
+          allTasks={allTasks} setAllTasks={setAllTasks}
         />
       </main>
 
@@ -1201,19 +1243,6 @@ export default function CalendarApp() {
       />
 
       {/* Global Modals (Relocated for proper backdrop blur and stacking) */}
-      <AuthModal
-        isOpen={authModal.isOpen}
-        type={authModal.type}
-        onClose={() => setAuthModal((p) => ({ ...p, isOpen: false }))}
-        onSwitchType={(newType) => setAuthModal((p) => ({ ...p, type: newType }))}
-        onLoginSuccess={(user) => {
-          setCurrentUser(user);
-          setAuthModal({ isOpen: false, type: "login" });
-          window.location.reload();
-        }}
-        lang={appSettings.language}
-      />
-
       <TrashModal
         isOpen={isTrashOpen}
         onClose={() => setIsTrashOpen(false)}
@@ -1230,7 +1259,7 @@ export default function CalendarApp() {
         onSave={handleSaveSettings}
       />
 
-      <PageLoader isLoading={isPageLoading} text={t('loading', appSettings.language)} />
+      <PageLoader isLoading={isPageLoading} />
 
       <style dangerouslySetInnerHTML={{ __html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }

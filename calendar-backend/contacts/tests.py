@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
-from .models import Connection, Contact
+from .models import Connection
 
 
 class ContactAndConnectionTests(APITestCase):

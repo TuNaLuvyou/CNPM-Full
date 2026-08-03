@@ -88,7 +88,6 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
         };
 
         let finalTimeEnd = form.timeEnd;
-        let finalDateEnd = form.date; // task generally same day
 
         if (hasDeadline) {
             const endDateTime = new Date(`${form.date}T${form.timeEnd}`);
@@ -96,7 +95,6 @@ export default function TaskForm({ now, duration, isInteracting, onSave, initial
             if (endDateTime > deadlineDateTime) {
                 // Tự động điều chỉnh timeEnd bằng deadlineTime nếu người dùng vô tình đặt sai
                 finalTimeEnd = form.deadlineTime;
-                finalDateEnd = form.deadlineDate;
             }
         }
 

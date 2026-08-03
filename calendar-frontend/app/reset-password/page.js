@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { resetPassword } from '@/lib/api';
@@ -119,6 +119,14 @@ function ResetPasswordForm() {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in slide-in-from-bottom duration-300">
+            <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/30 mb-3">
+                    <Calendar className="w-6 h-6 text-white" />
+                </div>
+                <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-[#f5f5f5] dark:to-[#f5f5f5]">Lịch Cá Nhân</h1>
+                <p className="text-sm text-slate-500 dark:text-[#9e9e9e] mt-1 font-medium">Đặt lại mật khẩu cho tài khoản của bạn</p>
+            </div>
+
             {error && (
                 <div className="text-sm text-red-500 bg-red-50 border border-red-100 px-4 py-3 rounded-xl flex items-start gap-2">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -183,14 +191,6 @@ export default function ResetPasswordPage() {
             <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-400/10 rounded-full blur-3xl pointer-events-none"></div>
 
             <div className="relative w-full max-w-md bg-white dark:bg-[#2d2d2d]/80 backdrop-blur-md rounded-3xl border border-white/60 shadow-2xl p-8 md:p-10">
-                <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/30 mb-4">
-                        <Calendar className="w-6 h-6 text-white" />
-                    </div>
-                    <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-[#f5f5f5] dark:to-[#f5f5f5]">Lịch Cá Nhân</h1>
-                    <p className="text-sm text-slate-500 dark:text-[#9e9e9e] mt-2 font-medium">Đặt lại mật khẩu cho tài khoản của bạn</p>
-                </div>
-
                 <Suspense fallback={
                     <div className="flex flex-col items-center justify-center py-10 gap-3">
                         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />

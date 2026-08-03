@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Users } from "lucide-react";
 
 import { 
@@ -46,7 +46,7 @@ export default function ContactsPanel({ appSettings, currentUser }) {
 
   // UI state
 
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const menuRef = useRef(null);
@@ -74,8 +74,7 @@ export default function ContactsPanel({ appSettings, currentUser }) {
 
   // ── Load Data ──
   const fetchFriends = useCallback(async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
+    if (!currentUser) {
       setLoading(false);
       return;
     }
@@ -96,11 +95,10 @@ export default function ContactsPanel({ appSettings, currentUser }) {
     } finally {
       setLoading(false);
     }
-  }, [lang]);
+  }, [lang, currentUser]);
 
   const fetchInvitations = useCallback(async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) return;
+    if (!currentUser) return;
 
     try {
       setLoading(true);
@@ -111,7 +109,7 @@ export default function ContactsPanel({ appSettings, currentUser }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     if (activeTab === TABS.CONNECTED) fetchFriends();
@@ -129,7 +127,7 @@ export default function ContactsPanel({ appSettings, currentUser }) {
     try {
       const user = await searchUserByEmail(searchEmail);
       setSearchResult(normalizeUser(user));
-    } catch (e) {
+    } catch {
       setError(t('contacts_panel.no_results', lang));
     } finally {
       setIsSearching(false);
@@ -201,8 +199,8 @@ export default function ContactsPanel({ appSettings, currentUser }) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {!localStorage.getItem('token') ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-[#9e9e9e] gap-2 px-6 text-center">
+        {!currentUser ? (
+          <div className="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-[#9e9e9e] gap-2 px-6 text-center">
               <Users className="w-10 h-10 opacity-20" />
               <p className="text-xs font-bold text-slate-500 dark:text-[#9e9e9e]">{t('user.login_required', lang)}</p>
               <p className="text-[10px] text-slate-400 dark:text-[#9e9e9e]">Bạn cần đăng nhập để tìm kiếm người dùng và quản lý danh bạ.</p>

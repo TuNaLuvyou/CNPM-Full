@@ -1,4 +1,4 @@
-import { Users, Calendar as CalendarIcon, CheckCircle, Circle, Clock, MapPin, Tag } from 'lucide-react';
+import { Calendar as CalendarIcon, CheckCircle, Circle, Clock, MapPin, Tag } from 'lucide-react';
 import { t } from '@/lib/i18n';
 
 export default function Event({ 

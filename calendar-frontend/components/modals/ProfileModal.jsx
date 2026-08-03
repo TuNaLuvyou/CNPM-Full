@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 import React, { useState, useEffect } from "react";
-import { X, User, Mail, Phone, Lock, Eye, EyeOff, Save, CheckCircle, Shield } from "lucide-react";
+import { createPortal } from "react-dom";
+import { X, User, Lock, Eye, EyeOff, Save, CheckCircle, Shield, AlertCircle } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { updateProfile } from "@/lib/api";
 
@@ -27,10 +28,19 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
   const [showPassword, setShowPassword] = useState({ current: false, new: false });
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [profileError, setProfileError] = useState(null);
-  const [passwordError, setPasswordError] = useState(null);
-  const [profileSuccess, setProfileSuccess] = useState(false);
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const triggerToast = (type, title, message) => {
+    setToast({ type, title, message });
+    setTimeout(() => {
+      setToast(null);
+    }, 3000);
+  };
 
   useEffect(() => {
     if (isOpen && currentUser) {
@@ -40,10 +50,6 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
         phone_number: currentUser.phone_number || "",
       });
       setPasswordForm({ current_password: "", new_password: "", confirm_password: "" });
-      setProfileError(null);
-      setPasswordError(null);
-      setProfileSuccess(false);
-      setPasswordSuccess(false);
       setActiveTab("profile");
     }
   }, [isOpen, currentUser]);
@@ -66,8 +72,6 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     setProfileLoading(true);
-    setProfileError(null);
-    setProfileSuccess(false);
 
     try {
       const updatedUser = await updateProfile({
@@ -76,10 +80,17 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
         phone_number: profileForm.phone_number,
       });
       setCurrentUser(updatedUser);
-      setProfileSuccess(true);
-      setTimeout(() => setProfileSuccess(false), 3000);
+      triggerToast(
+        "success",
+        lang === "en" ? "Profile Updated!" : "Cập nhật thành công!",
+        lang === "en" ? "Your personal information has been updated." : "Thông tin cá nhân của bạn đã được lưu."
+      );
     } catch (err) {
-      setProfileError(err.message || t('profile.error', lang));
+      triggerToast(
+        "error",
+        lang === "en" ? "Update Failed" : "Cập nhật thất bại!",
+        err.message || t('profile.error', lang)
+      );
     } finally {
       setProfileLoading(false);
     }
@@ -88,11 +99,13 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     setPasswordLoading(true);
-    setPasswordError(null);
-    setPasswordSuccess(false);
 
     if (passwordForm.new_password !== passwordForm.confirm_password) {
-      setPasswordError(t('profile.passwordMismatch', lang));
+      triggerToast(
+        "error",
+        lang === "en" ? "Password Mismatch" : "Mật khẩu không khớp!",
+        t('profile.passwordMismatch', lang)
+      );
       setPasswordLoading(false);
       return;
     }
@@ -102,11 +115,18 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
         current_password: passwordForm.current_password,
         new_password: passwordForm.new_password,
       });
-      setPasswordSuccess(true);
+      triggerToast(
+        "success",
+        lang === "en" ? "Password Changed!" : "Đổi mật khẩu thành công!",
+        lang === "en" ? "Your account password has been updated." : "Mật khẩu mới đã được cập nhật thành công."
+      );
       setPasswordForm({ current_password: "", new_password: "", confirm_password: "" });
-      setTimeout(() => setPasswordSuccess(false), 3000);
     } catch (err) {
-      setPasswordError(err.message || t('profile.error', lang));
+      triggerToast(
+        "error",
+        lang === "en" ? "Password Change Failed" : "Đổi mật khẩu thất bại!",
+        err.message || t('profile.error', lang)
+      );
     } finally {
       setPasswordLoading(false);
     }
@@ -114,6 +134,37 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      {/* 🔔 Popup Toast Thông Báo (Gắn Portal trực tiếp vào document.body ở góc trên bên phải màn hình) */}
+      {mounted && toast && typeof window !== "undefined" && createPortal(
+        <div
+          className={`fixed top-6 right-6 z-[99999] flex items-center justify-between gap-3.5 px-4.5 py-3.5 rounded-xl shadow-2xl border text-xs sm:text-sm font-medium animate-in fade-in slide-in-from-top-3 duration-250 min-w-[300px] max-w-md text-white ${
+            toast.type === "success"
+              ? "bg-emerald-600 border-emerald-500 shadow-emerald-600/40"
+              : "bg-rose-600 border-rose-500 shadow-rose-600/40"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            {toast.type === "success" ? (
+              <CheckCircle className="w-5 h-5 text-white flex-shrink-0" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-white flex-shrink-0" />
+            )}
+            <div className="text-left">
+              <p className="font-bold text-white text-xs sm:text-sm">{toast.title}</p>
+              <p className="text-[11px] sm:text-xs text-white/90 mt-0.5">{toast.message}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="text-white/80 hover:text-white text-sm p-1 transition-colors flex-shrink-0"
+          >
+            ✕
+          </button>
+        </div>,
+        document.body
+      )}
+
       <div
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
         onClick={onClose}
@@ -172,34 +223,21 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
 
         {/* Profile Tab */}
         {activeTab === "profile" && (
-          <form onSubmit={handleProfileSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleProfileSubmit} className="p-4 sm:p-5 space-y-3">
             {/* Avatar */}
-            <div className="flex flex-col items-center gap-3 pb-2">
+            <div className="flex flex-col items-center gap-1 pb-0.5">
               <div
-                className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold text-white shadow-lg"
+                className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-white shadow-md shadow-slate-300 dark:shadow-none"
                 style={{ backgroundColor: avatarColor }}
               >
                 {avatarChar}
               </div>
-              <p className="text-sm text-slate-500 dark:text-white/60">{currentUser?.email}</p>
+              <p className="text-xs font-medium text-slate-500 dark:text-white/60">{currentUser?.email}</p>
             </div>
 
-            {profileError && (
-              <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/30 text-red-600 dark:text-red-400 text-sm rounded-lg">
-                {profileError}
-              </div>
-            )}
-
-            {profileSuccess && (
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-sm rounded-lg flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" />
-                {t('profile.success', lang)}
-              </div>
-            )}
-
-            <div className="space-y-4">
+            <div className="space-y-2.5">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-white mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-white mb-1">
                   {t('profile.fullName', lang)}
                 </label>
                 <input
@@ -207,12 +245,12 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
                   name="full_name"
                   value={profileForm.full_name}
                   onChange={handleProfileChange}
-                  className="w-full h-11 px-4 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white"
+                  className="w-full h-9.5 px-3 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white text-xs sm:text-sm font-medium"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-white mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-white mb-1">
                   {t('profile.email', lang)}
                 </label>
                 <input
@@ -220,12 +258,12 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
                   name="email"
                   value={profileForm.email}
                   onChange={handleProfileChange}
-                  className="w-full h-11 px-4 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white"
+                  className="w-full h-9.5 px-3 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white text-xs sm:text-sm font-medium"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-white mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-white mb-1">
                   {t('profile.phone', lang)}
                 </label>
                 <input
@@ -234,29 +272,29 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
                   value={profileForm.phone_number}
                   onChange={handleProfileChange}
                   placeholder="0xxx xxx xxx"
-                  className="w-full h-11 px-4 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white"
+                  className="w-full h-9.5 px-3 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white text-xs sm:text-sm font-medium"
                 />
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-2.5 pt-1">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 h-11 px-4 border border-slate-200 dark:border-[#484848] text-slate-600 dark:text-white font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-[#353535] transition-colors"
+                className="flex-1 h-9.5 px-4 border border-slate-200 dark:border-[#484848] text-slate-600 dark:text-white font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-[#353535] transition-colors text-xs sm:text-sm"
               >
                 {t('cancel', lang)}
               </button>
               <button
                 type="submit"
                 disabled={profileLoading}
-                className="flex-[2] h-11 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl shadow-lg shadow-blue-200 dark:shadow-none transition-all flex items-center justify-center gap-2"
+                className="flex-[2] h-9.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl shadow-md shadow-blue-200 dark:shadow-none transition-all flex items-center justify-center gap-2 text-xs sm:text-sm"
               >
                 {profileLoading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <Save className="w-4 h-4" />
+                    <Save className="w-3.5 h-3.5" />
                     {t('profile.save', lang)}
                   </>
                 )}
@@ -267,31 +305,10 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
 
         {/* Security Tab */}
         {activeTab === "security" && (
-          <form onSubmit={handlePasswordSubmit} className="p-6 space-y-5">
-            <div className="flex items-center gap-3 pb-1">
-              <Lock className="w-5 h-5 text-blue-600" />
+          <form onSubmit={handlePasswordSubmit} className="p-4 sm:p-5 space-y-3">
+            <div className="space-y-2.5">
               <div>
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white">{t('profile.changePassword', lang)}</h3>
-                <p className="text-xs text-slate-400 dark:text-white/50">Tối thiểu 6 ký tự</p>
-              </div>
-            </div>
-
-            {passwordError && (
-              <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/30 text-red-600 dark:text-red-400 text-sm rounded-lg">
-                {passwordError}
-              </div>
-            )}
-
-            {passwordSuccess && (
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-sm rounded-lg flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" />
-                Đổi mật khẩu thành công!
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-white mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-white mb-1">
                   {t('profile.currentPassword', lang)}
                 </label>
                 <div className="relative">
@@ -300,20 +317,21 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
                     name="current_password"
                     value={passwordForm.current_password}
                     onChange={handlePasswordChange}
-                    className="w-full h-11 px-4 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white pr-10"
+                    placeholder={lang === "en" ? "Enter current password" : "Nhập mật khẩu hiện tại"}
+                    className="w-full h-9.5 px-3 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white pr-9 text-xs sm:text-sm font-medium"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(p => ({ ...p, current: !p.current }))}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#9e9e9e] hover:text-slate-600 dark:hover:text-[#e3e3e3] transition-colors"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#9e9e9e] hover:text-slate-600 dark:hover:text-[#e3e3e3] transition-colors"
                   >
                     {showPassword.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-white mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-white mb-1">
                   {t('profile.newPassword', lang)}
                 </label>
                 <div className="relative">
@@ -322,21 +340,22 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
                     name="new_password"
                     value={passwordForm.new_password}
                     onChange={handlePasswordChange}
-                    className="w-full h-11 px-4 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white pr-10"
+                    placeholder={lang === "en" ? "Minimum 6 characters" : "Tối thiểu 6 ký tự"}
+                    className="w-full h-9.5 px-3 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white pr-9 text-xs sm:text-sm font-medium"
                     required
                     minLength={6}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(p => ({ ...p, new: !p.new }))}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#9e9e9e] hover:text-slate-600 dark:hover:text-[#e3e3e3] transition-colors"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#9e9e9e] hover:text-slate-600 dark:hover:text-[#e3e3e3] transition-colors"
                   >
                     {showPassword.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-white mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-white mb-1">
                   {t('profile.confirmPassword', lang)}
                 </label>
                 <input
@@ -344,31 +363,32 @@ export default function ProfileModal({ isOpen, onClose, currentUser, setCurrentU
                   name="confirm_password"
                   value={passwordForm.confirm_password}
                   onChange={handlePasswordChange}
-                  className="w-full h-11 px-4 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white"
+                  placeholder={lang === "en" ? "Re-enter new password" : "Nhập lại mật khẩu mới"}
+                  className="w-full h-9.5 px-3 bg-slate-50 dark:bg-[#1f1f1f] border border-slate-200 dark:border-[#484848] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-white text-xs sm:text-sm font-medium"
                   required
                 />
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-2.5 pt-1">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 h-11 px-4 border border-slate-200 dark:border-[#484848] text-slate-600 dark:text-white font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-[#353535] transition-colors"
+                className="flex-1 h-9.5 px-4 border border-slate-200 dark:border-[#484848] text-slate-600 dark:text-white font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-[#353535] transition-colors text-xs sm:text-sm"
               >
                 {t('cancel', lang)}
               </button>
               <button
                 type="submit"
                 disabled={passwordLoading}
-                className="flex-[2] h-11 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl shadow-lg shadow-blue-200 dark:shadow-none transition-all flex items-center justify-center gap-2"
+                className="flex-[2] h-9.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl shadow-md shadow-blue-200 dark:shadow-none transition-all flex items-center justify-center gap-2 text-xs sm:text-sm"
               >
                 {passwordLoading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <Lock className="w-4 h-4" />
-                    Đổi mật khẩu
+                    <Lock className="w-3.5 h-3.5" />
+                    {t('profile.changePassword', lang)}
                   </>
                 )}
               </button>

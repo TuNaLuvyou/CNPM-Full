@@ -1,43 +1,15 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
-import { CheckSquare, Plus, CheckCircle2, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import React, { useState } from "react";
+import { CheckSquare, Plus, CheckCircle2, ChevronUp, ChevronDown } from "lucide-react";
 import TaskItem from "@/components/ui/TaskItem";
-import { getTasks, createTask, toggleTask, trashTask } from "@/lib/api";
+import { createTask, toggleTask, trashTask } from "@/lib/api";
 import { t } from "@/lib/i18n";
 
-export default function TasksPanel({ appSettings }) {
+export default function TasksPanel({ appSettings, currentUser, allTasks, setAllTasks }) {
   const lang = appSettings?.language || "vi";
-  const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
   const [showDoneTasks, setShowDoneTasks] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  // ── Tải tasks từ API khi mount ──
-  const fetchTasks = useCallback(async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const data = await getTasks();
-      setTasks(data);
-      setError(null);
-    } catch (e) {
-      if (!e.isLocalGuard) {
-        setError(t('tasks_panel.loading_error', lang) || "Không thể tải danh sách công việc.");
-        console.error(e);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [lang]);
-
-  useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
 
   // ── Thêm task mới ──
   const addTask = async () => {
@@ -48,29 +20,27 @@ export default function TasksPanel({ appSettings }) {
       is_completed: false,
       _saving: true,
     };
-    setTasks((prev) => [...prev, optimistic]);
+    setAllTasks(prev => [...prev, optimistic]);
     setNewTask("");
     try {
       const saved = await createTask({ title: optimistic.title });
-      setTasks((prev) => prev.map((t) => (t.id === optimistic.id ? saved : t)));
+      setAllTasks(prev => prev.map((t) => (t.id === optimistic.id ? saved : t)));
     } catch (e) {
-      setTasks((prev) => prev.filter((t) => t.id !== optimistic.id));
+      setAllTasks(prev => prev.filter((t) => t.id !== optimistic.id));
       alert(t('tasks_panel.add_error', lang) || "Không thể thêm công việc: " + e.message);
     }
   };
 
   // ── Toggle hoàn thành ──
   const handleToggle = async (id) => {
-    // Optimistic update
-    setTasks((prev) =>
+    setAllTasks(prev =>
       prev.map((t) => (t.id === id ? { ...t, is_completed: !t.is_completed } : t))
     );
     try {
       const updated = await toggleTask(id);
-      setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
-    } catch (e) {
-      // Revert nếu lỗi
-      setTasks((prev) =>
+      setAllTasks(prev => prev.map((t) => (t.id === id ? updated : t)));
+    } catch {
+      setAllTasks(prev =>
         prev.map((t) => (t.id === id ? { ...t, is_completed: !t.is_completed } : t))
       );
     }
@@ -79,13 +49,14 @@ export default function TasksPanel({ appSettings }) {
   // ── Xoá (đưa vào thùng rác) ──
   const handleDelete = async (id) => {
     if (!confirm(t('create_modal.confirm_trash', lang))) return;
-    
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+
+    const prevTasks = allTasks;
+    setAllTasks(prev => prev.filter((t) => t.id !== id));
     try {
       await trashTask(id);
-    } catch (e) {
-      // Reload nếu lỗi
-      fetchTasks();
+    } catch {
+      setAllTasks(prev => prevTasks);
+      setError(t('tasks_panel.delete_error', lang) || "Không thể xoá công việc.");
     }
   };
 
@@ -98,8 +69,8 @@ export default function TasksPanel({ appSettings }) {
     _saving: t._saving,
   });
 
-  const pending = tasks.filter((t) => !t.is_completed).map(normalizeTask);
-  const done = tasks.filter((t) => t.is_completed).map(normalizeTask);
+  const pending = allTasks.filter((t) => !t.is_completed).map(normalizeTask);
+  const done = allTasks.filter((t) => t.is_completed).map(normalizeTask);
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-[#2d2d2d]">
@@ -134,10 +105,10 @@ export default function TasksPanel({ appSettings }) {
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {loading ? (
           <div className="flex items-center justify-center h-32 gap-2 text-slate-400 dark:text-[#9e9e9e]">
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <div className="w-5 h-5 border-2 border-slate-300 dark:border-[#555] border-t-blue-500 rounded-full animate-spin" />
             <span className="text-xs">{t('loading', lang)}</span>
           </div>
-        ) : !localStorage.getItem('token') ? (
+        ) : !currentUser ? (
             <div className="flex flex-col items-center justify-center h-48 text-slate-400 dark:text-[#9e9e9e] gap-2 px-6 text-center">
               <CheckSquare className="w-8 h-8 opacity-20" />
               <p className="text-xs font-bold text-slate-500 dark:text-[#9e9e9e]">{t('user.login_required', lang)}</p>
@@ -146,7 +117,6 @@ export default function TasksPanel({ appSettings }) {
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-32 text-red-400 gap-2 px-4 text-center">
             <p className="text-xs">{error}</p>
-            <button onClick={fetchTasks} className="text-xs text-blue-500 underline">{t('retry', lang)}</button>
           </div>
         ) : pending.length === 0 && done.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-slate-400 dark:text-[#9e9e9e] gap-2">

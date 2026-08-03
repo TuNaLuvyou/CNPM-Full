@@ -1,12 +1,105 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
+// ── In-Memory Token Management (RAM Only) ──────────────────────────────────
+let _accessToken = null;
+let _refreshPromise = null;
+let _isLoggingOut = false;
+
+export function getAccessToken() {
+  return _accessToken;
+}
+
+export function setAccessToken(token) {
+  _accessToken = token;
+}
+
 /**
- * Base request helper to handle auth tokens and common headers
+ * Tự động gọi API refresh token để lấy Access Token mới từ HTTP-Only Cookie
+ */
+export async function refreshAccessToken() {
+  if (_refreshPromise) return _refreshPromise;
+
+  _refreshPromise = (async () => {
+    try {
+      const response = await fetch(`${API_URL}/accounts/token/refresh/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        setAccessToken(null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+        return null;
+      }
+
+      const data = await response.json();
+      if (data.access) {
+        setAccessToken(data.access);
+        if (data.user && typeof window !== 'undefined') {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+        return data.access;
+      }
+      setAccessToken(null);
+      return null;
+    } catch {
+      setAccessToken(null);
+      return null;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+
+  return _refreshPromise;
+}
+
+/**
+ * Khởi tạo phiên làm việc khi trang web được nạp lại
+ */
+export async function initAuth() {
+  if (typeof window === 'undefined') return null;
+  if (_isLoggingOut) return null; // Chặn silent refresh nếu đang trong quá trình đăng xuất
+  localStorage.removeItem('token'); // Xóa token cũ lưu ở localStorage nếu có
+  
+  let token = getAccessToken();
+  if (!token) {
+    token = await refreshAccessToken();
+  }
+
+  if (token) {
+    try {
+      const user = await getMe();
+      localStorage.setItem('user', JSON.stringify(user));
+      return user;
+    } catch {
+      // Nếu token cũ hỏng/hết hạn, thử refresh lại 1 lần
+      const newToken = await refreshAccessToken();
+      if (newToken) {
+        try {
+          const user = await getMe();
+          localStorage.setItem('user', JSON.stringify(user));
+          return user;
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Base request helper to handle in-memory auth tokens and automatic silent refresh
  */
 export async function request(path, options = {}) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  let token = getAccessToken();
   const headers = {
-    ...(token ? { 'Authorization': `Token ${token}` } : {}),
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...options.headers,
   };
   
@@ -17,14 +110,27 @@ export async function request(path, options = {}) {
     }
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  let response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
+    credentials: 'include',
   });
+
+  // Tự động silent refresh khi Access Token hết hạn (401)
+  if (response.status === 401 && path !== '/accounts/login/' && path !== '/accounts/register/' && path !== '/accounts/token/refresh/') {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      headers['Authorization'] = `Bearer ${newToken}`;
+      response = await fetch(`${API_URL}${path}`, {
+        ...options,
+        headers,
+        credentials: 'include',
+      });
+    }
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    // Extract error message from Django REST Framework default error formats
     const errorMsg = errorData.detail || errorData.error || (typeof errorData === 'object' ? Object.values(errorData)[0] : null);
     throw new Error(errorMsg || 'Liên kết máy chủ thất bại');
   }
@@ -38,10 +144,13 @@ export async function login(email, password) {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
-  if (data.token) {
-    localStorage.setItem('token', data.token);
-    if (data.user) {
-      localStorage.setItem('user', JSON.stringify(data.user));
+  if (data.access) {
+    setAccessToken(data.access);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
     }
   }
   return data;
@@ -52,13 +161,34 @@ export async function register(fullName, email, password) {
     method: 'POST',
     body: JSON.stringify({ email, password, full_name: fullName }),
   });
-  if (data.token) {
-    localStorage.setItem('token', data.token);
-    if (data.user) {
-      localStorage.setItem('user', JSON.stringify(data.user));
+  if (data.access) {
+    setAccessToken(data.access);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
     }
   }
   return data;
+}
+
+export async function logout() {
+  // Optimistic UI: Xoá state liền ngay lập tức
+  _isLoggingOut = true;
+  setAccessToken(null);
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }
+
+  // Gọi API ngầm ở background
+  try {
+    await request('/accounts/logout/', { method: 'POST' });
+  } catch {}
+  
+  // Trả cờ về false sau khi hoàn thành (đề phòng user ở lại trang)
+  setTimeout(() => { _isLoggingOut = false; }, 2000);
 }
 
 export async function getMe() {
@@ -214,10 +344,6 @@ export async function updateTask(id, data) {
   });
 }
 
-export async function deleteTask(id) {
-  return request(`/tasks/${id}/`, { method: 'DELETE' });
-}
-
 export async function toggleTask(id) {
   return request(`/tasks/${id}/toggle/`, { method: 'POST' });
 }
@@ -320,13 +446,6 @@ export async function getNotes() {
 export async function createNote(data) {
   return request('/notes/', {
     method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-export async function updateNote(id, data) {
-  return request(`/notes/${id}/`, {
-    method: 'PATCH',
     body: JSON.stringify(data),
   });
 }

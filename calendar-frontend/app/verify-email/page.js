@@ -155,7 +155,7 @@ function ErrorView({ message }) {
         Nếu link đã hết hạn, hãy quay lại ứng dụng và đăng nhập để yêu cầu gửi lại email xác nhận.
       </p>
 
-      <Link href="/" style={{ ...styles.button, background: "linear-gradient(135deg, #64748b, #475569)" }}>
+      <Link href="/" style={{ ...styles.button, background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)", boxShadow: "0 8px 20px -4px rgba(239, 68, 68, 0.4)" }}>
         Quay lại ứng dụng
       </Link>
     </>

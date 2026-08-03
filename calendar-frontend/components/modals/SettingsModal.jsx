@@ -197,14 +197,13 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
             }
 
             // 2. Đồng bộ lên backend ngầm
-            const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-            if (token) {
-                try {
-                    const { updateSettings } = await import('@/lib/api');
+            try {
+                const { updateSettings, getAccessToken } = await import('@/lib/api');
+                if (getAccessToken()) {
                     await updateSettings(snapshot);
-                } catch (e) {
-                    console.error("Lỗi đồng bộ cài đặt:", e);
                 }
+            } catch (e) {
+                console.error("Lỗi đồng bộ cài đặt:", e);
             }
 
             // 3. Reload ngay lập tức -> trình duyệt hiển thị màn hình Loading trước
@@ -217,21 +216,19 @@ export default function SettingsModal({ isOpen, onClose, onSave, settings: initi
         // Không đổi ngôn ngữ -> Cập nhật bình thường và đóng modal
         onSave?.(snapshot);
 
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-        if (token) {
-            try {
-                const { updateSettings } = await import('@/lib/api');
+        try {
+            const { updateSettings, getAccessToken } = await import('@/lib/api');
+            if (getAccessToken()) {
                 await updateSettings(snapshot);
-            } catch (e) {
-                console.error("Lỗi đồng bộ cài đặt:", e);
             }
+        } catch (e) {
+            console.error("Lỗi đồng bộ cài đặt:", e);
         }
 
         setSaveState("saved");
         setTimeout(() => {
             setSaveState("idle");
-            onClose?.();
-        }, 500);
+        }, 2000);
     };
 
     const scrollToSection = (key) => {

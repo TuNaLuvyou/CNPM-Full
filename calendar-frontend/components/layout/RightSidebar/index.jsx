@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import SidebarStrip from "./SidebarStrip";
 import TasksPanel from "@/components/panels/TasksPanel";
 import KeepPanel from "@/components/panels/KeepPanel";
@@ -7,7 +7,7 @@ import ContactsPanel from "@/components/panels/ContactsPanel";
 import { CheckSquare, Lightbulb, MapPin, Users } from "lucide-react";
 import { t } from "@/lib/i18n";
 
-export default function RightSidebar({ appSettings, currentUser }) {
+export default function RightSidebar({ appSettings, currentUser, notes, setNotes, allTasks, setAllTasks }) {
   const lang = appSettings?.language || "vi";
   const [rightPanel, setRightPanel] = useState(null);
   const [rightPanelWidth, setRightPanelWidth] = useState(320);
@@ -92,9 +92,9 @@ export default function RightSidebar({ appSettings, currentUser }) {
   const getRightPanelContent = () => {
     switch (rightPanel) {
       case "tasks":
-        return <TasksPanel appSettings={appSettings} />;
+        return <TasksPanel appSettings={appSettings} currentUser={currentUser} allTasks={allTasks} setAllTasks={setAllTasks} />;
       case "keep":
-        return <KeepPanel appSettings={appSettings} />;
+        return <KeepPanel appSettings={appSettings} currentUser={currentUser} notes={notes} setNotes={setNotes} />;
       case "maps":
         return <MapsPanel appSettings={appSettings} />;
       case "contacts":

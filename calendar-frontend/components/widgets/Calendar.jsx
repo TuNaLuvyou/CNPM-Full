@@ -34,7 +34,6 @@ export default function Calendar({
   onToggleTask,
   currentUser,
   setCurrentUser,
-  setAuthModal,
   setIsSettingsModalOpen,
   setIsTrashOpen,
   deletedItems,
@@ -43,6 +42,10 @@ export default function Calendar({
   appSettings,
   setEventSavedTick,
   onSearchItemClick,
+  notes,
+  setNotes,
+  allTasks,
+  setAllTasks,
 }) {
   const now = getLocalizedTime(appSettings.primaryTimezone);
 
@@ -88,7 +91,6 @@ export default function Calendar({
         weekDays={weekDays}
         currentUser={currentUser}
         setCurrentUser={setCurrentUser}
-        setAuthModal={setAuthModal}
         deletedItems={deletedItems}
         setIsSettingsModalOpen={setIsSettingsModalOpen}
         setIsTrashOpen={setIsTrashOpen}
@@ -98,6 +100,10 @@ export default function Calendar({
         setEventSavedTick={setEventSavedTick}
         events={events}
         onSearchItemClick={onSearchItemClick}
+        notes={notes}
+        setNotes={setNotes}
+        allTasks={allTasks}
+        setAllTasks={setAllTasks}
       >
         <div className="flex-1 flex flex-col overflow-hidden">
           {view === "year" && (

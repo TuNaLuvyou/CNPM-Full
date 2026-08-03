@@ -4,3 +4,4 @@ djangorestframework==3.17.1
 django-cors-headers==4.9.0
 python-dotenv==1.2.2
 APScheduler==3.11.2
+djangorestframework-simplejwt==5.5.1

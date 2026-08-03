@@ -42,7 +42,7 @@ export default function CreateModal({
 }) {
   const lang = appSettings?.language || "vi";
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [saving, setSaving] = useState(false);
+  const saving = false;
   const [deleting, setDeleting] = useState(false);
   const modalRef = useRef(null);
 

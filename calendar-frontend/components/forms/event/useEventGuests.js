@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getFriends } from '@/lib/api';
+import { getFriends, getAccessToken } from '@/lib/api';
 
 export function useEventGuests({ initialData, currentUser }) {
     const [friends, setFriends] = useState([]);
@@ -17,8 +17,7 @@ export function useEventGuests({ initialData, currentUser }) {
 
     useEffect(() => {
         if (!showGuestPicker) return;
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-        if (token && friends.length === 0) {
+        if (getAccessToken() && friends.length === 0) {
             getFriends().then(setFriends).catch(console.error);
         }
     }, [showGuestPicker, friends.length]);

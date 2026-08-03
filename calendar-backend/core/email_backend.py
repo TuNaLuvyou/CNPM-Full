@@ -6,8 +6,10 @@ class UnverifiedSSLEmailBackend(DjangoEmailBackend):
         if self.connection:
             return False
         try:
-            # Dùng SSL context mặc định (xác thực chứng chỉ theo CA bundle của hệ thống)
-            self.ssl_context = ssl.create_default_context()
-        except AttributeError:
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            self.ssl_context = context
+        except Exception:
             pass
         return super().open()

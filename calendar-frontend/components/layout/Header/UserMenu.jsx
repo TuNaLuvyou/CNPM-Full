@@ -1,9 +1,12 @@
 import React from "react";
+import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { t } from "@/lib/i18n";
+import { logout } from "@/lib/api";
 
-export default function UserMenu({ currentUser, setCurrentUser, setAuthModal, appSettings, setIsProfileModalOpen }) {
+export default function UserMenu({ currentUser, setCurrentUser, appSettings, setIsProfileModalOpen }) {
   const lang = appSettings?.language || "vi";
+  const router = useRouter();
 
   if (currentUser) {
     const displayName = currentUser.full_name || currentUser.username || "User";
@@ -23,10 +26,9 @@ export default function UserMenu({ currentUser, setCurrentUser, setAuthModal, ap
         <div className="w-px h-4 bg-slate-200 dark:bg-[#484848] mx-1"></div>
         <button
           onClick={() => {
-            if (typeof window !== "undefined") {
-              localStorage.removeItem("token");
-              window.location.reload();
-            }
+            logout(); // Đăng xuất ngầm, không await
+            if (setCurrentUser) setCurrentUser(null);
+            router.replace('/login');
           }}
           className="text-slate-400 dark:text-[#9e9e9e] hover:text-red-500 transition-colors"
           title={t('user.logout', lang)}
@@ -40,13 +42,13 @@ export default function UserMenu({ currentUser, setCurrentUser, setAuthModal, ap
   return (
     <div className="flex items-center gap-2">
       <button
-        onClick={() => setAuthModal({ isOpen: true, type: "login" })}
+        onClick={() => router.push("/login")}
         className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
       >
         {t('user.login', lang)}
       </button>
       <button
-        onClick={() => setAuthModal({ isOpen: true, type: "register" })}
+        onClick={() => router.push("/login?mode=register")}
         className="h-9 px-4 bg-white dark:bg-[#2d2d2d] text-blue-600 border border-blue-600 hover:bg-blue-50 text-sm font-medium rounded-lg transition-colors"
       >
         {t('user.register', lang)}

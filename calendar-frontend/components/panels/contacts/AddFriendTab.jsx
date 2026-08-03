@@ -1,5 +1,5 @@
 ﻿import React from "react";
-import { Search, Loader2, UserPlus, Check, Users } from "lucide-react";
+import { Search, Loader2, UserPlus, Check } from "lucide-react";
 import { t } from "@/lib/i18n";
 
 export default function AddFriendTab({

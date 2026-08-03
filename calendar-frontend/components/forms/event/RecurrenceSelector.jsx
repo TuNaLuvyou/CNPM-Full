@@ -1,6 +1,4 @@
 "use client";
-import { useState } from 'react';
-import { Repeat } from 'lucide-react';
 
 export const RECURRENCE_OPTIONS = [
     { value: '',           label: 'Không lặp lại',     labelEn: 'Does not repeat'   },
@@ -11,9 +9,6 @@ export const RECURRENCE_OPTIONS = [
 ];
 
 export default function RecurrenceSelector({ value = '', onChange, lang = 'vi' }) {
-    const current = RECURRENCE_OPTIONS.find(o => o.value === value) || RECURRENCE_OPTIONS[0];
-    const label = lang === 'en' ? current.labelEn : current.label;
-
     return (
         <div className="relative w-full">
             <select

@@ -14,7 +14,7 @@ import ProfileModal from "../../modals/ProfileModal";
 
 export default function Header({
   view, setView, viewDate, setViewDate, selectedDate, setSelectedDate, weekDays,
-  currentUser, setCurrentUser, setAuthModal, deletedItems, setIsSettingsModalOpen, setIsTrashOpen,
+  currentUser, setCurrentUser, deletedItems, setIsSettingsModalOpen, setIsTrashOpen,
   notifications, setNotifications, appSettings, setEventSavedTick, onNotificationClick,
   events, onSearchItemClick
 }) {
@@ -181,7 +181,6 @@ export default function Header({
         <UserMenu 
           currentUser={currentUser} 
           setCurrentUser={setCurrentUser} 
-          setAuthModal={setAuthModal} 
           appSettings={appSettings} 
           setIsProfileModalOpen={setIsProfileModalOpen}
         />

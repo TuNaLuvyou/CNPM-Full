@@ -5,7 +5,6 @@ from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth.models import User
 from django.contrib import auth
-from django.shortcuts import redirect
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
 from events.models import Notification
 from django.contrib.auth.tokens import default_token_generator
@@ -19,33 +18,235 @@ from .models import EmailVerificationToken
 from core.scheduler import schedule_cleanup
 
 
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
+
+
+def set_refresh_cookie(response, refresh_token):
+    response.set_cookie(
+        key='refresh_token',
+        value=str(refresh_token),
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite='Lax',
+        max_age=7 * 24 * 60 * 60,
+        path='/'
+    )
+
+
+import threading
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def send_email_async(subject, message, recipient_list, html_message=None):
+    """Gửi email bất đồng bộ (non-blocking) qua background thread."""
+    def _send():
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=None,
+                recipient_list=recipient_list,
+                html_message=html_message,
+                fail_silently=False,
+            )
+            logger.info(f"Đã gửi email thành công tới {recipient_list}")
+        except Exception as e:
+            logger.error(f"Lỗi gửi email ngầm tới {recipient_list}: {str(e)}")
+
+    threading.Thread(target=_send, daemon=True).start()
+
+
 def build_verification_email(user, verify_url, resend=False):
-    """Tạo nội dung email xác nhận tài khoản (chung cho lần đầu và gửi lại)."""
+    """Tạo nội dung HTML email xác nhận tài khoản cao cấp."""
     title = "Xác nhận địa chỉ Email (Gửi lại)" if resend else "Xác nhận địa chỉ Email"
     intro = (
-        "Bạn đã yêu cầu gửi lại email xác nhận cho tài khoản <strong>Lịch Cá Nhân</strong>."
+        "Bạn vừa yêu cầu gửi lại liên kết xác nhận cho tài khoản <strong>Lịch Cá Nhân</strong>."
         if resend
         else "Cảm ơn bạn đã đăng ký tài khoản trên hệ thống <strong>Lịch Cá Nhân</strong>."
     )
     subject = f"{title} - Lịch Cá Nhân"
+    display_name = user.first_name or user.username or "Bạn"
+
     html_message = f"""
-    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px;">
-        <h2 style="color: #2563eb; margin-bottom: 20px;">{title}</h2>
-        <p>Xin chào <strong>{user.username}</strong>,</p>
-        <p>{intro}</p>
-        <p>Vui lòng click vào nút bên dưới để xác nhận. <strong>Liên kết có hiệu lực trong 5 phút.</strong></p>
-        <div style="text-align: center; margin: 30px 0;">
-            <a href="{verify_url}" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px;
-               text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-               Xác nhận Email
-            </a>
-        </div>
-        <p style="word-break: break-all; font-size: 13px; color: #2563eb;"><a href="{verify_url}">{verify_url}</a></p>
-        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
-        <p style="font-size: 12px; color: #64748b;">
-            Nếu bạn không thực hiện yêu cầu này, tài khoản sẽ bị xóa tự động sau 5 phút.
-        </p>
-    </div>
+    <!DOCTYPE html>
+    <html lang="vi">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="color-scheme" content="light only">
+        <meta name="supported-color-schemes" content="light only">
+        <style>
+            :root {{
+                color-scheme: light only;
+                supported-color-schemes: light only;
+            }}
+            .force-white, .force-white * {{ color: #ffffff !important; }}
+            .force-sub, .force-sub * {{ color: #dbeafe !important; }}
+            [data-ogsc] .force-white {{ color: #ffffff !important; }}
+            [data-ogsc] .force-sub {{ color: #dbeafe !important; }}
+            u + #body .force-white {{ color: #ffffff !important; }}
+        </style>
+    </head>
+    <body id="body" style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 10px;">
+            <tr>
+                <td align="center">
+                    <table role="presentation" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 20px; overflow: hidden; border-collapse: separate; border-spacing: 0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0;">
+                        <!-- Header -->
+                        <tr>
+                            <td style="background-color: #1e40af; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); padding: 36px 32px; text-align: center; border-top-left-radius: 19px; border-top-right-radius: 19px;">
+                                <div style="display: inline-block; background-color: rgba(255, 255, 255, 0.15); padding: 12px 14px; border-radius: 16px; margin-bottom: 12px;">
+                                    <span style="font-size: 28px; line-height: 1; color: #ffffff !important;">📅</span>
+                                </div>
+                                <h1 class="force-white" style="color: #ffffff !important; margin: 0; font-size: 24px; font-weight: 800; font-family: inherit;">
+                                    <span style="color: #ffffff !important;">Lịch Cá Nhân</span>
+                                </h1>
+                                <p class="force-sub" style="color: #dbeafe !important; margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">
+                                    <span style="color: #dbeafe !important;">Lịch thông minh &amp; Cuộc sống gọn gàng</span>
+                                </p>
+                            </td>
+                        </tr>
+                        <!-- Body -->
+                        <tr>
+                            <td style="padding: 36px 32px; color: #334155;">
+                                <h2 style="color: #0f172a; margin: 0 0 16px 0; font-size: 20px; font-weight: 700;">{title}</h2>
+                                <p style="font-size: 15px; line-height: 1.6; color: #475569; margin: 0 0 16px 0;">Xin chào <strong>{display_name}</strong>,</p>
+                                <p style="font-size: 15px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">{intro}</p>
+                                
+                                <!-- Notice box -->
+                                <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 14px 18px; border-radius: 8px; margin-bottom: 28px;">
+                                    <p style="margin: 0; font-size: 13.5px; color: #1e40af; line-height: 1.5; font-weight: 500;">
+                                        ⏱️ Liên kết xác nhận này sẽ hết hạn trong <strong>5 phút</strong>. Vui lòng bấm vào nút bên dưới để kích hoạt tài khoản.
+                                    </p>
+                                </div>
+
+                                <!-- CTA Button -->
+                                <div style="text-align: center; margin: 32px 0;">
+                                    <a href="{verify_url}" class="force-white" style="background-color: #2563eb; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #ffffff !important; padding: 14px 32px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);">
+                                        <span style="color: #ffffff !important;">Xác nhận Email ➔</span>
+                                    </a>
+                                </div>
+
+                                <!-- Link fallback -->
+                                <p style="font-size: 13px; color: #64748b; margin: 24px 0 8px 0; line-height: 1.4;">Nếu nút trên không hoạt động, hãy copy liên kết sau dán trực tiếp vào thanh địa chỉ của trình duyệt:</p>
+                                <div style="background-color: #f1f5f9; padding: 12px 14px; border-radius: 8px; word-break: break-all; font-size: 12.5px; color: #2563eb; font-family: monospace;">
+                                    <a href="{verify_url}" style="color: #2563eb; text-decoration: underline;">{verify_url}</a>
+                                </div>
+                            </td>
+                        </tr>
+                        <!-- Footer -->
+                        <tr>
+                            <td style="background-color: #f8fafc; padding: 24px 32px; border-top: 1px solid #f1f5f9; text-align: center; border-bottom-left-radius: 19px; border-bottom-right-radius: 19px;">
+                                <p style="margin: 0 0 8px 0; font-size: 12px; color: #94a3b8; line-height: 1.5;">
+                                    Nếu bạn không thực hiện đăng ký tài khoản này, vui lòng bỏ qua email. Tài khoản chưa xác nhận sẽ tự động dọn dẹp sau 5 phút.
+                                </p>
+                                <p style="margin: 0; font-size: 12px; color: #cbd5e1; font-weight: 600;">
+                                    © 2026 Lịch Cá Nhân. Tất cả các quyền được bảo lưu.
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    return subject, html_message
+
+
+def build_reset_password_email(user, reset_url):
+    """Tạo nội dung HTML email khôi phục mật khẩu cao cấp."""
+    subject = "Yêu cầu khôi phục mật khẩu - Lịch Cá Nhân"
+    display_name = user.first_name or user.username or "Bạn"
+
+    html_message = f"""
+    <!DOCTYPE html>
+    <html lang="vi">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="color-scheme" content="light only">
+        <meta name="supported-color-schemes" content="light only">
+        <style>
+            :root {{
+                color-scheme: light only;
+                supported-color-schemes: light only;
+            }}
+            .force-white, .force-white * {{ color: #ffffff !important; }}
+            .force-sub, .force-sub * {{ color: #e0e7ff !important; }}
+            [data-ogsc] .force-white {{ color: #ffffff !important; }}
+            [data-ogsc] .force-sub {{ color: #e0e7ff !important; }}
+            u + #body .force-white {{ color: #ffffff !important; }}
+        </style>
+    </head>
+    <body id="body" style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 40px 10px;">
+            <tr>
+                <td align="center">
+                    <table role="presentation" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 20px; overflow: hidden; border-collapse: separate; border-spacing: 0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0;">
+                        <!-- Header -->
+                        <tr>
+                            <td style="background-color: #4f46e5; background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); padding: 36px 32px; text-align: center; border-top-left-radius: 19px; border-top-right-radius: 19px;">
+                                <div style="display: inline-block; background-color: rgba(255, 255, 255, 0.15); padding: 12px 14px; border-radius: 16px; margin-bottom: 12px;">
+                                    <span style="font-size: 28px; line-height: 1; color: #ffffff !important;">🔐</span>
+                                </div>
+                                <h1 class="force-white" style="color: #ffffff !important; margin: 0; font-size: 24px; font-weight: 800; font-family: inherit;">
+                                    <span style="color: #ffffff !important;">Khôi Phục Mật Khẩu</span>
+                                </h1>
+                                <p class="force-sub" style="color: #e0e7ff !important; margin: 6px 0 0 0; font-size: 14px; font-weight: 500;">
+                                    <span style="color: #e0e7ff !important;">Hệ thống Lịch Cá Nhân</span>
+                                </p>
+                            </td>
+                        </tr>
+                        <!-- Body -->
+                        <tr>
+                            <td style="padding: 36px 32px; color: #334155;">
+                                <h2 style="color: #0f172a; margin: 0 0 16px 0; font-size: 20px; font-weight: 700;">Đặt lại mật khẩu tài khoản</h2>
+                                <p style="font-size: 15px; line-height: 1.6; color: #475569; margin: 0 0 16px 0;">Xin chào <strong>{display_name}</strong>,</p>
+                                <p style="font-size: 15px; line-height: 1.6; color: #475569; margin: 0 0 24px 0;">Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản <strong>{user.email}</strong> của bạn.</p>
+                                
+                                <!-- Notice box -->
+                                <div style="background-color: #f5f3ff; border-left: 4px solid #6366f1; padding: 14px 18px; border-radius: 8px; margin-bottom: 28px;">
+                                    <p style="margin: 0; font-size: 13.5px; color: #4338ca; line-height: 1.5; font-weight: 500;">
+                                        🔒 Liên kết này có hiệu lực trong <strong>5 phút</strong> và chỉ sử dụng được 1 lần duy nhất.
+                                    </p>
+                                </div>
+
+                                <!-- CTA Button -->
+                                <div style="text-align: center; margin: 32px 0;">
+                                    <a href="{reset_url}" class="force-white" style="background-color: #4f46e5; background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%); color: #ffffff !important; padding: 14px 32px; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);">
+                                        <span style="color: #ffffff !important;">Đổi mật khẩu mới ➔</span>
+                                    </a>
+                                </div>
+
+                                <!-- Link fallback -->
+                                <p style="font-size: 13px; color: #64748b; margin: 24px 0 8px 0; line-height: 1.4;">Nếu nút trên không hoạt động, hãy copy liên kết sau dán trực tiếp vào thanh địa chỉ của trình duyệt:</p>
+                                <div style="background-color: #f1f5f9; padding: 12px 14px; border-radius: 8px; word-break: break-all; font-size: 12.5px; color: #4f46e5; font-family: monospace;">
+                                    <a href="{reset_url}" style="color: #4f46e5; text-decoration: underline;">{reset_url}</a>
+                                </div>
+                            </td>
+                        </tr>
+                        <!-- Footer -->
+                        <tr>
+                            <td style="background-color: #f8fafc; padding: 24px 32px; border-top: 1px solid #f1f5f9; text-align: center; border-bottom-left-radius: 19px; border-bottom-right-radius: 19px;">
+                                <p style="margin: 0 0 8px 0; font-size: 12px; color: #94a3b8; line-height: 1.5;">
+                                    Nếu bạn không gửi yêu cầu này, vui lòng bỏ qua email. Mật khẩu hiện tại của bạn vẫn hoàn toàn được giữ an toàn.
+                                </p>
+                                <p style="margin: 0; font-size: 12px; color: #cbd5e1; font-weight: 600;">
+                                    © 2026 Lịch Cá Nhân. Tất cả các quyền được bảo lưu.
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
     """
     return subject, html_message
 
@@ -66,19 +267,15 @@ class RegisterView(APIView):
     throttle_classes = AUTH_THROTTLE_CLASSES
     throttle_scope = 'auth'
 
-
-
     def _send_verification_email(self, user, verify_token):
-        """Gửi email HTML chứa link xác nhận."""
+        """Gửi email HTML chứa link xác nhận bất đồng bộ."""
         verify_url = f"{settings.FRONTEND_URL}/verify-email?token={verify_token.token}"
         subject, html_message = build_verification_email(user, verify_url)
-        send_mail(
+        send_email_async(
             subject=subject,
             message=f"Xác nhận email của bạn bằng cách truy cập: {verify_url}",
-            from_email=None,
             recipient_list=[user.email],
             html_message=html_message,
-            fail_silently=False,
         )
 
     def _unique_username(self, base):
@@ -114,16 +311,8 @@ class RegisterView(APIView):
         # Tạo token xác thực
         verify_token = EmailVerificationToken.objects.create(user=user)
 
-        # Gửi email
-        try:
-            self._send_verification_email(user, verify_token)
-        except Exception as e:
-            # Nếu gửi thất bại, xóa user luôn tránh rác
-            user.delete()
-            return Response(
-                {'error': f'Không thể gửi email xác nhận: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        # Gửi email ngầm ở background thread
+        self._send_verification_email(user, verify_token)
 
         # Lên lịch tự động xóa sau 5 phút
         schedule_cleanup(user.pk)
@@ -135,17 +324,15 @@ class RegisterView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
-
 class LoginView(APIView):
     """
     POST /api/accounts/login/
     Body: { email, password }
-    Trả về 403 + error='email_not_verified' nếu tài khoản chưa xác thực email.
+    Trả về Access token dạng JWT trong JSON body và Refresh Token trong HTTP-Only cookie.
     """
     permission_classes = [AllowAny]
     throttle_classes = AUTH_THROTTLE_CLASSES
     throttle_scope = 'auth'
-
 
     def post(self, request):
         email = request.data.get('email', '')
@@ -163,25 +350,82 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.validated_data['user']
-            token, _ = Token.objects.get_or_create(user=user)
-            return Response({
-                'token': token.key,
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+
+            response = Response({
+                'access': access_token,
                 'user': UserSerializer(user).data,
             })
+            set_refresh_cookie(response, refresh)
+            return response
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TokenRefreshCookieView(APIView):
+    """
+    POST /api/accounts/token/refresh/
+    Đọc Refresh Token từ HTTP-Only cookie, phát hành Access Token mới và rotate Refresh Token.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        refresh_token = request.COOKIES.get('refresh_token') or request.data.get('refresh_token')
+        if not refresh_token:
+            return Response({'error': 'No refresh token provided'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            refresh = RefreshToken(refresh_token)
+            user_id = refresh.payload.get('user_id')
+            user = User.objects.get(id=user_id)
+
+            new_refresh = RefreshToken.for_user(user)
+            new_access_token = str(new_refresh.access_token)
+
+            try:
+                refresh.blacklist()
+            except Exception:
+                pass
+
+            response = Response({'access': new_access_token, 'user': UserSerializer(user).data})
+            set_refresh_cookie(response, new_refresh)
+            return response
+        except TokenError as e:
+            response = Response({'error': f'Invalid or expired refresh token: {str(e)}'}, status=status.HTTP_401_UNAUTHORIZED)
+            response.delete_cookie('refresh_token', path='/api/accounts/')
+            return response
+        except Exception as e:
+            response = Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+            response.delete_cookie('refresh_token', path='/api/accounts/')
+            return response
 
 
 class LogoutView(APIView):
     """
     POST /api/accounts/logout/
+    Blacklist Refresh Token và xóa HTTP-Only cookie.
     """
+    permission_classes = [AllowAny]
+
     def post(self, request):
+        refresh_token = request.COOKIES.get('refresh_token') or request.data.get('refresh_token')
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except Exception:
+                pass
+
         if hasattr(request.user, 'auth_token'):
-            request.user.auth_token.delete()
+            try:
+                request.user.auth_token.delete()
+            except Exception:
+                pass
+
         auth.logout(request)
-        if request.accepted_renderer.format == 'html' or 'text/html' in request.META.get('HTTP_ACCEPT', ''):
-            return redirect('/admin/login/')
-        return Response({'status': 'logged out'}, status=status.HTTP_200_OK)
+        response = Response({'status': 'logged out'}, status=status.HTTP_200_OK)
+        response.delete_cookie('refresh_token', path='/api/accounts/')
+        return response
 
 
 class MeView(APIView):
@@ -219,31 +463,13 @@ class ForgotPasswordView(APIView):
             # Đường dẫn đổi mật khẩu ở Frontend
             reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
             
-            # Gửi Email
-            subject = "Yêu cầu khôi phục mật khẩu - Lịch Cá Nhân"
-            html_message = f"""
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px;">
-                <h2 style="color: #2563eb; margin-bottom: 20px;">Khôi phục mật khẩu</h2>
-                <p>Xin chào <strong>{user.username}</strong>,</p>
-                <p>Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn trên hệ thống Lịch Cá Nhân.</p>
-                <p>Vui lòng click vào nút bên dưới để tiến hành đổi mật khẩu mới. <strong>Liên kết này chỉ có hiệu lực trong vòng 5 phút và chỉ sử dụng được 1 lần duy nhất:</strong></p>
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="{reset_url}" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Đổi mật khẩu mới</a>
-                </div>
-                <p style="color: #64748b; font-size: 13px;">Nếu nút trên không hoạt động, bạn có thể copy link sau và dán trực tiếp vào thanh địa chỉ của trình duyệt:</p>
-                <p style="word-break: break-all; font-size: 13px; color: #2563eb;"><a href="{reset_url}">{reset_url}</a></p>
-                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
-                <p style="font-size: 12px; color: #64748b;">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này. Tài khoản của bạn vẫn được an toàn.</p>
-            </div>
-            """
-            
-            send_mail(
+            # Gửi Email ngầm (non-blocking)
+            subject, html_message = build_reset_password_email(user, reset_url)
+            send_email_async(
                 subject=subject,
                 message=f"Vui lòng truy cập đường dẫn sau để khôi phục mật khẩu: {reset_url}",
-                from_email=None,  # sử dụng DEFAULT_FROM_EMAIL
                 recipient_list=[email],
                 html_message=html_message,
-                fail_silently=False,
             )
 
             # Cảnh báo bảo mật trong app
@@ -402,24 +628,17 @@ class ResendVerificationView(APIView):
         EmailVerificationToken.objects.filter(user=user).delete()
         verify_token = EmailVerificationToken.objects.create(user=user)
 
-        # Gửi lại email
+        # Gửi lại email ngầm ở background thread
         verify_url = f"{settings.FRONTEND_URL}/verify-email?token={verify_token.token}"
         subject, html_message = build_verification_email(user, verify_url, resend=True)
+        send_email_async(
+            subject=subject,
+            message=f"Xác nhận email tại: {verify_url}",
+            recipient_list=[user.email],
+            html_message=html_message,
+        )
 
-        try:
-            send_mail(
-                subject=subject,
-                message=f"Xác nhận email tại: {verify_url}",
-                from_email=None,
-                recipient_list=[user.email],
-                html_message=html_message,
-                fail_silently=False,
-            )
-        except Exception as e:
-            return Response(
-                {'error': f'Không thể gửi email: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        return Response({'status': 'Nếu email tồn tại và chưa xác thực, chúng tôi đã gửi lại email xác nhận.'})
 
         # Reset timer cleanup
         schedule_cleanup(user.pk)

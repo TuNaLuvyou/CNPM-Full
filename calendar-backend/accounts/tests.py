@@ -112,7 +112,7 @@ class RegisterTests(APITestCase):
             'password': 'matkhau123',
         })
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertIn('token', resp.data)
+        self.assertIn('access', resp.data)
         self.assertEqual(resp.data['user']['email'], 'full@example.com')
 
 

@@ -13,7 +13,6 @@ export default function MainLayout({
   weekDays,
   currentUser,
   setCurrentUser,
-  setAuthModal,
   deletedItems,
   setIsSettingsModalOpen,
   setIsTrashOpen,
@@ -23,6 +22,10 @@ export default function MainLayout({
   setEventSavedTick,
   events,
   onSearchItemClick,
+  notes,
+  setNotes,
+  allTasks,
+  setAllTasks,
 }) {
   return (
     <div className="flex flex-col h-full bg-white dark:bg-[#1f1f1f] relative min-w-[700px]">
@@ -36,7 +39,6 @@ export default function MainLayout({
         weekDays={weekDays}
         currentUser={currentUser}
         setCurrentUser={setCurrentUser}
-        setAuthModal={setAuthModal}
         deletedItems={deletedItems}
         setIsSettingsModalOpen={setIsSettingsModalOpen}
         setIsTrashOpen={setIsTrashOpen}
@@ -51,7 +53,7 @@ export default function MainLayout({
         <main className="flex-1 overflow-hidden flex flex-col bg-white dark:bg-[#1f1f1f] border-r border-slate-200 dark:border-[#3c3c3c]">
           {children}
         </main>
-        <RightSidebar appSettings={appSettings} currentUser={currentUser} />
+        <RightSidebar appSettings={appSettings} currentUser={currentUser} notes={notes} setNotes={setNotes} allTasks={allTasks} setAllTasks={setAllTasks} />
       </div>
     </div>
   );

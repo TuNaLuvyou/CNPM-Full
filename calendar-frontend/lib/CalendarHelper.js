@@ -50,7 +50,7 @@ export function getTimezoneOffsetMinutes(timezone) {
         const utcDate = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds());
         
         return Math.round((utcDate - tzDate) / 60000);
-    } catch (e) {
+    } catch {
         return -420; // Fallback to GMT+7 if error
     }
 }
@@ -70,7 +70,7 @@ export function formatTimezoneOffset(timezone) {
         const parts = Intl.DateTimeFormat('en-US', options).formatToParts(d);
         const offsetPart = parts.find(p => p.type === 'timeZoneName');
         return offsetPart ? offsetPart.value : "GMT";
-    } catch (e) {
+    } catch {
         return "GMT+7";
     }
 }

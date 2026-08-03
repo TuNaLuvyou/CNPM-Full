@@ -133,6 +133,24 @@ export const TRANSLATIONS = {
             registering: "Đang đăng ký...",
         },
 
+        // Auth Page (Trang đăng nhập)
+        auth_page: {
+            tagline: "Lịch thông minh & Cuộc sống gọn gàng",
+            description: "Trải nghiệm nền tảng quản lý thời gian, công việc và tương tác nhóm thông minh với độ bảo mật chuẩn doanh nghiệp.",
+            welcome_back: "Chào mừng trở lại",
+            login_subtitle: "Đăng nhập để tiếp tục quản lý lịch của bạn",
+            register_subtitle: "Tạo tài khoản miễn phí và bắt đầu sắp xếp lịch của bạn",
+            back_home: "Quay lại trang chủ",
+            feature1_title: "Quản lý lịch thông minh",
+            feature1_desc: "Sự kiện, việc cần làm và lịch hẹn tập trung tại một nơi",
+            feature2_title: "Nhắc nhở đúng lúc",
+            feature2_desc: "Thông báo kịp thời trước mỗi sự kiện quan trọng",
+            feature3_title: "Kết nối & chia sẻ",
+            feature3_desc: "Chia sẻ lịch với bạn bè và đồng nghiệp dễ dàng",
+            feature4_title: "Đồng bộ mọi nơi",
+            feature4_desc: "Truy cập lịch của bạn từ bất kỳ thiết bị nào",
+        },
+
         // Profile
         profile: {
             title: "Thông tin cá nhân",
@@ -576,6 +594,24 @@ export const TRANSLATIONS = {
             register_failed: "Registration failed",
             logging_in: "Logging in...",
             registering: "Registering...",
+        },
+
+        // Auth Page (Login page)
+        auth_page: {
+            tagline: "Smart calendar & Tidy life",
+            description: "Experience a smart time, task, and team collaboration management platform with enterprise-grade security.",
+            welcome_back: "Welcome back",
+            login_subtitle: "Log in to continue managing your calendar",
+            register_subtitle: "Create a free account and start organizing your calendar",
+            back_home: "Back to home",
+            feature1_title: "Smart calendar management",
+            feature1_desc: "Events, tasks and appointments in one place",
+            feature2_title: "Timely reminders",
+            feature2_desc: "Get notified before every important event",
+            feature3_title: "Connect & share",
+            feature3_desc: "Easily share calendars with friends and colleagues",
+            feature4_title: "Sync everywhere",
+            feature4_desc: "Access your calendar from any device",
         },
 
         // Profile

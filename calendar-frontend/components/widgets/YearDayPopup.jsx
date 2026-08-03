@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { X, Calendar as CalendarIcon, Clock, CheckCircle, Circle } from "lucide-react";
-import { DAY_NAMES, MONTH_NAMES } from "../../lib/CalendarHelper";
+import { DAY_NAMES } from "../../lib/CalendarHelper";
 import { t } from "@/lib/i18n";
 
 export default function YearDayPopup({
