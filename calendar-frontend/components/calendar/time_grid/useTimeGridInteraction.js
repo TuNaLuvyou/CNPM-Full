@@ -419,18 +419,18 @@ export function useTimeGridInteraction({
       } catch (err) {
         console.error("Lỗi khi kết thúc kéo thả:", err);
       } finally {
-        setTimeout(() => {
-          setInteraction(null);
-          interactionRef.current = null;
-          setIsPreviewDragging?.(false);
-        }, 50);
+        if (rafId) cancelAnimationFrame(rafId);
 
+        // Clear interaction immediately so mousemove ignores further events
+        setInteraction(null);
+        interactionRef.current = null;
+        setIsPreviewDragging?.(false);
+
+        // Keep a short delay before allowing clicks again
         setTimeout(() => {
           isInteractingRef.current = false;
           didMoveRef.current = false;
         }, 200);
-
-        if (rafId) cancelAnimationFrame(rafId);
       }
     };
     window.addEventListener('mousemove', handleMouseMove);
@@ -443,7 +443,7 @@ export function useTimeGridInteraction({
   }, [isDragging, displayWeekDays, mode]);
 
   const handleColumnClick = (e, day) => {
-    if (didMoveRef.current || isInteractingRef.current || !callbacksRef.current.onGridClick) return;
+    if (didMoveRef.current || !callbacksRef.current.onGridClick) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
     const SNAP_1MIN = 64 / 60;

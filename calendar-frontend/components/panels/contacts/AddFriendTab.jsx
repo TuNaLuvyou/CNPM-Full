@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { Search, Loader2, UserPlus, Check } from "lucide-react";
 import { t } from "@/lib/i18n";
 
@@ -15,20 +15,20 @@ export default function AddFriendTab({
 }) {
   return (
     <div className="p-4 space-y-4">
-      <form onSubmit={handleSearch} className="flex gap-2">
-        <div className="flex-1 flex items-center gap-2 bg-slate-50 dark:bg-[#1f1f1f] rounded-xl px-3 py-2 border border-slate-100 dark:border-[#3c3c3c] focus-within:border-blue-300 focus-within:bg-white dark:focus-within:bg-[#2d2d2d] transition-all">
+      <form onSubmit={handleSearch} className="flex gap-2 items-center">
+        <div className="flex-1 min-w-0 flex items-center gap-2 bg-slate-50 dark:bg-[#1f1f1f] rounded-xl px-3 py-2 border border-slate-100 dark:border-[#3c3c3c] focus-within:border-blue-300 focus-within:bg-white dark:focus-within:bg-[#2d2d2d] transition-all">
           <Search className="w-4 h-4 text-slate-400 dark:text-[#9e9e9e] flex-shrink-0" />
           <input
             value={searchEmail}
             onChange={(e) => setSearchEmail(e.target.value)}
             placeholder={t('contacts_panel.search_user_placeholder', lang)}
-            className="flex-1 text-sm bg-transparent outline-none text-slate-700 dark:text-[#e3e3e3] placeholder-slate-300"
+            className="flex-1 min-w-0 text-xs sm:text-sm bg-transparent outline-none text-slate-700 dark:text-[#e3e3e3] placeholder-slate-300"
           />
         </div>
         <button
           type="submit"
           disabled={isSearching}
-          className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition disabled:bg-slate-300"
+          className="bg-blue-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition disabled:bg-slate-300 flex-shrink-0 whitespace-nowrap"
         >
           {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : t('search', lang)}
         </button>

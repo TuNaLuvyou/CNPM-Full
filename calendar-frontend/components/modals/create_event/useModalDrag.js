@@ -1,17 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 
-export function useModalDrag({ isOpen }) {
+export function useModalDrag({ isOpen, resetKey }) {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const startDragPos = useRef({ x: 0, y: 0 });
   const initialOffset = useRef({ x: 0, y: 0 });
 
   const [prevOpen, setPrevOpen] = useState(isOpen);
-  if (prevOpen !== isOpen) {
-    setPrevOpen(isOpen);
-    if (!isOpen) {
-      setDragOffset({ x: 0, y: 0 });
-    }
+  const [prevKey, setPrevKey] = useState(resetKey);
+
+  if (prevOpen !== isOpen || prevKey !== resetKey) {
+    if (prevOpen !== isOpen) setPrevOpen(isOpen);
+    if (prevKey !== resetKey) setPrevKey(resetKey);
+    setDragOffset({ x: 0, y: 0 });
   }
 
   useEffect(() => {

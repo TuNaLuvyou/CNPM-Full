@@ -46,8 +46,19 @@ export default function CreateModal({
   const [deleting, setDeleting] = useState(false);
   const modalRef = useRef(null);
 
+  // Xác định xem có sự tương tác kéo thả đang diễn ra cho item này không
+  const isInteracting = !!(interactionState && (
+    (editingItem && interactionState.id === editingItem.id) || 
+    (!editingItem && !interactionState.id)
+  ));
+
+  // Nạp thông tin: ưu tiên interactionState (đang kéo) -> editingItem (đang sửa) -> previewEvent (vừa kéo xong/click)
+  const activeSource = isInteracting ? interactionState : (editingItem ? null : previewEvent);
+  
+  const resetKey = activeSource?.id || activeSource?.ts || position?.ts || editingItem?.id;
+
   // ── Drag & Position Hooks ──
-  const { dragOffset, isDragging, handleHeaderMouseDown } = useModalDrag({ isOpen });
+  const { dragOffset, isDragging, handleHeaderMouseDown } = useModalDrag({ isOpen, resetKey });
   const modalStyle = useModalPosition({
     isOpen,
     modalRef,
@@ -61,14 +72,7 @@ export default function CreateModal({
     activeTab
   });
 
-  // Xác định xem có sự tương tác kéo thả đang diễn ra cho item này không
-  const isInteracting = !!(interactionState && (
-    (editingItem && interactionState.id === editingItem.id) || 
-    (!editingItem && !interactionState.id)
-  ));
 
-  // Nạp thông tin: ưu tiên interactionState (đang kéo) -> editingItem (đang sửa) -> previewEvent (vừa kéo xong/click)
-  const activeSource = isInteracting ? interactionState : (editingItem ? null : previewEvent);
 
   const now = activeSource?.fullDate || (editingItem ? new Date(editingItem.start_time) : (initialDate || getVNTime()));
   
@@ -138,7 +142,8 @@ export default function CreateModal({
     // Prevent shifting the recurrence origin by applying delta math
     if (editingItem && editingItem.recurrence_rule && editingItem.original_start_time) {
         const instanceStart = new Date(editingItem.start_time).getTime();
-        const newStart = new Date(`${formData.date}T${formData.timeStart}`).getTime();
+        const tStart = formData.timeStart || formData.time || '00:00';
+        const newStart = new Date(`${formData.date}T${tStart}`).getTime();
         const delta = newStart - instanceStart;
 
         const originalStart = new Date(editingItem.original_start_time).getTime();
@@ -155,6 +160,7 @@ export default function CreateModal({
         // Remove frontend helper fields so the backend uses the exact ISO strings we calculated
         delete formData.date;
         delete formData.timeStart;
+        delete formData.time;
         delete formData.timeEnd;
     }
 
@@ -164,8 +170,9 @@ export default function CreateModal({
     let startTimeIso = formData.start_time;
     let endTimeIso = formData.end_time;
 
-    if (!startTimeIso && formData.date && formData.timeStart) {
-      const d = new Date(`${formData.date}T${formData.timeStart}`);
+    if (!startTimeIso && formData.date && (formData.timeStart || formData.time)) {
+      const tStart = formData.timeStart || formData.time;
+      const d = new Date(`${formData.date}T${tStart}`);
       if (!isNaN(d.getTime())) startTimeIso = d.toISOString();
     }
     if (!endTimeIso && formData.date && formData.timeEnd) {
@@ -180,6 +187,16 @@ export default function CreateModal({
       ? Math.round((new Date(endTimeIso) - new Date(startTimeIso)) / 60000) 
       : 60;
 
+    let deadlineIso = undefined;
+    if (activeTab === 'task') {
+      if (formData.deadlineDate && formData.deadlineTime) {
+        const d = new Date(`${formData.deadlineDate}T${formData.deadlineTime}`);
+        if (!isNaN(d.getTime())) deadlineIso = d.toISOString();
+      } else if (formData.deadlineDate === null) {
+        deadlineIso = null; // User explicitly removed it
+      }
+    }
+
     // --- OPTIMISTIC UI: Giao diện đi trước ---
     const isUpdate = !!editingItem;
     const optimisticEvent = {
@@ -191,6 +208,7 @@ export default function CreateModal({
        duration_minutes: duration,
        event_type: activeTab,
        title: formData.title || "(Không có tiêu đề)",
+       deadline: deadlineIso !== undefined ? deadlineIso : editingItem?.deadline,
        is_optimistic: true
     };
 

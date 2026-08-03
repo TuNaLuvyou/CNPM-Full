@@ -41,7 +41,7 @@ export function useModalPosition({
       const modalWidth = rect.width || 512;
       const modalHeight = rect.height || 450;
 
-      const margin = 12;
+      const margin = 24;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
 
@@ -51,35 +51,49 @@ export function useModalPosition({
       const pivotX = position?.x;
       const pivotY = position?.y;
 
-      // 2. Vùng cần né (cột ngày chứa tab đang tạo)
+      // 2. Vùng cần né (cột ngày chứa tab đang tạo / thẻ đang sửa)
       let avoidRect = position?.columnRect;
-      if (!avoidRect && anchor && ["week", "work_week", "day"].includes(view)) {
-        const targetDateStr = anchor.fullDate?.toDateString();
-        const colEl = document.querySelector(`[data-column-date="${targetDateStr}"]`);
-        if (colEl) avoidRect = colEl.getBoundingClientRect();
+      let colIndex = 0; // 0 to 6
+      let dayColumnRect = null;
+      
+      if (["week", "work_week", "day"].includes(view)) {
+        const itemDateStr = anchor?.fullDate?.toDateString() || (editingItem ? new Date(editingItem.start_time).toDateString() : null);
+        if (itemDateStr) {
+          const colEl = document.querySelector(`[data-column-date="${itemDateStr}"]`);
+          if (colEl) {
+            dayColumnRect = colEl.getBoundingClientRect();
+            if (!avoidRect) avoidRect = dayColumnRect;
+            
+            // Determine column index among its siblings
+            const siblings = Array.from(colEl.parentElement.querySelectorAll('.day-column'));
+            colIndex = siblings.indexOf(colEl);
+          }
+        }
       }
 
-      // 3. Vị trí dọc: đặt gần tab đang tạo (điểm click ~1/3 chiều cao modal từ trên)
-      if (pivotY !== undefined) {
+      // 3. Vị trí dọc: Cố gắng đặt ngang hàng với đỉnh của tab/event
+      if (dayColumnRect && ["week", "work_week", "day"].includes(view)) {
+        let relativeTop = 0;
+        if (anchor) {
+            relativeTop = anchor.top || 0;
+        } else if (editingItem) {
+            const d = new Date(editingItem.start_time);
+            relativeTop = (d.getHours() * 60 + d.getMinutes()) * (64 / 60);
+        }
+        // Đỉnh của event tương đối so với cột (đã cuộn)
+        top = dayColumnRect.top + relativeTop;
+      } else if (pivotY !== undefined) {
         top = pivotY - modalHeight / 3;
-      } else if (anchor && avoidRect && ["week", "work_week", "day"].includes(view)) {
-        const isTallColumn = avoidRect.height > 500;
-        const relativeTop = isTallColumn ? anchor.top + 64 : 0;
-        top = avoidRect.top + relativeTop - 40;
       }
 
-      // 4. Vị trí ngang: đặt kế bên tab/cột ngày để dễ thao tác
-      if (view === "day" && avoidRect) {
-        left = avoidRect.left + (avoidRect.width / 2) - (modalWidth / 2);
-      } else if (avoidRect) {
-        const spaceRight = vw - avoidRect.right;
-        const spaceLeft = avoidRect.left;
-        if (spaceRight > modalWidth + 30) {
+      // 4. Vị trí ngang: Cột 1, 2, 3 bật bên phải. Cột 4, 5, 6, 7 bật bên trái.
+      if (avoidRect && ["week", "work_week", "day"].includes(view)) {
+        if (view === "day" || colIndex < 3) {
+          // Hiển thị bên PHẢI của tab/cột
           left = avoidRect.right + 15;
-        } else if (spaceLeft > modalWidth + 30) {
-          left = avoidRect.left - modalWidth - 15;
         } else {
-          left = spaceRight > spaceLeft ? avoidRect.right + 10 : avoidRect.left - modalWidth - 10;
+          // Hiển thị bên TRÁI của tab/cột
+          left = avoidRect.left - modalWidth - 15;
         }
       } else if (pivotX !== undefined) {
         const spaceRight = vw - pivotX;
@@ -117,7 +131,7 @@ export function useModalPosition({
         top: finalTop,
         left: finalLeft,
         opacity: 1,
-        transition: useTransition ? 'top 0.15s cubic-bezier(0.165, 0.84, 0.44, 1), left 0.15s cubic-bezier(0.165, 0.84, 0.44, 1)' : 'none'
+        transition: 'none'
       });
       setIsPositioned(true);
     };

@@ -149,12 +149,12 @@ export default function TrashModal({
                         </div>
                     ) : (
                         <div className="px-4 py-3 space-y-1.5">
-                            {filtered.map((item) => {
+                            {filtered.map((item, index) => {
                                 const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.event;
                                 const { Icon } = cfg;
                                 return (
                                     <div
-                                        key={item.id}
+                                        key={item.id ? `${item.id}-${index}` : index}
                                         className="flex items-start gap-3 p-3.5 rounded-xl hover:bg-slate-50 dark:hover:bg-[#353535] transition group border border-transparent hover:border-slate-100 dark:border-[#484848]"
                                     >
                                         {/* Icon loại */}

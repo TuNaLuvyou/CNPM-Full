@@ -180,15 +180,15 @@ export default function ContactsPanel({ appSettings, currentUser }) {
         </h2>
         
         {/* Tabs */}
-        <div className="flex bg-slate-100 dark:bg-[#353535] p-1 rounded-xl">
+        <div className="flex bg-slate-100 dark:bg-[#353535] p-1 rounded-xl gap-0.5">
           {Object.values(TABS).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all ${
+              className={`flex-1 py-1.5 px-1 text-[11px] font-bold rounded-lg transition-all truncate whitespace-nowrap ${
                 activeTab === tab 
                 ? "bg-white dark:bg-[#2d2d2d] text-blue-600 shadow-sm" 
-                : "text-slate-500 dark:text-[#9e9e9e] hover:text-slate-700 dark:hover:text-[#e3e3e3] dark:text-[#e3e3e3]"
+                : "text-slate-500 dark:text-[#9e9e9e] hover:text-slate-700 dark:hover:text-[#e3e3e3]"
               }`}
             >
               {t(`contacts_panel.tabs.${tab}`, lang)}

@@ -192,7 +192,7 @@ export default function TimeGrid({
                         time={timeLabel}
                         top={top}
                         height={height}
-                        className={isCurrentlyDragging ? "opacity-40 pointer-events-none grayscale-[0.3]" : "transition-all duration-200"}
+                        className={isCurrentlyDragging ? "opacity-40 pointer-events-none grayscale-[0.3]" : ""}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (didMoveRef.current) return; 
@@ -249,7 +249,7 @@ export default function TimeGrid({
                           });
                         }}
                         className={`preview-tab absolute left-1 right-1 z-30 bg-blue-50 border-l-4 border-blue-500 rounded-md p-2 shadow-md flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing select-none
-                          ${interaction ? 'shadow-lg ring-2 ring-blue-500/20 scale-[1.01]' : 'transition-all duration-200'} ${((interaction && !interaction.existingEvent) ? interaction.currentHeight : (previewEvent.height || 64)) < 35 ? 'justify-center' : ''}`}
+                          ${interaction ? 'shadow-lg ring-2 ring-blue-500/20 scale-[1.01]' : ''} ${((interaction && !interaction.existingEvent) ? interaction.currentHeight : (previewEvent.height || 64)) < 35 ? 'justify-center' : ''}`}
                         style={{
                           top: `${(interaction && !interaction.existingEvent) ? interaction.currentTop : (previewEvent.type === "now" ? nowOffset : previewEvent.top)}px`,
                           height: `${(interaction && !interaction.existingEvent) ? interaction.currentHeight : (previewEvent.height || 64)}px`,

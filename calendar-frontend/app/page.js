@@ -448,15 +448,26 @@ export default function CalendarApp() {
       ]);
       const items = [
         ...(Array.isArray(trashedEvents) ? trashedEvents : []).map(e => ({
-          id: `event-${e.id}`, _id: e.id, type: "event",
+          ...e,
+          id: `event-${e.id}`, _id: e.id, type: e.event_type || "event",
           title: e.title, date: e.date_display, deletedAt: e.deleted_at
         })),
         ...(Array.isArray(trashedTasks) ? trashedTasks : []).map(t => ({
+          ...t,
           id: `task-${t.id}`, _id: t.id, type: "task",
           title: t.title, date: t.date_display, deletedAt: t.deleted_at
         })),
       ];
-      setDeletedItems(items);
+
+      // Lọc trùng lặp ID để tránh lỗi trùng Key trong React
+      const seenIds = new Set();
+      const uniqueItems = items.filter(item => {
+        if (seenIds.has(item.id)) return false;
+        seenIds.add(item.id);
+        return true;
+      });
+
+      setDeletedItems(uniqueItems);
     } catch (e) {
       console.error("Không thể tải thùng rác:", e);
     }
@@ -474,7 +485,6 @@ export default function CalendarApp() {
       // Chuyển đổi format BE -> FE nếu cần
       const formatted = data.map(n => ({
         ...n,
-        // Ensure desc and time are present (BE now provides them, but we keep this for safety)
         desc: n.desc || n.content || (
                n.ntype === 'invite' ? t('invitation_found', appSettings.language) : 
                n.ntype === 'friend_request' ? t('contacts_panel.friend_request_title', appSettings.language) :
@@ -501,47 +511,104 @@ export default function CalendarApp() {
   }, [currentUser?.id]);
 
    const handleRestore = async (compositeId) => {
-     const item = deletedItems.find(i => i.id === compositeId);
+     const item = deletedItems.find(i => String(i.id) === String(compositeId));
      if (!item) return;
-     const prevDeleted = deletedItems;
-     setDeletedItems(prev => prev.filter(i => i.id !== compositeId));
+     
+     // 1. Lưu lại state cũ trong trường hợp lỗi
+     const prevDeleted = [...deletedItems];
+     
+     // 2. Optimistic UI cho Thùng rác: xóa ngay lập tức
+     setDeletedItems(prev => prev.filter(i => String(i.id) !== String(compositeId)));
+     
+     // 3. Optimistic UI cho Calendar Grid
+     let formattedForGrid = null;
+     const restoredItem = { ...item, deleted_at: null, deletedAt: null };
+     
+     if (item.type === "event" || item.type === "appointment") {
+       const start = new Date(restoredItem.start_time);
+       const end = new Date(restoredItem.end_time);
+       const duration = !isNaN(start) && !isNaN(end) ? Math.round((end - start) / 60000) : 60;
+       formattedForGrid = { ...restoredItem, id: item._id, duration_minutes: duration };
+     } else if (item.type === "task") {
+       const effectiveStart = restoredItem.start_time || restoredItem.deadline_time;
+       const start = new Date(effectiveStart);
+       const end = new Date(restoredItem.end_time || restoredItem.deadline_time || effectiveStart);
+       const duration = !isNaN(start) && !isNaN(end) ? Math.round((end - start) / 60000) : 60;
+       formattedForGrid = {
+         ...restoredItem,
+         event_type: 'task',
+         start_time: effectiveStart,
+         duration_minutes: duration,
+         end_time: restoredItem.end_time || restoredItem.deadline_time || effectiveStart,
+         id: `task-${item._id}`
+       };
+     }
+     
+     if (formattedForGrid) {
+       setEvents(prev => [...prev, formattedForGrid]);
+       if (item.type === "task") {
+           setAllTasks(prev => [...prev, restoredItem]);
+       }
+     }
+
      try {
-       if (item.type === "event") await restoreEvent(item._id);
-       else if (item.type === "task") await restoreTask(item._id);
+       // 4. Gửi request tới server
+       if (item.type === "event" || item.type === "appointment") {
+           await restoreEvent(item._id);
+       } else if (item.type === "task") {
+           await restoreTask(item._id);
+       }
+       
+       // 5. Cập nhật lại Grid ngầm định (không chặn UI)
        fetchEvents();
      } catch (e) {
-       setDeletedItems(prev => prevDeleted);
+       // Nếu lỗi thì hoàn tác (rollback)
+       setDeletedItems(prevDeleted);
+       if (formattedForGrid) {
+           setEvents(prev => prev.filter(evt => String(evt.id) !== String(formattedForGrid.id)));
+           if (item.type === "task") {
+               setAllTasks(prev => prev.filter(t => String(t.id) !== String(item._id)));
+           }
+       }
        alert("Không thể khôi phục: " + e.message);
      }
    };
 
    const handlePermanentDelete = async (compositeId) => {
-     const item = deletedItems.find(i => i.id === compositeId);
+     const item = deletedItems.find(i => String(i.id) === String(compositeId));
      if (!item) return;
-     const prevDeleted = deletedItems;
-     setDeletedItems(prev => prev.filter(i => i.id !== compositeId));
+     
+     const prevDeleted = [...deletedItems];
+     // Xóa optimistic trên UI thùng rác
+     setDeletedItems(prev => prev.filter(i => String(i.id) !== String(compositeId)));
+     
      try {
-       if (item.type === "event") await permanentDeleteEvent(item._id);
-       else if (item.type === "task") await permanentDeleteTask(item._id);
+       if (item.type === "event" || item.type === "appointment") {
+           await permanentDeleteEvent(item._id);
+       } else if (item.type === "task") {
+           await permanentDeleteTask(item._id);
+       }
      } catch (e) {
-       setDeletedItems(prev => prevDeleted);
+       setDeletedItems(prevDeleted);
        alert("Không thể xóa: " + e.message);
      }
    };
 
    const handleClearAllTrash = async () => {
-     const prevDeleted = deletedItems;
+     const prevDeleted = [...deletedItems];
      setDeletedItems([]);
      try {
-       await Promise.all(
-         prevDeleted.map(item =>
-           item.type === "event"
-             ? permanentDeleteEvent(item._id)
-             : permanentDeleteTask(item._id)
-         )
-       );
-     } catch {
-       setDeletedItems(prev => prevDeleted);
+       for (const item of prevDeleted) {
+         if (item.type === "event" || item.type === "appointment") {
+           await permanentDeleteEvent(item._id);
+         } else if (item.type === "task") {
+           await permanentDeleteTask(item._id);
+         }
+       }
+     } catch (e) {
+       console.error("Lỗi khi xoá vĩnh viễn tất cả:", e);
+       alert("Lỗi khi xoá: " + e.message);
+       setDeletedItems(prevDeleted);
      }
    };
 
@@ -575,6 +642,9 @@ export default function CalendarApp() {
    }, [fetchEvents]);
 
    const handleToggleTask = (compositeId) => {
+     const currentTs = Date.now();
+     lastUpdateRef.current = currentTs;
+
      const taskId = compositeId.toString().replace('task-', '').split('_')[0];
      const prevEvents = events;
      const prevAllTasks = allTasks;
@@ -590,10 +660,12 @@ export default function CalendarApp() {
      (async () => {
        try {
          await toggleTask(taskId);
+         handleEventSaved(null, null, 'task', currentTs);
        } catch (e) {
          console.error("Lỗi toggle task:", e);
          setEvents(prev => prevEvents);
          setAllTasks(prev => prevAllTasks);
+         handleEventSaved(null, null, 'task', currentTs); // Đồng bộ lại nếu lỗi
        }
      })();
    };
@@ -876,6 +948,9 @@ export default function CalendarApp() {
 
   const handleInteractionEnd = ({ fullDate, topOffset, height, columnRect, isUpdate, hasMoved }) => {
     setInteractionState(null); // Kết thúc dragging
+    if (!isUpdate) {
+      setEditingItem(null); // Reset trạng thái đang sửa nếu đây là thao tác kéo tạo mới
+    }
     setClickPosition(prev => ({ ...prev, columnRect, ts: Date.now() }));
     setSelectedDate(fullDate);
     
