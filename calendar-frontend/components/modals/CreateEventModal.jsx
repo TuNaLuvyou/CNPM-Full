@@ -7,11 +7,61 @@ import AppointmentForm from "@/components/forms/AppointmentForm";
 import { getVNTime } from "@/lib/CalendarHelper";
 import { createEvent, createTask, updateEvent, trashEvent, updateTask, trashTask, leaveEvent } from "@/lib/api";
 import { t } from "@/lib/i18n";
-
-import CreateModalHeader from "./create_event/CreateModalHeader";
-import CreateModalFooter from "./create_event/CreateModalFooter";
-import { useModalDrag } from "./create_event/useModalDrag";
 import { useModalPosition } from "./create_event/useModalPosition";
+
+// ── Drag hook (inline) ──
+function useModalDrag({ isOpen, resetKey }) {
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [prevOpen, setPrevOpen] = useState(isOpen);
+  const [prevKey, setPrevKey] = useState(resetKey);
+  const dragStartRef = useRef(null);
+  const initialOffsetRef = useRef({ x: 0, y: 0 });
+
+  if (prevOpen !== isOpen || prevKey !== resetKey) {
+    setPrevOpen(isOpen);
+    setPrevKey(resetKey);
+    setDragOffset({ x: 0, y: 0 });
+  }
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleMouseMove = (e) => {
+      const dx = e.clientX - dragStartRef.current.x;
+      const dy = e.clientY - dragStartRef.current.y;
+      setDragOffset({
+        x: initialOffsetRef.current.x + dx,
+        y: initialOffsetRef.current.y + dy,
+      });
+    };
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging]);
+
+  const handleHeaderMouseDown = (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest("button") || e.target.closest("select") || e.target.closest("input")) return;
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    setIsDragging(true);
+    const modalEl = e.currentTarget.closest(".create-modal-root");
+    if (modalEl) {
+      const rect = modalEl.getBoundingClientRect();
+      initialOffsetRef.current = { x: rect.left, y: rect.top };
+      setDragOffset({ x: rect.left, y: rect.top });
+    } else {
+      initialOffsetRef.current = { ...dragOffset };
+    }
+  };
+
+  return { dragOffset, isDragging, handleHeaderMouseDown };
+}
 
 const TABS = [
   { key: "event", label: "Sự kiện", i18nKey: "event", Icon: CalendarIcon },
@@ -57,8 +107,9 @@ export default function CreateModal({
   
   const resetKey = activeSource?.id || activeSource?.ts || position?.ts || editingItem?.id;
 
-  // ── Drag & Position Hooks ──
+  // ── Drag & Position ──
   const { dragOffset, isDragging, handleHeaderMouseDown } = useModalDrag({ isOpen, resetKey });
+
   const modalStyle = useModalPosition({
     isOpen,
     modalRef,
@@ -69,10 +120,8 @@ export default function CreateModal({
     editingItem,
     dragOffset,
     isDragging,
-    activeTab
+    activeTab,
   });
-
-
 
   const now = activeSource?.fullDate || (editingItem ? new Date(editingItem.start_time) : (initialDate || getVNTime()));
   
@@ -267,14 +316,43 @@ export default function CreateModal({
         className={`create-modal-root fixed w-[calc(100vw-24px)] max-w-lg bg-white dark:bg-[#2d2d2d] rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] max-h-[calc(100vh-24px)] border border-slate-200 dark:border-[#484848] ${hideWhileDraggingPreview ? 'hidden' : 'flex flex-col pointer-events-auto'}`}
         style={{ ...modalStyle }}
       >
-        <CreateModalHeader
-          handleHeaderMouseDown={handleHeaderMouseDown}
-          onClose={onClose}
-          visibleTabs={visibleTabs}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          lang={lang}
-        />
+        {/* Header */}
+        <div
+          onMouseDown={handleHeaderMouseDown}
+          className={`flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-[#484848] shrink-0 select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        >
+          <div className="flex items-center gap-1.5">
+            {visibleTabs.length > 1 ? (
+              visibleTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    activeTab === tab.key
+                      ? "bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400 shadow-sm"
+                      : "text-slate-500 dark:text-[#9e9e9e] hover:text-slate-700 dark:hover:text-[#e3e3e3] hover:bg-slate-50 dark:hover:bg-[#353535]"
+                  }`}
+                >
+                  <tab.Icon className="w-3.5 h-3.5" />
+                  <span>{t(`create_modal.${tab.i18nKey}`, lang)}</span>
+                </button>
+              ))
+            ) : (
+              <div className="flex items-center gap-1.5 px-2">
+                <CalendarIcon className="w-4 h-4 text-blue-500" />
+                <span className="text-sm font-bold text-slate-700 dark:text-white">
+                  {editingItem ? t('create_modal.edit_event', lang) : t(`create_modal.${visibleTabs[0]?.i18nKey || 'event'}`, lang)}
+                </span>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-[#353535] text-slate-400 dark:text-[#9e9e9e] hover:text-slate-600 dark:hover:text-[#e3e3e3] transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
 
         {/* Form body */}
         <div className="overflow-y-auto custom-scrollbar px-6 py-4 flex-1 border-t border-slate-50 dark:border-[#484848]">
@@ -283,20 +361,60 @@ export default function CreateModal({
           {activeTab === "appointment" && <AppointmentForm key={`app-${editingItem?.id || 'new'}`} {...formProps} currentUser={currentUser} />}
         </div>
 
-        <CreateModalFooter
-          editingItem={editingItem}
-          isOwner={isOwner}
-          canEdit={canEdit}
-          deleting={deleting}
-          saving={saving}
-          handleXoa={handleXoa}
-          handleLeave={handleLeave}
-          onClose={onClose}
-          onCancel={onCancel}
-          handleLuu={handleLuu}
-          lang={lang}
-          activeTab={activeTab}
-        />
+        {/* Footer */}
+        <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 dark:border-[#484848] bg-slate-50/50 dark:bg-[#252525] rounded-b-2xl shrink-0">
+          <div className="flex items-center gap-2">
+            {editingItem && (
+              <>
+                {canEdit && (
+                  <button
+                    onClick={handleXoa}
+                    disabled={deleting}
+                    className="px-3 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition disabled:opacity-50"
+                  >
+                    {deleting ? (
+                      <span className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                        {t('create_modal.deleting', lang)}
+                      </span>
+                    ) : (
+                      t('common.delete', lang)
+                    )}
+                  </button>
+                )}
+                {!isOwner && (
+                  <button
+                    onClick={handleLeave}
+                    disabled={deleting}
+                    className="px-3 py-1.5 text-xs font-bold text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10 rounded-lg transition disabled:opacity-50"
+                  >
+                    {t('contacts_panel.leave_event', lang)}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { onCancel?.(); onClose(); }}
+              className="px-4 py-1.5 text-xs font-bold text-slate-600 dark:text-[#bdbdbd] hover:bg-slate-100 dark:hover:bg-[#353535] rounded-lg transition"
+            >
+              {t('cancel', lang)}
+            </button>
+            {canEdit && (
+              <button
+                onClick={handleLuu}
+                disabled={saving}
+                className="px-5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {saving ? (
+                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : null}
+                {t('create_modal.save_changes', lang)}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

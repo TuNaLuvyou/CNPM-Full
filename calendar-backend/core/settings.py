@@ -30,7 +30,6 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
-    'anymail',
 
     # Các app của project
     'accounts',
@@ -145,12 +144,13 @@ SIMPLE_JWT = {
 # Cấu hình chuyển hướng đăng nhập quản trị tùy chỉnh
 LOGIN_URL = '/admin/login/'
 
-# Cấu hình gửi Email qua Resend (HTTPS API - hoạt động trên Render Free)
-ANYMAIL = {
-    'RESEND_API_KEY': os.environ.get('RESEND_API_KEY', ''),
-}
-EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
+# Cấu hình gửi Email qua Google SMTP (hoạt động trên Koyeb/VPS)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@yourdomain.com')
 PASSWORD_RESET_TIMEOUT = 300
 

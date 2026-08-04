@@ -1,6 +1,7 @@
-﻿import React from 'react';
+﻿import { useState, useMemo } from 'react';
 import { t } from '../../lib/i18n';
-// ─── Constants ────────────────────────────────────────────────────────────────
+import { DAY_NAMES, MONTH_NAMES } from '../../lib/CalendarHelper';
+
 export const EVENT_COLORS = [
     { label: 'Xanh dương', value: 'blue',    cls: 'bg-blue-500'    },
     { label: 'Tím',        value: 'purple',  cls: 'bg-purple-500'  },
@@ -10,20 +11,6 @@ export const EVENT_COLORS = [
     { label: 'Hồng',      value: 'pink',    cls: 'bg-pink-500'    },
 ];
 
-export const CALENDAR_CATEGORIES = [
-    { label: 'Mặc định', value: 'Mặc định' },
-    { label: 'Công việc', value: 'Công việc' },
-    { label: 'Gia đình', value: 'Gia đình' },
-    { label: 'Cá nhân', value: 'Cá nhân' },
-];
-
-export const TABS = [
-    { key: 'event',       label: 'Sự kiện',      icon: 'CalendarIcon' },
-    { key: 'task',        label: 'Việc cần làm', icon: 'CheckSquare'  },
-    { key: 'appointment', label: 'Lên lịch hẹn', icon: 'Clock'        },
-];
-
-// ─── Date helpers ─────────────────────────────────────────────────────────────
 export function toDateInputVal(d) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
@@ -32,32 +19,27 @@ export function toTimeInputVal(d) {
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-export const VI_FULL_DAY_NAMES = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-export const EN_FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-export const EN_MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-export function formatLocaleDate(dateStr, lang = 'vi') {
+function formatLocaleDate(dateStr, lang = 'vi') {
     if (!dateStr) return '';
     const d = new Date(dateStr);
     if (lang === 'en') {
-        const dayName = EN_FULL_DAY_NAMES[d.getDay()];
-        const monthName = EN_MONTH_NAMES[d.getMonth()];
+        const dayName = DAY_NAMES.en[d.getDay()];
+        const monthName = MONTH_NAMES.en[d.getMonth()];
         return `${dayName}, ${monthName} ${d.getDate()}`;
     }
-    const dayName = VI_FULL_DAY_NAMES[d.getDay()];
+    const dayName = DAY_NAMES.vi[d.getDay()];
     return `${dayName}, ${d.getDate()} tháng ${d.getMonth() + 1}`;
 }
 
-export function formatAMPM(timeStr) {
+function formatAMPM(timeStr) {
     if (!timeStr) return '';
     let [hours, minutes] = timeStr.split(':').map(Number);
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12;
-    hours = hours ? hours : 12; // the hour '0' should be '12'
+    hours = hours ? hours : 12;
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
 }
 
-// ─── Shared UI primitives ─────────────────────────────────────────────────────
 export function FieldRow({ icon: Icon, children }) {
     return (
         <div className="flex items-start gap-3">
@@ -68,9 +50,9 @@ export function FieldRow({ icon: Icon, children }) {
 }
 
 export function DateTimeSelector({ date, timeStart, timeEnd, timeFormat = '24h', lang = 'vi', children }) {
-    const [isExpanded, setIsExpanded] = React.useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
 
-    const summary = React.useMemo(() => {
+    const summary = useMemo(() => {
         let text = formatLocaleDate(date, lang);
         const format = (t) => {
             if (!t) return '';
